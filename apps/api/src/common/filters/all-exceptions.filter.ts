@@ -22,7 +22,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'object' && res !== null && 'message' in res ? (res as { message: unknown }).message as string : res as string;
+      if (typeof res === 'object' && res !== null) {
+        return response.status(status).json({
+          timestamp: new Date().toISOString(),
+          ...res,
+        });
+      }
+      message = res as string;
     } else if (exception instanceof Error) {
       this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
       message = exception.message;
