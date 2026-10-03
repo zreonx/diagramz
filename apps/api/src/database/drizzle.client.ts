@@ -1,17 +1,14 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import * as schema from './schema';
 
 const connectionString =
   process.env.DATABASE_URL ||
-  'postgresql://postgres:postgres@localhost:5432/diagramz?sslmode=disable';
+  'postgresql://postgres:postgres@localhost:5433/diagramz?sslmode=disable';
 
-// Configure postgres.js client
-export const queryClient = postgres(connectionString, {
+export const queryClient = new Pool({
+  connectionString,
   max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
-  prepare: false, // Required for transaction connection pooling in serverless/pgBouncer
 });
 
 export const db = drizzle(queryClient, { schema });

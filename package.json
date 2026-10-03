@@ -9,7 +9,12 @@
     "lint": "turbo lint",
     "check-types": "turbo check-types",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f",
+    "db:push": "pnpm --filter @diagramz/api db:push",
+    "db:generate": "pnpm --filter @diagramz/api db:generate"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
