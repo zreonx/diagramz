@@ -53,9 +53,15 @@ export function applyReact19Shim() {
   }
 
   reactAny.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = secretInternals;
+  if (reactAny.default && typeof reactAny.default === 'object') {
+    reactAny.default.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = secretInternals;
+  }
 
   if (win.React) {
     win.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = secretInternals;
+    if (win.React.default && typeof win.React.default === 'object') {
+      win.React.default.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = secretInternals;
+    }
   }
 }
 
