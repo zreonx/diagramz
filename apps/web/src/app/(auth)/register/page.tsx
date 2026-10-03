@@ -10,6 +10,14 @@ import { apiClient, setAccessToken } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Layers, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,70 +51,72 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white mb-3 shadow-lg shadow-blue-500/20">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+      <Card className="w-full max-w-md shadow-2xl border-border bg-card">
+        <CardHeader className="text-center space-y-2 pb-6">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground mb-1 shadow-lg shadow-primary/20">
             <Layers className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Create your Account</h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <CardTitle className="text-2xl font-bold tracking-tight">Create your Account</CardTitle>
+          <CardDescription className="text-xs">
             Start collaborating on AI and Mermaid diagrams in seconds
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Full Name</label>
-            <Input
-              placeholder="Alex Turner"
-              {...register('name')}
-              disabled={isLoading}
-            />
-            {errors.name && (
-              <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>
-            )}
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Full Name</Label>
+              <Input
+                placeholder="Alex Turner"
+                {...register('name')}
+                disabled={isLoading}
+              />
+              {errors.name && (
+                <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Email Address</Label>
+              <Input
+                type="email"
+                placeholder="alex@diagramz.io"
+                {...register('email')}
+                disabled={isLoading}
+              />
+              {errors.email && (
+                <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Password</Label>
+              <Input
+                type="password"
+                placeholder="Minimum 8 characters"
+                {...register('password')}
+                disabled={isLoading}
+              />
+              {errors.password && (
+                <p className="text-xs text-destructive mt-1">{errors.password.message}</p>
+              )}
+            </div>
+
+            <Button type="submit" disabled={isLoading} className="w-full h-10 mt-2 font-medium">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {isLoading ? 'Creating Account...' : 'Get Started'}
+            </Button>
+          </form>
+
+          <div className="text-center mt-6 text-xs text-muted-foreground">
+            Already have an account?{' '}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
           </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Email Address</label>
-            <Input
-              type="email"
-              placeholder="alex@diagramz.io"
-              {...register('email')}
-              disabled={isLoading}
-            />
-            {errors.email && (
-              <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
-            <Input
-              type="password"
-              placeholder="Minimum 8 characters"
-              {...register('password')}
-              disabled={isLoading}
-            />
-            {errors.password && (
-              <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
-            )}
-          </div>
-
-          <Button type="submit" disabled={isLoading} className="w-full h-10 mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            {isLoading ? 'Creating Account...' : 'Get Started'}
-          </Button>
-        </form>
-
-        <div className="text-center mt-6 text-xs text-slate-400">
-          Already have an account?{' '}
-          <Link href="/login" className="text-blue-400 hover:underline font-medium">
-            Sign in
-          </Link>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -6,11 +6,13 @@ import mermaid from 'mermaid';
 import { apiClient } from '@/lib/api';
 import { DiagramDetail } from '@diagramz/shared';
 import { Layers, Globe, Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Excalidraw } from '@/components/canvas/ExcalidrawWrapper';
 
 export default function PublicSharePage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = params?.token as string | undefined;
 
   const [diagram, setDiagram] = useState<DiagramDetail | null>(null);
   const [svgOutput, setSvgOutput] = useState<string>('');
@@ -19,6 +21,8 @@ export default function PublicSharePage() {
   const [viewMode, setViewMode] = useState<'canvas' | 'mermaid'>('mermaid');
 
   useEffect(() => {
+    if (!token) return;
+
     mermaid.initialize({
       startOnLoad: false,
       theme: 'dark',
@@ -45,7 +49,7 @@ export default function PublicSharePage() {
       });
   }, [token]);
 
-  if (isLoading) {
+  if (isLoading || !token) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -64,41 +68,55 @@ export default function PublicSharePage() {
     );
   }
 
+  const elements = (() => {
+    try {
+      const data = diagram.canvasData;
+      if (!data) return [];
+      if (typeof data === 'string') {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed?.elements) ? parsed.elements : [];
+      }
+      if (typeof data === 'object' && data !== null && 'elements' in (data as any)) {
+        const els = (data as any).elements;
+        return Array.isArray(els) ? els : [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  })();
+
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
       {/* Read-only Header */}
       <header className="h-12 border-b border-slate-800 bg-slate-900/90 px-6 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center text-white">
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground">
             <Layers className="w-4 h-4" />
           </div>
           <span className="text-sm font-semibold text-white">{diagram.title}</span>
-          <span className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+          <Badge variant="outline" className="text-emerald-400 border-emerald-800/40 bg-emerald-950/40 text-[11px] gap-1">
             <Globe className="w-3 h-3" /> Public Preview
-          </span>
+          </Badge>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            size="sm"
+            variant={viewMode === 'mermaid' ? 'default' : 'outline'}
             onClick={() => setViewMode('mermaid')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${
-              viewMode === 'mermaid'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="h-8 text-xs"
           >
             Mermaid Diagram
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === 'canvas' ? 'default' : 'outline'}
             onClick={() => setViewMode('canvas')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${
-              viewMode === 'canvas'
-                ? 'bg-blue-600 text-white font-medium'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="h-8 text-xs"
           >
             Canvas View
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -118,7 +136,7 @@ export default function PublicSharePage() {
             <Excalidraw
               viewModeEnabled={true}
               initialData={{
-                elements: (diagram.canvasData as any)?.elements || [],
+                elements: elements,
                 appState: { theme: 'dark', viewBackgroundColor: '#121212' },
               }}
             />

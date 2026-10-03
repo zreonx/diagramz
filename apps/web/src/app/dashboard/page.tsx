@@ -11,18 +11,16 @@ import {
   Globe,
   Lock,
   Trash2,
-  ArrowUpRight,
   TrendingUp,
   FolderKanban,
   Users,
   Search,
-  Filter,
-  CheckCircle2,
-  FileCode2,
-  Zap,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -155,14 +153,15 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredDiagrams = diagrams.filter((d) =>
-    d.title.toLowerCase().includes(filterQuery.toLowerCase()) ||
-    (d.mermaidCode && d.mermaidCode.toLowerCase().includes(filterQuery.toLowerCase()))
+  const filteredDiagrams = diagrams.filter(
+    (d) =>
+      d.title.toLowerCase().includes(filterQuery.toLowerCase()) ||
+      (d.mermaidCode && d.mermaidCode.toLowerCase().includes(filterQuery.toLowerCase())),
   );
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Top Header Section (shadcn-admin style) */}
+      {/* Top Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h1>
@@ -179,7 +178,7 @@ export default function DashboardPage() {
             }}
             className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-md shadow-blue-600/20 gap-1.5"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             <span>New Diagram</span>
           </Button>
         </div>
@@ -190,14 +189,14 @@ export default function DashboardPage() {
         <Card className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Total Diagrams</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <Layers className="w-4 h-4" />
+            <div className="size-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <Layers className="size-4" />
             </div>
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-white tracking-tight">{diagrams.length}</div>
             <div className="flex items-center gap-1 text-[11px] text-emerald-400 mt-1">
-              <TrendingUp className="w-3 h-3" />
+              <TrendingUp className="size-3" />
               <span>Available in project</span>
             </div>
           </div>
@@ -206,12 +205,14 @@ export default function DashboardPage() {
         <Card className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Active Projects</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <FolderKanban className="w-4 h-4" />
+            <div className="size-8 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <FolderKanban className="size-4" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-white tracking-tight">{projects.length || 1}</div>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              {projects.length || 1}
+            </div>
             <div className="text-[11px] text-slate-400 mt-1">Scoped permissions</div>
           </div>
         </Card>
@@ -219,8 +220,8 @@ export default function DashboardPage() {
         <Card className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Multiplayer Presence</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <Users className="w-4 h-4" />
+            <div className="size-8 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Users className="size-4" />
             </div>
           </div>
           <div className="mt-3">
@@ -232,8 +233,8 @@ export default function DashboardPage() {
         <Card className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">AI Architect</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <Sparkles className="w-4 h-4" />
+            <div className="size-8 rounded-lg bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <Sparkles className="size-4" />
             </div>
           </div>
           <div className="mt-3">
@@ -243,7 +244,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Main Tabs (shadcn style) */}
+      {/* Main Tabs (shadcn Tabs) */}
       <Tabs defaultValue="all" className="w-full space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
           <TabsList>
@@ -252,16 +253,16 @@ export default function DashboardPage() {
             <TabsTrigger value="private">Private</TabsTrigger>
           </TabsList>
 
-          {/* Search & Filter Bar */}
+          {/* Search & Filter using shadcn Input */}
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
                 type="text"
                 placeholder="Filter diagrams..."
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                className="h-8 pl-8 pr-3 w-56 rounded-md border border-slate-800 bg-slate-900 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                className="h-8 pl-8 pr-3 w-56 text-xs bg-slate-900 border-slate-800"
               />
             </div>
           </div>
@@ -280,8 +281,8 @@ export default function DashboardPage() {
             </div>
           ) : filteredDiagrams.length === 0 ? (
             <div className="border border-dashed border-slate-800 rounded-2xl p-12 text-center bg-slate-900/30">
-              <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6" />
+              <div className="size-12 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-3">
+                <Sparkles className="size-6" />
               </div>
               <h3 className="text-sm font-semibold text-slate-200 mb-1">No diagrams found</h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
@@ -315,7 +316,7 @@ export default function DashboardPage() {
                         className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 p-1 rounded transition-opacity"
                         title="Delete diagram"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="size-3.5" />
                       </button>
                     </div>
 
@@ -328,17 +329,17 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-slate-800/80">
                     <span className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <Clock className="size-3.5 text-slate-500" />
                       <span>{formatDate(diagram.updatedAt)}</span>
                     </span>
 
                     {diagram.isPublic ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
-                        <Globe className="w-3 h-3" /> Public
+                        <Globe className="size-3" /> Public
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded">
-                        <Lock className="w-3 h-3" /> Private
+                        <Lock className="size-3" /> Private
                       </span>
                     )}
                   </div>
@@ -385,7 +386,7 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Create Diagram Dialog (shadcn Dialog style) */}
+      {/* Create Diagram Dialog (using shadcn Input, Label, Textarea, Button, Dialog) */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800">
           <DialogHeader>
@@ -396,24 +397,19 @@ export default function DashboardPage() {
           </DialogHeader>
 
           <form onSubmit={handleCreateDiagram} className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                Diagram Title
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="diagram-title">Diagram Title</Label>
+              <Input
+                id="diagram-title"
                 required
                 placeholder="e.g. Distributed Payment Pipeline"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
               />
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                Architecture Starter Template
-              </label>
+            <div className="space-y-1.5">
+              <Label>Architecture Starter Template</Label>
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(TEMPLATES).map(([key, tpl]) => (
                   <button
@@ -436,15 +432,14 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                Mermaid Code Preview
-              </label>
-              <textarea
+            <div className="space-y-1.5">
+              <Label htmlFor="mermaid-code">Mermaid Code Preview</Label>
+              <Textarea
+                id="mermaid-code"
                 rows={4}
                 value={initialMermaid}
                 onChange={(e) => setInitialMermaid(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md p-2.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-blue-500 resize-none"
+                className="text-emerald-300 resize-none font-mono"
               />
             </div>
 

@@ -69,6 +69,24 @@ export function DiagramCanvas({
     sendCursorPosition(payload.pointer);
   };
 
+  const initialElements = React.useMemo(() => {
+    try {
+      const data = initialDiagram.canvasData;
+      if (!data) return [];
+      if (typeof data === 'string') {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed?.elements) ? parsed.elements : [];
+      }
+      if (typeof data === 'object' && data !== null && 'elements' in (data as any)) {
+        const els = (data as any).elements;
+        return Array.isArray(els) ? els : [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }, [initialDiagram.canvasData]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950">
       <CanvasHeader
@@ -100,18 +118,20 @@ export function DiagramCanvas({
         {/* Main Infinite Canvas Surface */}
         <div className="flex-1 h-full relative overflow-hidden bg-[#121212]">
           <RemoteCursorsOverlay />
-          <Excalidraw
-            initialData={{
-              elements: (initialDiagram.canvasData as any)?.elements || [],
-              appState: {
-                theme: 'dark',
-                viewBackgroundColor: '#121212',
-                currentItemStrokeColor: '#3b82f6',
-              },
-            }}
-            onChange={handleExcalidrawChange}
-            onPointerUpdate={handlePointerUpdate}
-          />
+          <div className="w-full h-full relative">
+            <Excalidraw
+              initialData={{
+                elements: initialElements,
+                appState: {
+                  theme: 'dark',
+                  viewBackgroundColor: '#121212',
+                  currentItemStrokeColor: '#3b82f6',
+                },
+              }}
+              onChange={handleExcalidrawChange}
+              onPointerUpdate={handlePointerUpdate}
+            />
+          </div>
         </div>
       </div>
     </div>

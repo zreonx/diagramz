@@ -4,7 +4,20 @@ import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const Excalidraw = dynamic(
-  () => import('@excalidraw/excalidraw').then((mod) => mod.Excalidraw),
+  async () => {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore
+      window.process = window.process || { env: {} };
+      // @ts-ignore
+      window.process.env = window.process.env || {};
+      // @ts-ignore
+      window.process.env.IS_PREACT = 'false';
+      // @ts-ignore
+      window.process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+    }
+    const mod = await import('@excalidraw/excalidraw');
+    return mod.Excalidraw;
+  },
   {
     ssr: false,
     loading: () => (

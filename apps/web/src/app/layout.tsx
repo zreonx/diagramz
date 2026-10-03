@@ -15,6 +15,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.process = window.process || { env: { NODE_ENV: 'production', IS_PREACT: 'false' } };`,
+          }}
+        />
+      </head>
       <body className="bg-slate-950 text-slate-100 antialiased min-h-screen">
         {children}
         <Toaster position="top-right" richColors />
