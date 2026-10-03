@@ -2,19 +2,13 @@
 
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
+import { applyReact19Shim } from '@/lib/react-19-shim';
+
+applyReact19Shim();
 
 export const Excalidraw = dynamic(
   async () => {
-    if (typeof window !== 'undefined') {
-      // @ts-ignore
-      window.process = window.process || { env: {} };
-      // @ts-ignore
-      window.process.env = window.process.env || {};
-      // @ts-ignore
-      window.process.env.IS_PREACT = 'false';
-      // @ts-ignore
-      window.process.env.NODE_ENV = process.env.NODE_ENV || 'production';
-    }
+    applyReact19Shim();
     const mod = await import('@excalidraw/excalidraw');
     return mod.Excalidraw;
   },

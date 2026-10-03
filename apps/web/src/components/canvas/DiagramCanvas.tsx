@@ -9,6 +9,9 @@ import { RemoteCursorsOverlay } from './RemoteCursorsOverlay';
 import { useDiagramStore } from '@/stores/diagram.store';
 import { useCollab } from '@/hooks/useCollab';
 import { DiagramDetail } from '@diagramz/shared';
+import { applyReact19Shim } from '@/lib/react-19-shim';
+
+applyReact19Shim();
 
 interface DiagramCanvasProps {
   initialDiagram: DiagramDetail;

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import '@/lib/react-19-shim';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
