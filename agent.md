@@ -514,50 +514,50 @@ CMD ["node", "apps/api/dist/main.js"]
 Execute the following phases sequentially. Ensure zero TypeScript or lint errors before advancing.
 
 ### Phase 1: Workspace & Tooling Setup
-- [ ] Initialize pnpm monorepo with Turborepo (`apps/web`, `apps/api`, `packages/shared`).
-- [ ] Configure root `tsconfig.json`, Prettier, and ESLint configurations.
-- [ ] Configure `packages/shared` with standard DTO definitions and Zod schemas.
+- [x] Initialize pnpm monorepo with Turborepo (`apps/web`, `apps/api`, `packages/shared`).
+- [x] Configure root `tsconfig.json`, Prettier, and ESLint configurations.
+- [x] Configure `packages/shared` with standard DTO definitions and Zod schemas.
 
 ### Phase 2: Backend Core & Database Persistence
-- [ ] Setup NestJS in `apps/api` with validation pipes and Swagger documentation.
-- [ ] Configure Drizzle ORM connecting to Neon PostgreSQL.
-- [ ] Write schema definitions (`users`, `workspaces`, `projects`, `diagrams`, etc.).
-- [ ] Implement database migrations and apply Postgres RLS policies.
-- [ ] Implement Auth Module (JWT generation, HTTP-only refresh rotation, Passport strategy).
+- [x] Setup NestJS in `apps/api` with validation pipes and Swagger documentation.
+- [x] Configure Drizzle ORM connecting to Neon PostgreSQL.
+- [x] Write schema definitions (`users`, `workspaces`, `projects`, `diagrams`, etc.).
+- [x] Implement database migrations and apply Postgres RLS policies.
+- [x] Implement Auth Module (JWT generation, HTTP-only refresh rotation, Passport strategy).
 
 ### Phase 3: Workspaces, Projects, and RBAC
-- [ ] Implement `WorkspacesModule` (CRUD, member invitations, role updates).
-- [ ] Implement `ProjectsModule` scoped to workspaces.
-- [ ] Implement `WorkspaceRolesGuard` to enforce the Permissions Matrix.
-- [ ] Set up `AuditModule` using NestJS event emitters to log administrative events.
+- [x] Implement `WorkspacesModule` (CRUD, member invitations, role updates).
+- [x] Implement `ProjectsModule` scoped to workspaces.
+- [x] Implement `WorkspaceRolesGuard` to enforce the Permissions Matrix.
+- [x] Set up `AuditModule` using NestJS event emitters to log administrative events.
 
 ### Phase 4: Frontend Shell & Authentication
-- [ ] Scaffold Next.js 15+ App Router application with Tailwind CSS v4 and shadcn/ui.
-- [ ] Build `/login` and `/register` flows using React Hook Form + Zod.
-- [ ] Create dashboard layout featuring workspace switcher, project sidebar, and user navigation.
-- [ ] Implement workspace members and role management UI.
+- [x] Scaffold Next.js 15+ App Router application with Tailwind CSS v4 and shadcn/ui.
+- [x] Build `/login` and `/register` flows using React Hook Form + Zod.
+- [x] Create dashboard layout featuring workspace switcher, project sidebar, and user navigation.
+- [x] Implement workspace members and role management UI.
 
 ### Phase 5: Canvas & Diagram-as-Code Engine
-- [ ] Mount `@excalidraw/excalidraw` in `apps/web` with SSR explicitly disabled.
-- [ ] Embed CodeMirror 6 with Mermaid syntax highlighting in a resizable side-drawer.
-- [ ] Implement debounced canvas persistence calling `PATCH /api/v1/diagrams/:id`.
-- [ ] Configure Cloudflare R2 upload flow for diagram thumbnails.
+- [x] Mount `@excalidraw/excalidraw` in `apps/web` with SSR explicitly disabled.
+- [x] Embed CodeMirror 6 with Mermaid syntax highlighting in a resizable side-drawer.
+- [x] Implement debounced canvas persistence calling `PATCH /api/v1/diagrams/:id`.
+- [x] Configure Cloudflare R2 upload flow for diagram thumbnails.
 
 ### Phase 6: Real-Time Multi-User Collaboration
-- [ ] Implement `CollabGateway` in NestJS using Socket.IO.
-- [ ] Setup Yjs document management on the server; broadcast binary updates.
-- [ ] Connect client-side Excalidraw instances to Yjs documents for real-time multiplayer editing.
-- [ ] Render live remote cursor overlays with user badges and color-coding.
+- [x] Implement `CollabGateway` in NestJS using Socket.IO.
+- [x] Setup Yjs document management on the server; broadcast binary updates.
+- [x] Connect client-side Excalidraw instances to Yjs documents for real-time multiplayer editing.
+- [x] Render live remote cursor overlays with user badges and color-coding.
 
 ### Phase 7: AI Diagram Generation & Streaming
-- [ ] Build `AiModule` in NestJS with OpenAI/Anthropic provider implementations.
-- [ ] Write strict system prompts enforcing Mermaid.js grammar.
-- [ ] Expose an SSE endpoint (`/api/v1/ai/chat`) for streaming interactive refinements.
-- [ ] Build frontend AI sidebar permitting prompt submissions and direct diagram imports.
+- [x] Build `AiModule` in NestJS with OpenAI/Anthropic provider implementations.
+- [x] Write strict system prompts enforcing Mermaid.js grammar.
+- [x] Expose an SSE endpoint (`/api/v1/ai/chat`) for streaming interactive refinements.
+- [x] Build frontend AI sidebar permitting prompt submissions and direct diagram imports.
 
 ### Phase 8: Async Exports & Hardening
-- [ ] Setup Redis and BullMQ queues for handling background render jobs.
-- [ ] Implement `@mermaid-js/mermaid-cli` worker converting diagrams to high-res PNG/PDF.
-- [ ] Create read-only shared preview page at `/share/[token]`.
-- [ ] Run load, concurrency, and security checks across WebSocket and RLS layers.
+- [x] Setup Redis and BullMQ queues for handling background render jobs.
+- [x] Implement `@mermaid-js/mermaid-cli` worker converting diagrams to high-res PNG/PDF.
+- [x] Create read-only shared preview page at `/share/[token]`.
+- [x] Run load, concurrency, and security checks across WebSocket and RLS layers.
 ```
