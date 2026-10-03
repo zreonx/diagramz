@@ -51,6 +51,20 @@ for (const dir of excalidrawDirs) {
     '(r.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED||r.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE||{}).ReactCurrentOwner||{current:null}'
   );
 
+  // 2. Patch Symbol.for("react.element") -> Symbol.for("react.transitional.element") to fix React 19 error #525
+  patchFile(
+    prodBundle,
+    'Symbol.for("react.element")',
+    'Symbol.for("react.transitional.element")'
+  );
+
+  // 3. Patch parentElement null check in nearestScrollableContainer (Y function)
+  patchFile(
+    prodBundle,
+    'Y=function(e){for(var t=e.parentElement',
+    'Y=function(e){if(!e)return document;for(var t=e.parentElement'
+  );
+
   // 2. Patch process.env in main.js
   const mainJs = path.join(dir, 'main.js');
   patchFile(

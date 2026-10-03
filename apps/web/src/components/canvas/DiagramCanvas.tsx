@@ -123,6 +123,7 @@ export function DiagramCanvas({
           <RemoteCursorsOverlay />
           <div className="w-full h-full relative">
             <Excalidraw
+              detectScroll={false}
               initialData={{
                 elements: initialElements,
                 appState: {
