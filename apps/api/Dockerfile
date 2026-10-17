@@ -12,8 +12,10 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 FROM base AS dependencies
+RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 RUN pnpm install --frozen-lockfile
 
@@ -24,6 +26,7 @@ RUN pnpm --filter @diagramz/api build
 
 FROM base AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json

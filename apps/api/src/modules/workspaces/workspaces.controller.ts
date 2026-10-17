@@ -16,6 +16,7 @@ import { WorkspacesService } from './workspaces.service';
 import { AuditService } from '../audit/audit.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireWorkspaceRole } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { WorkspaceRolesGuard } from '../../common/guards/workspace-roles.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
@@ -31,6 +32,8 @@ import {
   WorkspaceSummary,
   WorkspaceMemberSummary,
   WorkspaceInvitationSummary,
+  WorkspaceInvitationDetails,
+  AcceptInvitationResponse,
   AuditLogSummary,
 } from '@diagramz/shared';
 
@@ -57,6 +60,22 @@ export class WorkspacesController {
     @Body() dto: CreateWorkspaceDto,
   ): Promise<WorkspaceSummary> {
     return this.workspacesService.createWorkspace(user.id, dto);
+  }
+
+  @Public()
+  @Get('invitations/:token')
+  @ApiOperation({ summary: 'Get invitation details by token' })
+  async getInvitationByToken(@Param('token') token: string): Promise<WorkspaceInvitationDetails> {
+    return this.workspacesService.getInvitationByToken(token);
+  }
+
+  @Post('invitations/:token/accept')
+  @ApiOperation({ summary: 'Accept workspace invitation' })
+  async acceptInvitation(
+    @Param('token') token: string,
+    @CurrentUser() user: AuthSessionUser,
+  ): Promise<AcceptInvitationResponse> {
+    return this.workspacesService.acceptInvitation(token, user.id, user.email);
   }
 
   @Get(':slug')
@@ -112,6 +131,27 @@ export class WorkspacesController {
     @Body() dto: InviteMemberDto,
   ): Promise<WorkspaceInvitationSummary> {
     return this.workspacesService.inviteMember(id, user.id, dto);
+  }
+
+  @Get(':id/invitations')
+  @UseGuards(WorkspaceRolesGuard)
+  @RequireWorkspaceRole('admin')
+  @ApiOperation({ summary: 'List pending workspace invitations' })
+  async getInvitations(@Param('id') id: string): Promise<WorkspaceInvitationSummary[]> {
+    return this.workspacesService.getInvitations(id);
+  }
+
+  @Delete(':id/invitations/:invitationId')
+  @UseGuards(WorkspaceRolesGuard)
+  @RequireWorkspaceRole('admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Revoke pending invitation' })
+  async revokeInvitation(
+    @Param('id') id: string,
+    @Param('invitationId') invitationId: string,
+    @CurrentUser() user: AuthSessionUser,
+  ): Promise<void> {
+    await this.workspacesService.revokeInvitation(id, user.id, invitationId);
   }
 
   @Patch(':id/members/:memberId')

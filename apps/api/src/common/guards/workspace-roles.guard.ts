@@ -9,8 +9,8 @@ import { Reflector } from '@nestjs/core';
 import { WORKSPACE_ROLE_KEY } from '../decorators/roles.decorator';
 import { WorkspaceRole, hasMinimumRole, AuthSessionUser } from '@diagramz/shared';
 import { db } from '../../database/drizzle.client';
-import { workspaceMembers, projects, diagrams } from '../../database/schema';
-import { eq, and } from 'drizzle-orm';
+import { workspaceMembers, projects, diagrams, diagramCollaborators } from '../../database/schema';
+import { eq, and, or } from 'drizzle-orm';
 
 @Injectable()
 export class WorkspaceRolesGuard implements CanActivate {
@@ -47,7 +47,33 @@ export class WorkspaceRolesGuard implements CanActivate {
     });
 
     if (!membership) {
-      throw new ForbiddenException('You do not have access to this workspace');
+      // Check if user is a direct collaborator on this diagram
+      const diagramId = request.params?.diagramId || (request.route?.path?.includes('/diagrams/:id') ? request.params?.id : null);
+      if (diagramId) {
+        const directCollab = await db.query.diagramCollaborators.findFirst({
+          where: and(
+            eq(diagramCollaborators.diagramId, diagramId),
+            or(
+              eq(diagramCollaborators.userId, user.id),
+              eq(diagramCollaborators.email, user.email)
+            )
+          ),
+        });
+
+        if (directCollab) {
+          const effectiveRole: WorkspaceRole = directCollab.role === 'editor' ? 'editor' : 'viewer';
+          if (!hasMinimumRole(effectiveRole, requiredRole)) {
+            throw new ForbiddenException(
+              `Insufficient permissions on this diagram. Required: ${requiredRole}, Current: ${directCollab.role}`,
+            );
+          }
+          request.diagramCollaborator = directCollab;
+          request.workspaceId = workspaceId;
+          return true;
+        }
+      }
+
+      throw new ForbiddenException('You do not have access to this workspace or diagram');
     }
 
     if (!hasMinimumRole(membership.role as WorkspaceRole, requiredRole)) {

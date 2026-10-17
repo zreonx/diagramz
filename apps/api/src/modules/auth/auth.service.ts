@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { eq, and, gt } from 'drizzle-orm';
 import { db } from '../../database/drizzle.client';
-import { users, refreshTokens, workspaces, workspaceMembers } from '../../database/schema';
+import { users, refreshTokens, workspaces, workspaceMembers, workspaceInvitations } from '../../database/schema';
 import {
   RegisterDto,
   LoginDto,
@@ -72,6 +72,25 @@ export class AuthService {
         userId: newUser.id,
         role: 'owner',
       });
+
+      // Auto-redeem any pending valid workspace invitations for this email
+      const pendingInvites = await tx.query.workspaceInvitations.findMany({
+        where: eq(workspaceInvitations.email, dto.email.toLowerCase()),
+      });
+
+      for (const invite of pendingInvites) {
+        if (new Date(invite.expiresAt) > new Date()) {
+          await tx
+            .insert(workspaceMembers)
+            .values({
+              workspaceId: invite.workspaceId,
+              userId: newUser.id,
+              role: invite.role,
+            })
+            .onConflictDoNothing();
+        }
+        await tx.delete(workspaceInvitations).where(eq(workspaceInvitations.id, invite.id));
+      }
 
       return newUser;
     });

@@ -9,6 +9,8 @@ export * from './contracts/auth.contract.js';
 export * from './contracts/workspaces.contract.js';
 export * from './contracts/projects.contract.js';
 export * from './contracts/diagrams.contract.js';
+export * from './contracts/folders.contract.js';
 export * from './contracts/ai.contract.js';
 export * from './contracts/export.contract.js';
 export * from './contracts/storage.contract.js';
+export * from './contracts/notifications.contract.js';

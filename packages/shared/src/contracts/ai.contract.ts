@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const AI_PROVIDERS = ['openai', 'anthropic'] as const;
+export const AI_PROVIDERS = ['gemini', 'openai', 'anthropic'] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 export const aiGenerateSchema = z.object({
@@ -28,4 +28,5 @@ export interface AiGenerationResult {
   mermaidCode: string;
   explanation: string;
   diagramType: string;
+  canvasData?: Record<string, any>;
 }

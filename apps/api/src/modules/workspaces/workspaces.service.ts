@@ -23,13 +23,21 @@ import {
   WorkspaceSummary,
   WorkspaceMemberSummary,
   WorkspaceInvitationSummary,
+  WorkspaceInvitationDetails,
+  AcceptInvitationResponse,
   WorkspaceRole,
 } from '@diagramz/shared';
 import { AuditLogEvent } from '../audit/audit.event';
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor(
+    private eventEmitter: EventEmitter2,
+    private emailService: EmailService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getUserWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
     const memberships = await db.query.workspaceMembers.findMany({
@@ -242,6 +250,16 @@ export class WorkspacesService {
       }
     }
 
+    // If an invitation already exists for this email in this workspace, delete it first to issue a fresh token
+    await db
+      .delete(workspaceInvitations)
+      .where(
+        and(
+          eq(workspaceInvitations.workspaceId, workspaceId),
+          eq(workspaceInvitations.email, normalizedEmail),
+        ),
+      );
+
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -263,6 +281,47 @@ export class WorkspacesService {
         role: dto.role,
       }),
     );
+
+    // Dispatch invitation email via Resend
+    const ws = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, workspaceId),
+    });
+    const inviter = await db.query.users.findFirst({
+      where: eq(users.id, inviterId),
+    });
+
+    if (ws) {
+      this.emailService
+        .sendWorkspaceInvitation({
+          to: normalizedEmail,
+          workspaceName: ws.name,
+          role: dto.role,
+          token,
+          inviterName: inviter?.name,
+          inviterEmail: inviter?.email,
+        })
+        .catch(() => {});
+    }
+
+    if (existingUser && existingUser.id !== inviterId) {
+      this.notificationsService
+        .createNotification({
+          userId: existingUser.id,
+          type: 'team_invite',
+          title: 'Workspace Invitation',
+          message: `${inviter?.name || 'A teammate'} invited you to join "${ws?.name || 'a workspace'}" as ${dto.role}`,
+          link: `/invite/${token}`,
+          metadata: {
+            workspaceId,
+            workspaceName: ws?.name,
+            inviterId,
+            inviterName: inviter?.name,
+            role: dto.role,
+            token,
+          },
+        })
+        .catch(() => {});
+    }
 
     return {
       id: invitation.id,
@@ -368,6 +427,153 @@ export class WorkspacesService {
       'audit.log',
       new AuditLogEvent(workspaceId, adminId, 'remove', 'member', memberId, {
         targetUserId: member.userId,
+      }),
+    );
+  }
+
+  async getInvitationByToken(token: string): Promise<WorkspaceInvitationDetails> {
+    const invitation = await db.query.workspaceInvitations.findFirst({
+      where: eq(workspaceInvitations.token, token),
+      with: {
+        workspace: {
+          with: {
+            owner: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or has expired');
+    }
+
+    if (new Date(invitation.expiresAt) < new Date()) {
+      throw new BadRequestException('This invitation has expired. Please ask for a new invite.');
+    }
+
+    return {
+      id: invitation.id,
+      workspaceId: invitation.workspaceId,
+      workspaceName: invitation.workspace.name,
+      workspaceSlug: invitation.workspace.slug,
+      email: invitation.email,
+      role: invitation.role as WorkspaceRole,
+      token: invitation.token,
+      expiresAt: invitation.expiresAt.toISOString(),
+      createdAt: invitation.createdAt.toISOString(),
+      inviterName: invitation.workspace.owner?.name,
+      inviterEmail: invitation.workspace.owner?.email,
+    };
+  }
+
+  async acceptInvitation(
+    token: string,
+    userId: string,
+    userEmail: string,
+  ): Promise<AcceptInvitationResponse> {
+    const invitation = await db.query.workspaceInvitations.findFirst({
+      where: eq(workspaceInvitations.token, token),
+      with: {
+        workspace: true,
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or has already been accepted');
+    }
+
+    if (new Date(invitation.expiresAt) < new Date()) {
+      throw new BadRequestException('This invitation has expired');
+    }
+
+    // Check if user is already a member
+    const existingMember = await db.query.workspaceMembers.findFirst({
+      where: and(
+        eq(workspaceMembers.workspaceId, invitation.workspaceId),
+        eq(workspaceMembers.userId, userId),
+      ),
+    });
+
+    if (existingMember) {
+      await db.delete(workspaceInvitations).where(eq(workspaceInvitations.id, invitation.id));
+      return {
+        workspace: {
+          id: invitation.workspace.id,
+          name: invitation.workspace.name,
+          slug: invitation.workspace.slug,
+          ownerId: invitation.workspace.ownerId,
+          role: existingMember.role as WorkspaceRole,
+          createdAt: invitation.workspace.createdAt.toISOString(),
+          updatedAt: invitation.workspace.updatedAt.toISOString(),
+        },
+        role: existingMember.role as WorkspaceRole,
+      };
+    }
+
+    await db.insert(workspaceMembers).values({
+      workspaceId: invitation.workspaceId,
+      userId,
+      role: invitation.role,
+    });
+
+    await db.delete(workspaceInvitations).where(eq(workspaceInvitations.id, invitation.id));
+
+    this.eventEmitter.emit(
+      'audit.log',
+      new AuditLogEvent(invitation.workspaceId, userId, 'join', 'member', userId, {
+        role: invitation.role,
+        email: userEmail,
+      }),
+    );
+
+    return {
+      workspace: {
+        id: invitation.workspace.id,
+        name: invitation.workspace.name,
+        slug: invitation.workspace.slug,
+        ownerId: invitation.workspace.ownerId,
+        role: invitation.role as WorkspaceRole,
+        createdAt: invitation.workspace.createdAt.toISOString(),
+        updatedAt: invitation.workspace.updatedAt.toISOString(),
+      },
+      role: invitation.role as WorkspaceRole,
+    };
+  }
+
+  async getInvitations(workspaceId: string): Promise<WorkspaceInvitationSummary[]> {
+    const invites = await db.query.workspaceInvitations.findMany({
+      where: eq(workspaceInvitations.workspaceId, workspaceId),
+    });
+
+    return invites.map((inv) => ({
+      id: inv.id,
+      workspaceId: inv.workspaceId,
+      email: inv.email,
+      role: inv.role as WorkspaceRole,
+      token: inv.token,
+      expiresAt: inv.expiresAt.toISOString(),
+      createdAt: inv.createdAt.toISOString(),
+    }));
+  }
+
+  async revokeInvitation(workspaceId: string, adminId: string, invitationId: string): Promise<void> {
+    const inv = await db.query.workspaceInvitations.findFirst({
+      where: and(
+        eq(workspaceInvitations.id, invitationId),
+        eq(workspaceInvitations.workspaceId, workspaceId),
+      ),
+    });
+
+    if (!inv) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    await db.delete(workspaceInvitations).where(eq(workspaceInvitations.id, invitationId));
+
+    this.eventEmitter.emit(
+      'audit.log',
+      new AuditLogEvent(workspaceId, adminId, 'revoke_invite', 'invitation', invitationId, {
+        email: inv.email,
       }),
     );
   }

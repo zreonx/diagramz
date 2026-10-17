@@ -1,0 +1,16 @@
+# Caddyfile for Diagramz on Oracle Cloud
+# Handles automated SSL certificates and reverse proxying to NestJS API
+
+{$DOMAIN::80} {
+    # Reverse proxy all requests to the NestJS API container
+    reverse_proxy api:4000 {
+        # WebSocket support for realtime collaboration
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Enable compression
+    encode gzip zstd
+}

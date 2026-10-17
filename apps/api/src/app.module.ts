@@ -8,11 +8,14 @@ import { AuthModule } from './modules/auth/auth.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { DiagramsModule } from './modules/diagrams/diagrams.module';
+import { FoldersModule } from './modules/folders/folders.module';
 import { CollabModule } from './modules/collab/collab.module';
 import { AiModule } from './modules/ai/ai.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { RenderModule } from './modules/render/render.module';
 import { ExportModule } from './modules/export/export.module';
+import { EmailModule } from './modules/email/email.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -31,12 +34,15 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AuthModule,
     WorkspacesModule,
     ProjectsModule,
+    FoldersModule,
     DiagramsModule,
     CollabModule,
     AiModule,
     StorageModule,
     RenderModule,
     ExportModule,
+    EmailModule,
+    NotificationsModule,
   ],
   providers: [
     {

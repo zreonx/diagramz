@@ -6,21 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { DiagramDetail } from '@diagramz/shared';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, FileQuestion, ArrowLeft } from 'lucide-react';
+import { DiagramLoaderScreen } from '@/components/canvas/DiagramLoaderScreen';
 import { Button } from '@/components/ui/button';
-
-const DiagramCanvas = dynamic(
-  () => import('@/components/canvas/DiagramCanvas').then((mod) => mod.DiagramCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-slate-300 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <p className="text-xs font-medium">Opening diagram session...</p>
-      </div>
-    ),
-  },
-);
+import { DiagramCanvas } from '@/components/canvas/DiagramCanvas';
 
 class CanvasErrorBoundary extends Component<
   { children: ReactNode; onRetry: () => void },
@@ -42,10 +31,10 @@ class CanvasErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-6 text-center text-foreground">
           <AlertCircle className="w-10 h-10 text-amber-500 mb-3" />
-          <h2 className="text-base font-semibold text-slate-100 mb-1">Canvas Render Issue</h2>
-          <p className="text-xs text-slate-400 max-w-sm mb-4 font-mono">
+          <h2 className="text-base font-semibold mb-1">Canvas Render Issue</h2>
+          <p className="text-xs text-muted-foreground max-w-sm mb-4 font-mono">
             {this.state.error?.message || 'An error occurred while loading the diagram canvas.'}
           </p>
           <div className="flex gap-2">
@@ -76,6 +65,8 @@ export default function DiagramEditorPage() {
   useEffect(() => {
     if (!diagramId) return;
 
+    const startTime = Date.now();
+
     checkAuth().then((auth) => {
       if (!auth) {
         router.push('/login');
@@ -85,32 +76,39 @@ export default function DiagramEditorPage() {
       apiClient
         .get<DiagramDetail>(`/diagrams/${diagramId}`)
         .then((res) => {
-          setDiagram(res.data);
-          setIsLoading(false);
+          const elapsed = Date.now() - startTime;
+          const delay = Math.max(0, 600 - elapsed);
+          setTimeout(() => {
+            setDiagram(res.data);
+            setIsLoading(false);
+          }, delay);
         })
         .catch((err) => {
-          setError(err.response?.data?.message || 'Failed to load diagram');
+          const msg = err.response?.data?.message || err.message || 'Diagram not found';
+          setError(msg);
           setIsLoading(false);
         });
     });
   }, [diagramId, checkAuth, router]);
 
   if (isLoading || !diagramId) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-slate-300 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <p className="text-xs font-medium">Opening diagram session...</p>
-      </div>
-    );
+    return <DiagramLoaderScreen title={diagram?.title} />;
   }
 
   if (error || !diagram) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-        <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-        <h2 className="text-base font-semibold text-slate-100 mb-1">Unable to Load Diagram</h2>
-        <p className="text-xs text-slate-400 max-w-sm mb-6">{error || 'Diagram not found'}</p>
-        <Button size="sm" onClick={() => router.push('/dashboard')}>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-6 text-center text-foreground">
+        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+          <FileQuestion className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <h2 className="text-lg font-semibold tracking-tight mb-1">Diagram Not Found</h2>
+        <p className="text-xs text-muted-foreground max-w-sm mb-6 leading-relaxed">
+          {error === 'Diagram not found'
+            ? 'The diagram you requested does not exist or may have been deleted.'
+            : error || 'The requested resource could not be found.'}
+        </p>
+        <Button size="sm" onClick={() => router.push('/dashboard')} className="gap-2">
+          <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Button>
       </div>

@@ -102,7 +102,13 @@ apiClient.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         setAccessToken(null);
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname !== '/' &&
+          !window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/register') &&
+          !window.location.pathname.startsWith('/share')
+        ) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshErr);

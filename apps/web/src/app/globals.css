@@ -1,52 +1,335 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-canvas: var(--canvas);
+  --color-canvas-dot: var(--canvas-dot);
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Diagramz Design System - Warm-Neutral Light Theme */
+    --background: 48 14% 97%; /* #F8F8F5 */
+    --foreground: 225 6% 13%;  /* #202124 */
+
+    --surface: #FFFFFF;
+    --surface-secondary: #F1F1ED;
+    --surface-tertiary: #E8E8E2;
+
+    --canvas: #FCFCFA;
+    --canvas-dot: #D8D8D0;
+
+    --card: 0 0% 100%;       /* #FFFFFF */
+    --card-foreground: 225 6% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 6% 13%;
+
+    --primary: 243 100% 68%; /* #635BFF */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: #5148E5;
+    --primary-subtle: #EEEDFF;
+
+    --secondary: 48 10% 94%; /* #F1F1ED */
+    --secondary-foreground: 225 6% 13%;
+
+    --muted: 48 10% 94%;
+    --muted-foreground: 60 4% 40%; /* #666860 */
+
+    --accent: 243 100% 96%; /* #EEEDFF */
+    --accent-foreground: 243 100% 68%;
+
+    --destructive: 347 77% 50%; /* #E11D48 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 50 10% 88%;     /* #E3E3DC */
+    --border-strong: 50 8% 77%; /* #C9C9C0 */
+    --input: 50 10% 88%;
+    --ring: 243 100% 68%;    /* #635BFF */
     --radius: 0.5rem;
+
+    --edge-default: #8B8D94;
+    --edge-hover: #5F626B;
+    --edge-selected: #635BFF;
+
+    /* Diagramz Sidebar variables (Light) */
+    --sidebar-background: 48 14% 97%;
+    --sidebar-foreground: 225 6% 13%;
+    --sidebar-primary: 243 100% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 48 10% 94%;
+    --sidebar-accent-foreground: 225 6% 13%;
+    --sidebar-border: 50 10% 88%;
+    --sidebar-ring: 243 100% 68%;
+  }
+
+  .dark {
+    /* Diagramz Design System - Graphite Dark Theme */
+    --background: 225 9% 10%; /* #18191C */
+    --foreground: 240 8% 93%;  /* #ECECF0 */
+
+    --surface: #222328;
+    --surface-secondary: #292A30;
+    --surface-tertiary: #32333A;
+
+    --canvas: #1C1D21;
+    --canvas-dot: #3A3B43;
+
+    --card: 231 8% 15%;       /* #222328 */
+    --card-foreground: 240 8% 93%;
+
+    --popover: 231 8% 15%;
+    --popover-foreground: 240 8% 93%;
+
+    --primary: 243 100% 76%; /* #8B85FF */
+    --primary-foreground: 225 9% 10%;
+    --primary-hover: #A29DFF;
+    --primary-subtle: #302E4B;
+
+    --secondary: 231 8% 17%; /* #292A30 */
+    --secondary-foreground: 240 8% 93%;
+
+    --muted: 231 8% 17%;
+    --muted-foreground: 235 6% 71%; /* #B0B1BB */
+
+    --accent: 243 24% 24%; /* #302E4B */
+    --accent-foreground: 243 100% 81%;
+
+    --destructive: 347 77% 65%; /* #FB7185 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 233 7% 24%;     /* #383940 */
+    --border-strong: 233 7% 31%; /* #4A4B54 */
+    --input: 233 7% 24%;
+    --ring: 243 100% 81%;    /* #A5A0FF */
+
+    --edge-default: #9294A0;
+    --edge-hover: #C2C4CF;
+    --edge-selected: #A5A0FF;
+
+    /* Diagramz Sidebar variables (Dark) */
+    --sidebar-background: 225 9% 10%;
+    --sidebar-foreground: 240 8% 93%;
+    --sidebar-primary: 243 100% 76%;
+    --sidebar-primary-foreground: 225 9% 10%;
+    --sidebar-accent: 231 8% 17%;
+    --sidebar-accent-foreground: 240 8% 93%;
+    --sidebar-border: 233 7% 24%;
+    --sidebar-ring: 243 100% 81%;
   }
 }
 
 * {
   border-color: hsl(var(--border));
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: #0b0f19;
-  color: #f1f5f9;
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+}
+
+
+/* ─── Selection ─── */
+::selection {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+
+/* ─── Standardized Application Smooth Scrollbar ─── */
+.eraser-doc-scroll,
+.app-scrollbar,
+.custom-scrollbar {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+
+.eraser-doc-scroll::-webkit-scrollbar,
+.app-scrollbar::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+
+.eraser-doc-scroll::-webkit-scrollbar-track,
+.app-scrollbar::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+
+.eraser-doc-scroll::-webkit-scrollbar-thumb,
+.app-scrollbar::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+
+.eraser-doc-scroll::-webkit-scrollbar-thumb:hover,
+.app-scrollbar::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Universal application-wide standardized scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ─── Grafloria Engine Styling ─── */
+.grafloria-canvas-host {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  outline: none;
+}
+
+/* ─── Eraser Diagram Loader Animations ─── */
+@keyframes eraser-flow {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes eraser-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes eraser-float-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes eraser-cursor-float {
+  0% {
+    transform: translate(65px, 85px);
+  }
+  25% {
+    transform: translate(195px, 75px);
+  }
+  50% {
+    transform: translate(335px, 35px);
+  }
+  75% {
+    transform: translate(250px, 120px);
+  }
+  100% {
+    transform: translate(65px, 85px);
+  }
+}
+
+.animate-eraser-flow {
+  animation: eraser-flow 1.2s linear infinite;
+}
+
+.animate-eraser-progress {
+  animation: eraser-progress 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-eraser-float {
+  animation: eraser-float-gentle 3.5s ease-in-out infinite;
+}
+
+.animate-eraser-cursor {
+  animation: eraser-cursor-float 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+

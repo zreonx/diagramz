@@ -14,7 +14,8 @@ export function useCollab(diagramId: string | null) {
   const socketRef = useRef<Socket | null>(null);
   const ydocRef = useRef<Y.Doc>(new Y.Doc());
   const user = useAuthStore((s) => s.user);
-  const { setCollaborators, collaborators } = useDiagramStore();
+  const setCollaborators = useDiagramStore((s) => s.setCollaborators);
+  const collaborators = useDiagramStore((s) => s.collaborators);
 
   const sendYjsUpdate = useCallback(
     (update: Uint8Array) => {

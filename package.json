@@ -14,8 +14,7 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f",
     "db:push": "pnpm --filter @diagramz/api db:push",
-    "db:generate": "pnpm --filter @diagramz/api db:generate",
-    "postinstall": "node scripts/patch-excalidraw.cjs"
+    "db:generate": "pnpm --filter @diagramz/api db:generate"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

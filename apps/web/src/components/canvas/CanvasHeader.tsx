@@ -1,18 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ChevronLeft,
   Code2,
   Sparkles,
+  Boxes,
   Share2,
   Download,
   Check,
   Copy,
   Cloud,
   Loader2,
-  ExternalLink,
+  Star,
+  Columns2,
+  FileText,
+  Palette,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,173 +32,315 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useDiagramStore, PanelMode } from '@/stores/diagram.store';
+import { useDiagramStore } from '@/stores/diagram.store';
+import { ShareDiagramDialog } from './ShareDiagramDialog';
 import { apiClient } from '@/lib/api';
-import { ExportFormat } from '@diagramz/shared';
+import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/use-theme';
+import {
+  exportDocumentToSvg,
+  exportDocumentToPng,
+  exportDocumentToPdf,
+  exportDocumentToClipboard,
+  downloadSvg,
+  normalizeToZCanvasDocument,
+} from '@/lib/zcanvaskit';
+import { toast } from 'sonner';
 
 interface CanvasHeaderProps {
   title: string;
   workspaceName?: string;
-  projectName?: string;
+  folderName?: string;
 }
 
-export function CanvasHeader({ title, workspaceName = 'Workspace', projectName = 'Project' }: CanvasHeaderProps) {
-  const {
-    currentDiagram,
-    panelMode,
-    setPanelMode,
-    saveStatus,
-    collaborators,
-    saveDiagram,
-    mermaidCode,
-    canvasData,
-  } = useDiagramStore();
+export function CanvasHeader({
+  title,
+  workspaceName = 'Workspace',
+  folderName,
+}: CanvasHeaderProps) {
+  const saveStatus = useDiagramStore((s) => s.saveStatus);
+  const saveDiagram = useDiagramStore((s) => s.saveDiagram);
+  const currentDiagram = useDiagramStore((s) => s.currentDiagram);
+  const collaborators = useDiagramStore((s) => s.collaborators);
+  const panelMode = useDiagramStore((s) => s.panelMode);
+  const setPanelMode = useDiagramStore((s) => s.setPanelMode);
+  const viewMode = useDiagramStore((s) => s.viewMode);
+  const setViewMode = useDiagramStore((s) => s.setViewMode);
 
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
-  const [exportScale, setExportScale] = useState(2);
-  const [showExportModal, setShowExportModal] = useState(false);
+  const { theme, toggleTheme, isDark } = useTheme();
+
+  const togglePanel = (mode: 'none' | 'mermaid' | 'ai' | 'library') => {
+    setPanelMode(panelMode === mode ? 'none' : mode);
+  };
+
+  const [isStarred, setIsStarred] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [isPublicShare, setIsPublicShare] = useState(currentDiagram?.isPublic || false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | 'svg'>('png');
+  const [exportScale, setExportScale] = useState<number>(2);
+  const [exportTransparent, setExportTransparent] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  const [isPublicShare, setIsPublicShare] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
 
-  const togglePanel = (mode: PanelMode) => {
-    setPanelMode(panelMode === mode ? 'none' : mode);
+  useEffect(() => {
+    if (currentDiagram) {
+      setIsPublicShare(currentDiagram.isPublic);
+      setIsStarred(!!currentDiagram.isStarred);
+    }
+  }, [currentDiagram]);
+
+  const handleToggleStar = async () => {
+    if (!currentDiagram) return;
+    try {
+      const nextStar = !isStarred;
+      setIsStarred(nextStar);
+      await apiClient.patch(`/diagrams/${currentDiagram.id}/star`);
+    } catch (e) {
+      setIsStarred(!isStarred);
+    }
   };
 
   const handleExport = async () => {
     if (!currentDiagram) return;
     setIsExporting(true);
     try {
-      const res = await apiClient.post('/export/queue', {
-        diagramId: currentDiagram.id,
-        format: exportFormat,
-        scale: exportScale,
-        mermaidCode,
-        canvasData,
-      });
+      const { canvasData } = useDiagramStore.getState();
+      const doc = normalizeToZCanvasDocument(canvasData);
+      const safeTitle = (currentDiagram.title || 'diagram')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '-');
+      const filename = `${safeTitle}.${exportFormat}`;
 
-      const { jobId } = res.data;
-      // Download directly via API
-      window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/export/download/${jobId}`, '_blank');
+      if (exportFormat === 'svg') {
+        const svgString = exportDocumentToSvg(doc, {
+          isDark,
+          transparentBackground: exportTransparent,
+          fitToContent: true,
+          padding: 48,
+        });
+        downloadSvg(svgString, filename);
+        toast.success('Diagram exported as vector SVG');
+      } else if (exportFormat === 'pdf') {
+        await exportDocumentToPdf(doc, {
+          filename,
+          scale: exportScale,
+          isDark,
+          fitToContent: true,
+          padding: 48,
+        });
+        toast.success('Diagram exported as PDF document');
+      } else {
+        await exportDocumentToPng(doc, {
+          filename,
+          scale: exportScale,
+          isDark,
+          transparentBackground: exportTransparent,
+          fitToContent: true,
+          padding: 48,
+        });
+        toast.success(`Diagram exported as HD PNG (${exportScale}x)`);
+      }
+
       setShowExportModal(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Export failed:', e);
+      toast.error(`Export failed: ${e?.message || 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleToggleShare = async () => {
+  const handleCopyToClipboard = async () => {
     if (!currentDiagram) return;
-    const nextPublicState = !isPublicShare;
+    setIsCopying(true);
     try {
-      const res = await apiClient.post(`/diagrams/${currentDiagram.id}/share`, {
-        isPublic: nextPublicState,
+      const { canvasData } = useDiagramStore.getState();
+      const doc = normalizeToZCanvasDocument(canvasData);
+      await exportDocumentToClipboard(doc, {
+        scale: Math.max(2, exportScale),
+        isDark,
+        transparentBackground: exportTransparent,
+        fitToContent: true,
+        padding: 48,
       });
-      setIsPublicShare(res.data.isPublic);
-    } catch (e) {
-      console.error('Share toggle failed:', e);
-    }
-  };
-
-  const shareUrl = typeof window !== 'undefined' && currentDiagram?.shareToken
-    ? `${window.location.origin}/share/${currentDiagram.shareToken}`
-    : '';
-
-  const copyShareLink = () => {
-    if (shareUrl) {
-      navigator.clipboard.writeText(shareUrl);
-      setShareLinkCopied(true);
-      setTimeout(() => setShareLinkCopied(false), 2000);
+      toast.success('Diagram copied to clipboard as HD image');
+    } catch (e: any) {
+      console.error('Clipboard copy failed:', e);
+      toast.error('Failed to copy to clipboard');
+    } finally {
+      setIsCopying(false);
     }
   };
 
   return (
-    <header className="h-12 border-b border-slate-800 bg-slate-950/90 px-4 flex items-center justify-between select-none z-20">
+    <header className="h-13 border-b border-border/50 bg-background/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-20 shrink-0">
       {/* Left: Breadcrumbs & Back */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Link
           href="/dashboard"
-          className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+          className="text-muted-foreground hover:text-foreground size-8 rounded-lg flex items-center justify-center hover:bg-muted/70 transition-colors"
+          title="Back to Dashboard"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
         </Link>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400 font-medium">{workspaceName}</span>
-          <span className="text-slate-600">/</span>
-          <span className="text-slate-400 font-medium">{projectName}</span>
-          <span className="text-slate-600">/</span>
-          <span className="text-slate-100 font-semibold">{title}</span>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground font-medium">{workspaceName}</span>
+          {folderName && (
+            <>
+              <span className="text-muted-foreground/40">/</span>
+              <span className="text-foreground font-medium">{folderName}</span>
+            </>
+          )}
+          <span className="text-muted-foreground/40">/</span>
+          <span className="text-foreground font-semibold tracking-tight">{title}</span>
         </div>
+
+        <button
+          onClick={handleToggleStar}
+          className={cn(
+            'p-1 ml-1 rounded-md hover:bg-muted/70 transition-colors cursor-pointer',
+            isStarred ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-muted-foreground',
+          )}
+          title={isStarred ? 'Starred' : 'Add to Starred'}
+        >
+          <Star className={cn('w-3.5 h-3.5', isStarred && 'fill-amber-500')} />
+        </button>
 
         {/* Save Status */}
         <div className="ml-2">
           {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1 text-[11px] text-amber-400">
+            <span className="flex items-center gap-1 text-[11px] text-amber-500 font-medium px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
               <Loader2 className="w-3 h-3 animate-spin" /> Saving...
             </span>
           )}
           {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1 text-[11px] text-slate-400">
-              <Cloud className="w-3 h-3 text-slate-500" /> Saved
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium px-2 py-0.5 rounded-full bg-muted/40 border border-border/40">
+              <Cloud className="w-3 h-3 text-emerald-500" /> Saved
             </span>
           )}
           {saveStatus === 'unsaved' && (
             <button
               onClick={() => saveDiagram()}
-              className="text-[11px] text-blue-400 hover:underline"
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground font-medium px-2 py-0.5 rounded-full bg-muted/40 border border-border/40 hover:bg-muted transition-colors cursor-pointer"
             >
-              Unsaved changes • Click to save
+              <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Unsaved • Save
             </button>
           )}
         </div>
       </div>
 
+      {/* Center: Eraser-Style View Mode Switcher (Doc | Both | Canvas) */}
+      <div className="flex items-center p-0.5 rounded-lg bg-muted/50 border border-border/50">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setViewMode('doc')}
+          className={cn(
+            'h-7 px-3 text-xs gap-1.5 rounded-md font-medium transition-all cursor-pointer',
+            viewMode === 'doc'
+              ? 'bg-background text-foreground shadow-2xs font-semibold'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          title="Document Only Mode (Full Document View)"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Doc</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setViewMode('both')}
+          className={cn(
+            'h-7 px-3 text-xs gap-1.5 rounded-md font-medium transition-all cursor-pointer',
+            viewMode === 'both'
+              ? 'bg-background text-foreground shadow-2xs font-semibold'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          title="Both (Document on Left, Canvas on Right)"
+        >
+          <Columns2 className="w-3.5 h-3.5" />
+          <span>Both</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setViewMode('canvas')}
+          className={cn(
+            'h-7 px-3 text-xs gap-1.5 rounded-md font-medium transition-all cursor-pointer',
+            viewMode === 'canvas'
+              ? 'bg-background text-foreground shadow-2xs font-semibold'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          title="Canvas Only Mode (Full Visual Canvas)"
+        >
+          <Palette className="w-3.5 h-3.5" />
+          <span>Canvas</span>
+        </Button>
+      </div>
+
       {/* Right: Actions, Panels, Exports */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         {/* Collaborators Avatar Stack */}
         {collaborators.length > 0 && (
-          <div className="flex items-center -space-x-2 mr-2">
+          <div className="hidden md:flex items-center -space-x-2 mr-1">
             {collaborators.slice(0, 4).map((c) => (
               <div
                 key={c.userId}
                 title={c.name}
-                className="w-7 h-7 rounded-full border-2 border-slate-950 flex items-center justify-center text-[11px] font-bold text-white shadow"
+                className="w-6.5 h-6.5 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
                 style={{ backgroundColor: c.color }}
               >
                 {c.name.charAt(0).toUpperCase()}
               </div>
             ))}
-            {collaborators.length > 4 && (
-              <div className="w-7 h-7 rounded-full border-2 border-slate-950 bg-slate-800 text-[10px] font-bold text-slate-300 flex items-center justify-center">
-                +{collaborators.length - 4}
-              </div>
-            )}
           </div>
         )}
+
+        {/* Component Libraries Toggle */}
+        <Button
+          size="sm"
+          variant={panelMode === 'library' ? 'secondary' : 'ghost'}
+          onClick={() => togglePanel('library')}
+          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3"
+          title="Browse & insert software architecture & cloud components"
+        >
+          <Boxes className="w-3.5 h-3.5 text-blue-500" />
+          <span className="hidden xl:inline">Components</span>
+        </Button>
 
         {/* Mermaid Code Mode Toggle */}
         <Button
           size="sm"
-          variant={panelMode === 'mermaid' ? 'default' : 'outline'}
+          variant={panelMode === 'mermaid' ? 'secondary' : 'ghost'}
           onClick={() => togglePanel('mermaid')}
-          className="h-8 text-xs gap-1.5"
+          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3"
+          title="Mermaid Live Code Editor"
         >
           <Code2 className="w-3.5 h-3.5" />
-          <span>Code</span>
+          <span className="hidden lg:inline">Code</span>
         </Button>
 
         {/* AI Assistant Mode Toggle */}
         <Button
           size="sm"
-          variant={panelMode === 'ai' ? 'default' : 'outline'}
+          variant={panelMode === 'ai' ? 'secondary' : 'outline'}
           onClick={() => togglePanel('ai')}
-          className="h-8 text-xs gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
+          className={cn(
+            'h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3 transition-all',
+            panelMode === 'ai'
+              ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30'
+              : 'border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-300 hover:bg-purple-500/15',
+          )}
+          title="AI Architect Assistant"
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>AI Architect</span>
+          <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+          <span className="hidden lg:inline">AI Architect</span>
         </Button>
 
         {/* Share Button */}
@@ -200,10 +348,11 @@ export function CanvasHeader({ title, workspaceName = 'Workspace', projectName =
           size="sm"
           variant="outline"
           onClick={() => setShowShareModal(true)}
-          className="h-8 text-xs gap-1.5"
+          className="h-8 text-xs gap-1.5 rounded-lg border-border/60 px-2 sm:px-3"
+          title="Share diagram"
         >
           <Share2 className="w-3.5 h-3.5" />
-          <span>Share</span>
+          <span className="hidden sm:inline">Share</span>
         </Button>
 
         {/* Export Button */}
@@ -211,84 +360,64 @@ export function CanvasHeader({ title, workspaceName = 'Workspace', projectName =
           size="sm"
           variant="outline"
           onClick={() => setShowExportModal(true)}
-          className="h-8 text-xs gap-1.5"
+          className="h-8 text-xs gap-1.5 rounded-lg border-border/60 px-2 sm:px-3"
+          title="Export diagram"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export</span>
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+
+        {/* Theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 shrink-0"
+          onClick={toggleTheme}
+          title="Toggle canvas theme"
+        >
+          {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
         </Button>
       </div>
 
       {/* Share Dialog */}
-      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Share Diagram</DialogTitle>
-            <DialogDescription>
-              Anyone with this link can view this diagram in high resolution.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border my-2">
-            <div>
-              <div className="text-sm font-medium">Public Link Sharing</div>
-              <div className="text-xs text-muted-foreground">
-                {isPublicShare ? 'Enabled' : 'Disabled'}
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant={isPublicShare ? 'destructive' : 'default'}
-              onClick={handleToggleShare}
-              className="h-8 text-xs"
-            >
-              {isPublicShare ? 'Disable' : 'Enable Link'}
-            </Button>
-          </div>
-
-          {isPublicShare && (
-            <div className="flex items-center gap-2 mt-2">
-              <Input
-                readOnly
-                value={shareUrl}
-                className="flex-1 font-mono text-xs select-all"
-              />
-              <Button size="sm" onClick={copyShareLink} className="h-9 px-3 text-xs">
-                {shareLinkCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                {shareLinkCopied ? 'Copied' : 'Copy'}
-              </Button>
-            </div>
-          )}
-
-          <DialogFooter className="mt-4">
-            <Button size="sm" variant="secondary" onClick={() => setShowShareModal(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {currentDiagram && (
+        <ShareDiagramDialog
+          open={showShareModal}
+          onOpenChange={setShowShareModal}
+          diagramId={currentDiagram.id}
+          diagramTitle={currentDiagram.title}
+          initialIsPublic={currentDiagram.isPublic}
+          initialShareToken={currentDiagram.shareToken}
+          initialShareRole={currentDiagram.shareRole || 'viewer'}
+          onShareSettingsChanged={(settings) => {
+            setIsPublicShare(settings.isPublic);
+          }}
+        />
+      )}
 
       {/* Export Dialog */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md p-6 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>Export Diagram</DialogTitle>
-            <DialogDescription>
-              Generate pixel-perfect assets rendered via our asynchronous pipeline.
+            <DialogTitle className="text-base font-semibold tracking-tight">Export Diagram</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Generate crisp, publication-quality assets optimized for presentations, docs, and print.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Format Selector */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Format</Label>
+              <Label className="text-xs font-medium">Format</Label>
               <div className="grid grid-cols-3 gap-2">
-                {(['png', 'pdf', 'svg'] as ExportFormat[]).map((fmt) => (
+                {(['png', 'svg', 'pdf'] as const).map((fmt) => (
                   <Button
                     key={fmt}
                     type="button"
                     size="sm"
                     variant={exportFormat === fmt ? 'default' : 'outline'}
                     onClick={() => setExportFormat(fmt)}
-                    className="uppercase text-xs font-semibold h-8"
+                    className="uppercase text-xs font-semibold h-8 rounded-lg border-border/60"
                   >
                     {fmt}
                   </Button>
@@ -296,33 +425,103 @@ export function CanvasHeader({ title, workspaceName = 'Workspace', projectName =
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Resolution Scale</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((s) => (
+            {/* Resolution Scale (for PNG and PDF) */}
+            {exportFormat !== 'svg' && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Resolution Quality</Label>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {exportScale === 1 ? '72 DPI' : exportScale === 2 ? '144 DPI (Retina HD)' : '300 DPI (Ultra 4K)'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((s) => (
+                    <Button
+                      key={s}
+                      type="button"
+                      size="sm"
+                      variant={exportScale === s ? 'default' : 'outline'}
+                      onClick={() => setExportScale(s)}
+                      className="text-xs font-medium h-8 rounded-lg border-border/60"
+                    >
+                      {s}x {s === 2 ? '(HD)' : s === 3 ? '(4K)' : '(Std)'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Background Style */}
+            {exportFormat !== 'pdf' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Background</Label>
+                <div className="grid grid-cols-2 gap-2">
                   <Button
-                    key={s}
                     type="button"
                     size="sm"
-                    variant={exportScale === s ? 'default' : 'outline'}
-                    onClick={() => setExportScale(s)}
-                    className="text-xs font-medium h-8"
+                    variant={!exportTransparent ? 'default' : 'outline'}
+                    onClick={() => setExportTransparent(false)}
+                    className="text-xs font-medium h-8 rounded-lg border-border/60"
                   >
-                    {s}x {s === 2 ? '(HD)' : s === 3 ? '(4K)' : '(Std)'}
+                    Canvas {isDark ? 'Dark (#020617)' : 'Light (#FFFFFF)'}
                   </Button>
-                ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={exportTransparent ? 'default' : 'outline'}
+                    onClick={() => setExportTransparent(true)}
+                    className="text-xs font-medium h-8 rounded-lg border-border/60"
+                  >
+                    Transparent
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 mt-4">
-            <Button size="sm" variant="ghost" onClick={() => setShowExportModal(false)}>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 pt-2 border-t border-border/40">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowExportModal(false)}
+              className="rounded-lg border-border/60 text-xs"
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleExport} disabled={isExporting}>
-              {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
-              {isExporting ? 'Rendering...' : 'Download Export'}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              {exportFormat === 'png' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleCopyToClipboard}
+                  disabled={isExporting || isCopying}
+                  className="rounded-lg text-xs font-medium border border-border/60"
+                  title="Copy high-resolution image directly to clipboard"
+                >
+                  {isCopying ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  {isCopying ? 'Copying...' : 'Copy Image'}
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting || isCopying}
+                className="rounded-lg text-xs font-medium"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {isExporting ? 'Exporting...' : 'Download Export'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

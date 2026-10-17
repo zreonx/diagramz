@@ -20,8 +20,11 @@ import {
   AiGenerationResult,
 } from '@diagramz/shared';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('AI')
 @ApiBearerAuth()
+@Public()
 @Controller('ai')
 export class AiController {
   constructor(private aiService: AiService) {}
