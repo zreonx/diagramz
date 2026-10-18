@@ -39,7 +39,9 @@ async function bootstrap() {
       if (
         corsOrigins.includes(origin) ||
         process.env.NODE_ENV !== 'production' ||
-        origin.endsWith('.diagramz.io')
+        origin.endsWith('.diagramz.io') ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('vercel.app')
       ) {
         return callback(null, true);
       }
