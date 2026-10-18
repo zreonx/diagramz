@@ -22,9 +22,10 @@ if (fs.existsSync(bundleDir)) {
 console.log('📦 Step 2: Deploying production bundle via pnpm deploy...');
 execSync(`pnpm --filter @diagramz/api deploy --prod "${bundleDir}"`, { stdio: 'inherit' });
 
-// 4. Copy IIS web.config
-console.log('⚙️ Step 3: Copying IIS web.config...');
+// 4. Copy IIS web.config and server.js wrapper
+console.log('⚙️ Step 3: Copying IIS web.config and server.js...');
 fs.copyFileSync(path.join(apiDir, 'web.config'), path.join(bundleDir, 'web.config'));
+fs.copyFileSync(path.join(apiDir, 'server.js'), path.join(bundleDir, 'server.js'));
 
 // 5. Clean unnecessary source/config files to reduce FTPS payload
 console.log('🧹 Step 4: Pruning development/source files from bundle...');
@@ -50,7 +51,7 @@ const logsDir = path.join(bundleDir, 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
-fs.writeFileSync(path.join(logsDir, '.gitkeep'), '', 'utf8');
+fs.writeFileSync(path.join(logsDir, 'readme.txt'), 'MonsterASP httpPlatformHandler stdout logs go here\n', 'utf8');
 
 // 7. Copy example env if needed
 if (fs.existsSync(path.join(apiDir, '.env.example'))) {
