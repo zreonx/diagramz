@@ -45,6 +45,6 @@ jobs:
           username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
           password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
           local-dir: ./deploy/monsterasp/bundle/
-          server-dir: ${{ secrets.MONSTERASP_SERVER_DIR || '/site/wwwroot/' }}
+          server-dir: ${{ secrets.MONSTERASP_SERVER_DIR || '/wwwroot/' }}
           protocol: ftps
           dangerous-clean-slate: false
