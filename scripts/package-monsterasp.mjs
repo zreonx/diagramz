@@ -26,7 +26,9 @@ execSync(`pnpm exec ncc build "${path.join(apiDir, 'dist', 'main.js')}" -o "${bu
 
 // 4. Copy IIS web.config and server.js wrapper
 console.log('⚙️ Step 3: Copying IIS web.config and server.js...');
-fs.copyFileSync(path.join(apiDir, 'web.config'), path.join(bundleDir, 'web.config'));
+const webConfigRaw = fs.readFileSync(path.join(apiDir, 'web.config'), 'utf8');
+const webConfigWithTimestamp = `${webConfigRaw.trim()}\n<!-- Deploy Timestamp: ${new Date().toISOString()} -->\n`;
+fs.writeFileSync(path.join(bundleDir, 'web.config'), webConfigWithTimestamp, 'utf8');
 fs.copyFileSync(path.join(apiDir, 'server.js'), path.join(bundleDir, 'server.js'));
 
 // 5. Ensure logs directory exists for httpPlatformHandler stdout logging
