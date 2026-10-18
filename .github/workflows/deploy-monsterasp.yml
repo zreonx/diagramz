@@ -48,3 +48,6 @@ jobs:
           server-dir: ${{ secrets.MONSTERASP_SERVER_DIR || '/wwwroot/' }}
           protocol: ftps
           dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
