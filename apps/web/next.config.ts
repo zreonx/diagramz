@@ -12,10 +12,14 @@ const nextConfig: NextConfig = {
     return config;
   },
   async rewrites() {
-    const backendUrl =
+    const rawEnv =
       process.env.BACKEND_PROXY_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
+      (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.startsWith('http')
+        ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '')
+        : null) ||
       'http://diagramz.runasp.net';
+    const backendUrl = rawEnv.replace(/\/api\/v1\/?$/, '');
 
     return [
       {

@@ -1,10 +1,23 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' || process.env.NODE_ENV === 'production'
-    ? '/api/v1'
-    : 'http://localhost:4000/api/v1');
+function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && envUrl.startsWith('https://')) {
+      return envUrl;
+    }
+    return '/api/v1';
+  }
+
+  return (
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? '/api/v1'
+      : 'http://localhost:4000/api/v1')
+  );
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -57,8 +70,18 @@ export const getRefreshToken = (): string | null => {
   return refreshToken;
 };
 
-// Request interceptor to attach bearer token
+// Request interceptor to attach bearer token and protect against mixed content
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Prevent any accidental http:// calls on HTTPS pages (e.g. Vercel)
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    if (config.url && config.url.startsWith('http://')) {
+      config.url = config.url.replace(/^http:\/\/[^/]+(\/api\/v1)?/, '/api/v1');
+    }
+    if (config.baseURL && config.baseURL.startsWith('http://')) {
+      config.baseURL = '/api/v1';
+    }
+  }
+
   const token = getAccessToken();
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -112,8 +135,12 @@ apiClient.interceptors.response.use(
 
       try {
         const storedRefreshToken = getRefreshToken();
+        const refreshEndpoint =
+          typeof window !== 'undefined' && window.location.protocol === 'https:'
+            ? '/api/v1/auth/refresh'
+            : `${API_BASE_URL}/auth/refresh`;
         const refreshResponse = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
+          refreshEndpoint,
           storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true },
         );
