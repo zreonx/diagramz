@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Get,
   Body,
   Res,
@@ -18,8 +19,12 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
   registerSchema,
   loginSchema,
+  updateProfileSchema,
+  changePasswordSchema,
   RegisterDto,
   LoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
   AuthResponse,
   AuthSessionUser,
 } from '@diagramz/shared';
@@ -34,10 +39,12 @@ export class AuthController {
 
   private setRefreshCookie(res: Response, token: string) {
     const isProduction = process.env.NODE_ENV === 'production';
+    const sameSiteMode =
+      (process.env.COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || (isProduction ? 'none' : 'lax');
     res.cookie(REFRESH_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      secure: isProduction || sameSiteMode === 'none',
+      sameSite: sameSiteMode,
       path: '/api/v1/auth',
       maxAge: COOKIE_MAX_AGE,
     });
@@ -45,10 +52,12 @@ export class AuthController {
 
   private clearRefreshCookie(res: Response) {
     const isProduction = process.env.NODE_ENV === 'production';
+    const sameSiteMode =
+      (process.env.COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || (isProduction ? 'none' : 'lax');
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      secure: isProduction || sameSiteMode === 'none',
+      sameSite: sameSiteMode,
       path: '/api/v1/auth',
     });
   }
@@ -120,5 +129,28 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   async me(@CurrentUser() user: AuthSessionUser): Promise<AuthSessionUser> {
     return user;
+  }
+
+  @Patch('profile')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user profile details' })
+  @UsePipes(new ZodValidationPipe(updateProfileSchema))
+  async updateProfile(
+    @CurrentUser() user: AuthSessionUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<AuthSessionUser> {
+    return this.authService.updateProfile(user.id, dto);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change account password' })
+  @UsePipes(new ZodValidationPipe(changePasswordSchema))
+  async changePassword(
+    @CurrentUser() user: AuthSessionUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.authService.changePassword(user.id, dto);
   }
 }

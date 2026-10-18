@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
+import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,16 +14,32 @@ import { toast } from 'sonner';
 import { Camera, Mail, User } from 'lucide-react';
 
 export default function AccountSettingsPage() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || '');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (user?.name) {
+      setName(user.name);
+    }
+  }, [user?.name]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Display name cannot be empty');
+      return;
+    }
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success('Profile updated successfully');
-    setIsSaving(false);
+    try {
+      const res = await apiClient.patch('/auth/profile', { name: name.trim() });
+      setUser(res.data);
+      toast.success('Profile updated successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const userInitial = user?.name?.charAt(0).toUpperCase() || 'U';

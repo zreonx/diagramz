@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, RegisterDto } from '@diagramz/shared';
-import { apiClient, setAccessToken } from '@/lib/api';
+import { apiClient, setAccessToken, setRefreshToken } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +68,9 @@ export default function RegisterPage() {
       const res = await apiClient.post('/auth/register', data);
       const { user, tokens } = res.data;
       setAccessToken(tokens.accessToken);
+      if (tokens.refreshToken) {
+        setRefreshToken(tokens.refreshToken);
+      }
       setUser(user);
       toast.success(`Welcome to Diagramz, ${user.name}!`);
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;

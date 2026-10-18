@@ -17,6 +17,7 @@ pnpm-debug.log*
 
 # Environment variables
 .env
+.env.*
 .env*.local
 !.env.example
 
@@ -42,3 +43,5 @@ scratch
 .tmp*
 scripts/*.png
 *.tsbuildinfo
+deploy/monsterasp/bundle
+*.zip

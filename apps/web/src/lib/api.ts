@@ -12,6 +12,7 @@ export const apiClient = axios.create({
 });
 
 let accessToken: string | null = null;
+let refreshToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
@@ -20,6 +21,8 @@ export const setAccessToken = (token: string | null) => {
       localStorage.setItem('diagramz_access_token', token);
     } else {
       localStorage.removeItem('diagramz_access_token');
+      localStorage.removeItem('diagramz_refresh_token');
+      refreshToken = null;
     }
   }
 };
@@ -30,6 +33,25 @@ export const getAccessToken = (): string | null => {
     accessToken = localStorage.getItem('diagramz_access_token');
   }
   return accessToken;
+};
+
+export const setRefreshToken = (token: string | null) => {
+  refreshToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('diagramz_refresh_token', token);
+    } else {
+      localStorage.removeItem('diagramz_refresh_token');
+    }
+  }
+};
+
+export const getRefreshToken = (): string | null => {
+  if (refreshToken) return refreshToken;
+  if (typeof window !== 'undefined') {
+    refreshToken = localStorage.getItem('diagramz_refresh_token');
+  }
+  return refreshToken;
 };
 
 // Request interceptor to attach bearer token
@@ -86,13 +108,18 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const storedRefreshToken = getRefreshToken();
         const refreshResponse = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          {},
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true },
         );
         const newToken = refreshResponse.data.tokens.accessToken;
+        const newRefreshToken = refreshResponse.data.tokens.refreshToken;
         setAccessToken(newToken);
+        if (newRefreshToken) {
+          setRefreshToken(newRefreshToken);
+        }
         processQueue(null, newToken);
 
         if (originalRequest.headers) {

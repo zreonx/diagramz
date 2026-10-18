@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,6 +15,8 @@ import { users, refreshTokens, workspaces, workspaceMembers, workspaceInvitation
 import {
   RegisterDto,
   LoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
   AuthResponse,
   AuthSessionUser,
   JwtTokenPayload,
@@ -175,6 +178,72 @@ export class AuthService {
     await db.delete(refreshTokens).where(eq(refreshTokens.tokenHash, tokenHash));
   }
 
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<AuthSessionUser> {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updateData: Partial<typeof users.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (dto.name !== undefined) {
+      updateData.name = dto.name;
+    }
+    if (dto.avatarUrl !== undefined) {
+      updateData.avatarUrl = dto.avatarUrl;
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      avatarUrl: updatedUser.avatarUrl,
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await db
+      .update(users)
+      .set({
+        passwordHash: newPasswordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    return {
+      success: true,
+      message: 'Password updated successfully',
+    };
+  }
+
   private async generateAuthResult(
     user: AuthSessionUser,
   ): Promise<{ response: AuthResponse; rawRefreshToken: string }> {
@@ -207,6 +276,7 @@ export class AuthService {
         user,
         tokens: {
           accessToken,
+          refreshToken: rawRefreshToken,
           expiresIn: 15 * 60, // 15 mins in seconds
         },
       },

@@ -8,7 +8,11 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useDiagramStore } from '@/stores/diagram.store';
 import { COLLAB_SOCKET_EVENTS, PresenceUser } from '@diagramz/shared';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:4000';
+const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '')
+    : 'http://localhost:4000');
 
 export function useCollab(diagramId: string | null) {
   const socketRef = useRef<Socket | null>(null);
@@ -47,7 +51,7 @@ export function useCollab(diagramId: string | null) {
 
     const token = getAccessToken();
     const socket = io(WS_URL, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
     });
 

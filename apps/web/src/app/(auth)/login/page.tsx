@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginDto } from '@diagramz/shared';
-import { apiClient, setAccessToken } from '@/lib/api';
+import { apiClient, setAccessToken, setRefreshToken } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,9 @@ export default function LoginPage() {
       const res = await apiClient.post('/auth/login', data);
       const { user, tokens } = res.data;
       setAccessToken(tokens.accessToken);
+      if (tokens.refreshToken) {
+        setRefreshToken(tokens.refreshToken);
+      }
       setUser(user);
       toast.success(`Welcome back, ${user.name}!`);
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;

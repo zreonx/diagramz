@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { apiClient } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -23,13 +24,29 @@ export default function SecuritySettingsPage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
-    if (newPw.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (newPw !== confirmPw) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPw.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success('Password changed successfully');
-    setCurrentPw(''); setNewPw(''); setConfirmPw('');
-    setIsSaving(false);
+    try {
+      await apiClient.post('/auth/change-password', {
+        currentPassword: currentPw,
+        newPassword: newPw,
+      });
+      toast.success('Password changed successfully');
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

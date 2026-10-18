@@ -1,0 +1,50 @@
+name: Deploy Backend to MonsterASP
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'deploy/monsterasp/**'
+      - 'scripts/package-monsterasp.mjs'
+      - '.github/workflows/deploy-monsterasp.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy NestJS to MonsterASP
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.8.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Package MonsterASP bundle
+        run: node scripts/package-monsterasp.mjs
+
+      - name: Deploy to MonsterASP via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.MONSTERASP_FTP_SERVER }}
+          username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          local-dir: ./deploy/monsterasp/bundle/
+          server-dir: ${{ secrets.MONSTERASP_SERVER_DIR || '/site/wwwroot/' }}
+          protocol: ftps
+          dangerous-clean-slate: false

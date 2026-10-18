@@ -14,7 +14,8 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f",
     "db:push": "pnpm --filter @diagramz/api db:push",
-    "db:generate": "pnpm --filter @diagramz/api db:generate"
+    "db:generate": "pnpm --filter @diagramz/api db:generate",
+    "package:monsterasp": "node scripts/package-monsterasp.mjs"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
