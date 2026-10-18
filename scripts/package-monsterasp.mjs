@@ -45,7 +45,14 @@ for (const target of pruneList) {
   }
 }
 
-// 6. Copy example env if needed
+// 6. Ensure logs directory exists for httpPlatformHandler stdout logging
+const logsDir = path.join(bundleDir, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+fs.writeFileSync(path.join(logsDir, '.gitkeep'), '', 'utf8');
+
+// 7. Copy example env if needed
 if (fs.existsSync(path.join(apiDir, '.env.example'))) {
   fs.copyFileSync(
     path.join(apiDir, '.env.example'),
