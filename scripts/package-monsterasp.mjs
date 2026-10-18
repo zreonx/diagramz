@@ -24,6 +24,24 @@ fs.mkdirSync(bundleDir, { recursive: true });
 console.log('📦 Step 2: Bundling complete application via @vercel/ncc...');
 execSync(`pnpm exec ncc build "${path.join(apiDir, 'dist', 'main.js')}" -o "${bundleDir}" --minify`, { stdio: 'inherit' });
 
+// Clean up sourcemaps and unwanted ncc artifacts to keep wwwroot minimal
+for (const file of ['.env', '.env1']) {
+  const filePath = path.join(bundleDir, file);
+  if (fs.existsSync(filePath)) fs.rmSync(filePath, { force: true });
+}
+function removeSourceMaps(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      removeSourceMaps(fullPath);
+    } else if (item.name.endsWith('.map')) {
+      fs.rmSync(fullPath, { force: true });
+    }
+  }
+}
+removeSourceMaps(bundleDir);
+
 // 4. Copy IIS web.config and server.js wrapper
 console.log('⚙️ Step 3: Copying IIS web.config and server.js...');
 const webConfigRaw = fs.readFileSync(path.join(apiDir, 'web.config'), 'utf8');
