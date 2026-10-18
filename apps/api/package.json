@@ -31,6 +31,7 @@
     "@nestjs/platform-socket.io": "^11.0.11",
     "@nestjs/swagger": "^11.0.6",
     "@nestjs/websockets": "^11.0.11",
+    "@scalar/nestjs-api-reference": "^1.2.30",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.41.6",
     "class-transformer": "^0.5.1",

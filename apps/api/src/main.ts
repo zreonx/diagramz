@@ -10,6 +10,7 @@ dotenv.config();
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { apiReference } from '@scalar/nestjs-api-reference';
 import cookieParser = require('cookie-parser');
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
@@ -49,7 +50,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-workspace-id'],
   });
 
-  // Swagger Documentation Setup
+  // OpenAPI Documentation Setup
   const config = new DocumentBuilder()
     .setTitle('Diagramz API')
     .setDescription('Full-Stack Collaborative AI Diagramming Workspace API')
@@ -58,7 +59,33 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+
+  // Raw OpenAPI spec endpoint
+  app.getHttpAdapter().get('/docs-json', (_req, res) => {
+    res.json(document);
+  });
+
+  // Scalar API Reference (modern interactive documentation)
+  app.use(
+    '/docs',
+    apiReference({
+      spec: {
+        content: document,
+      },
+      pageTitle: 'Diagramz API Reference',
+      theme: 'purple',
+    }),
+  );
+  app.use(
+    '/reference',
+    apiReference({
+      spec: {
+        content: document,
+      },
+      pageTitle: 'Diagramz API Reference',
+      theme: 'purple',
+    }),
+  );
 
   const port = process.env.PORT || 4000;
   if (typeof port === 'string' && isNaN(Number(port))) {
