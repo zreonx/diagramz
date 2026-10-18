@@ -10,5 +10,11 @@ process.on('unhandledRejection', (reason) => {
   console.error('[MonsterASP] Unhandled Rejection:', reason);
 });
 
-// Load compiled NestJS entrypoint
-require('./dist/main.js');
+// Load bundled NestJS entrypoint (or fallback to dist/main.js)
+const fs = require('fs');
+const path = require('path');
+if (fs.existsSync(path.join(__dirname, 'index.js'))) {
+  require('./index.js');
+} else {
+  require('./dist/main.js');
+}
