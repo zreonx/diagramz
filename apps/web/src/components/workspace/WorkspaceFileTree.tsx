@@ -145,7 +145,7 @@ export function WorkspaceFileTree({
       const res = await apiClient.post(`/projects/${projectId}/diagrams`, {
         title: dialogInputName.trim(),
         folderId: targetParentId,
-        viewMode: 'both',
+        viewMode: 'canvas',
         documentContent: `# ${dialogInputName.trim()}\n\nWelcome to your new document! Start writing your technical spec or notes here.`,
       });
 

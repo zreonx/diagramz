@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
       const res = await apiClient.post<DiagramSummary>(`/projects/${targetProjectId}/diagrams`, {
         title,
-        viewMode: 'both',
+        viewMode: 'canvas',
         documentContent: `# ${title}\n\nStart drafting your technical design, API specifications, and architectural notes here.`,
         mermaidCode: `flowchart LR\n    Client[Client App] --> Gateway[API Gateway]\n    Gateway --> Service[Core Service]\n    Service --> DB[(Database)]`,
         canvasData: initialCanvasData,

@@ -370,7 +370,7 @@ export function ZCanvasStylePanel({
       role="group"
       data-testid="style-panel"
       aria-label={target.kind === 'pen' ? 'Freehand pen options' : `${title} style`}
-      className="absolute top-20 left-4 z-30 w-60 max-h-[calc(100%-6rem)] overflow-y-auto no-scrollbar rounded-2xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-3 text-xs animate-in fade-in-50 slide-in-from-left-2 duration-150"
+      className="absolute top-20 right-4 z-30 w-64 max-h-[calc(100%-6rem)] overflow-y-auto no-scrollbar rounded-2xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-3 text-xs animate-in fade-in-50 slide-in-from-right-2 duration-150"
       // The canvas listens for pointer gestures on the root element; keep every
       // interaction inside the panel from reaching it. A release is deliberately
       // not among them: it belongs to whatever press is already being dragged,

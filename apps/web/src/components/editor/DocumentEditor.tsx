@@ -23,11 +23,13 @@ import {
   Code2,
   Undo2,
   Minus,
+  PanelLeftClose,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useDiagramStore } from '@/stores/diagram.store';
 
 interface DocumentEditorProps {
   initialContent?: string | null;
@@ -555,6 +557,18 @@ export function DocumentEditor({
                 <span>Source</span>
               </button>
             </div>
+          )}
+
+          {viewLayoutMode === 'both' && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-7 hover:bg-muted text-muted-foreground hover:text-foreground"
+              title="Hide Document Editor (Full Canvas)"
+              onClick={() => useDiagramStore.getState().setViewMode('canvas')}
+            >
+              <PanelLeftClose className="size-4" />
+            </Button>
           )}
         </div>
       </div>

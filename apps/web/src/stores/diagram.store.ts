@@ -36,19 +36,31 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   mermaidCode: '',
   canvasData: null,
   documentContent: '',
-  viewMode: 'both',
+  viewMode: 'canvas',
   edgeRouting: 'bezier',
   panelMode: 'none',
   saveStatus: 'saved',
   collaborators: [],
 
   setDiagram: (diagram) => {
+    let mode: WorkspaceViewMode = 'canvas';
+    if (typeof window !== 'undefined') {
+      const savedPref = localStorage.getItem('diagramz_preferred_view_mode') as WorkspaceViewMode | null;
+      if (savedPref && ['canvas', 'both', 'doc'].includes(savedPref)) {
+        mode = savedPref;
+      } else if (diagram?.viewMode === 'doc') {
+        mode = 'doc';
+      }
+    } else if (diagram?.viewMode === 'doc') {
+      mode = 'doc';
+    }
+
     set({
       currentDiagram: diagram,
       mermaidCode: diagram?.mermaidCode || '',
       canvasData: diagram?.canvasData || null,
       documentContent: diagram?.documentContent || '',
-      viewMode: (diagram?.viewMode as WorkspaceViewMode) || 'both',
+      viewMode: mode,
       saveStatus: 'saved',
     });
   },
@@ -66,6 +78,11 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   setViewMode: (viewMode) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('diagramz_preferred_view_mode', viewMode);
+      } catch (_) {}
+    }
     set({ viewMode, saveStatus: 'unsaved' });
   },
 

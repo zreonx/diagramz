@@ -24,7 +24,7 @@ import { ARCH_ICON_MAP } from './ArchitectureIcons';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDiagramStore } from '@/stores/diagram.store';
 import { DiagramDetail } from '@diagramz/shared';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -44,6 +44,7 @@ export function DiagramCanvas({
   const mermaidCode = useDiagramStore((s) => s.mermaidCode);
   const setMermaidCode = useDiagramStore((s) => s.setMermaidCode);
   const viewMode = useDiagramStore((s) => s.viewMode);
+  const setViewMode = useDiagramStore((s) => s.setViewMode);
   const edgeRouting = useDiagramStore((s) => s.edgeRouting);
   const setEdgeRouting = useDiagramStore((s) => s.setEdgeRouting);
   const panelMode = useDiagramStore((s) => s.panelMode);
@@ -503,6 +504,19 @@ export function DiagramCanvas({
               viewMode === 'canvas' && 'w-full flex-1'
             )}
           >
+            {/* Quick left dock: when viewMode === 'canvas', an unobtrusive floating button to open notes */}
+            {viewMode === 'canvas' && (
+              <button
+                type="button"
+                onClick={() => setViewMode('both')}
+                className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card/90 backdrop-blur-md shadow-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all cursor-pointer group"
+                title="Open Document & Notes Panel"
+              >
+                <FileText className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline">Notes</span>
+              </button>
+            )}
+
             <ZCanvas
               initialDocument={zcanvasDoc}
               onChange={handleCanvasChange}

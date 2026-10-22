@@ -68,7 +68,7 @@ export const ERASER_STARTER_TEMPLATES: StarterTemplate[] = [
     desc: 'Distributed payment flow with Next.js Client, API Gateway, Auth, Checkout Svc, Kafka & PostgreSQL',
     icon: Cloud,
     defaultTitle: 'Global Payment System (RFC-104)',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# RFC-104: Global Payment System Architecture
 
 ## 1. Executive Summary
@@ -110,7 +110,7 @@ High-throughput distributed payment processing topology with sub-50ms ingress, i
     desc: 'Multi-tier cloud topology with Edge CDN, Ingress, Services, Cache & DB',
     icon: Cloud,
     defaultTitle: 'Cloud Microservices Architecture',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# Cloud Microservices Architecture RFC
 
 ## 1. Executive Summary
@@ -173,7 +173,7 @@ High-availability, horizontally scalable microservices topology deployed across 
     desc: 'Secure authentication flow with PKCE, tokens, and verification',
     icon: ShieldCheck,
     defaultTitle: 'OAuth2 & JWT Authentication Flow',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# OAuth2 & JWT Authentication Flow Spec
 
 ## 1. Context & Objectives
@@ -222,7 +222,7 @@ Secure authentication flow utilizing Authorization Code Grant with PKCE for sing
     desc: 'High-throughput async pub/sub event pipeline with failure sinks',
     icon: GitBranch,
     defaultTitle: 'Event-Driven Data Pipeline',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# Event-Driven Data Pipeline Design Doc
 
 ## 1. Overview
@@ -265,7 +265,7 @@ High-throughput asynchronous message processing architecture designed for decoup
     desc: 'Relational entities, foreign keys, cardinality, and constraints',
     icon: Database,
     defaultTitle: 'Database Entity Relationship Schema',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# Database Entity Relationship Schema
 
 ## 1. Domain Entities
@@ -320,7 +320,7 @@ High-throughput asynchronous message processing architecture designed for decoup
     desc: 'Structured engineering RFC with context, trade-offs, and architecture',
     icon: FileCode2,
     defaultTitle: 'RFC: System Architecture Spec',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# RFC-042: System Architecture Refactor
 
 **Status**: Proposed  
@@ -363,7 +363,7 @@ Deconstruct heavy background synchronization jobs into asynchronous worker queue
     desc: 'Start clean with a minimal starter canvas and markdown notes',
     icon: Layers,
     defaultTitle: 'Untitled System Design',
-    defaultViewMode: 'both',
+    defaultViewMode: 'canvas',
     docContent: `# System Architecture Notes
 
 ## Overview
@@ -407,7 +407,7 @@ export function CreateDiagramDialog({
 
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<StarterTemplateKey>('global-payment-system');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'architecture' | 'sequence' | 'database' | 'rfc'>('all');
-  const [viewMode, setViewMode] = useState<'both' | 'canvas' | 'doc'>('both');
+  const [viewMode, setViewMode] = useState<'both' | 'canvas' | 'doc'>('canvas');
   const [title, setTitle] = useState(ERASER_STARTER_TEMPLATES[0].defaultTitle);
   const [customMermaid, setCustomMermaid] = useState(ERASER_STARTER_TEMPLATES[0].mermaidCode);
   const [customDoc, setCustomDoc] = useState(ERASER_STARTER_TEMPLATES[0].docContent);
