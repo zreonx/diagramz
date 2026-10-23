@@ -49,6 +49,13 @@ export function useCollab(diagramId: string | null) {
   useEffect(() => {
     if (!diagramId) return;
 
+    // On HTTPS origins, avoid connecting to insecure http:// socket to prevent browser mixed-content console errors
+    const isHttpsOrigin = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const isExplicitSecureWs = process.env.NEXT_PUBLIC_WS_URL?.startsWith('wss://');
+    if (isHttpsOrigin && !isExplicitSecureWs && WS_URL.startsWith('http://')) {
+      return;
+    }
+
     const token = getAccessToken();
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],

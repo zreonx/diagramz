@@ -49,6 +49,7 @@ import {
   type ZCanvasResizeHandle,
 } from '../geometry';
 import { ZCanvasHistory } from '../core/history';
+import { beautifyArchitectureLayout } from '../core/layout-beautifier';
 import { ZCanvasToolbar } from './ZCanvasToolbar';
 import { ZCanvasMinimap } from './ZCanvasMinimap';
 import { ZCanvasShortcutsDialog } from './ZCanvasShortcutsDialog';
@@ -1289,6 +1290,21 @@ export function ZCanvas({
       panY: Math.round(clientHeight / 2 - centerY * fitZoom),
     });
   }, [nodes]);
+
+  const handleBeautify = useCallback(() => {
+    if (nodes.length === 0) return;
+    const beautified = beautifyArchitectureLayout(nodes, edges, {
+      minHorizontalGap: 160,
+      minVerticalGap: 170,
+      containerPadding: 55,
+      containerHeaderHeight: 65,
+      containerGap: 80,
+    });
+    const containers = beautified.nodes.filter((n: any) => n.type === 'container' || n.type === 'frame');
+    const nonContainers = beautified.nodes.filter((n: any) => n.type !== 'container' && n.type !== 'frame');
+    commitState([...containers, ...nonContainers], beautified.edges, strokes);
+    toast.success('Beautified diagram architecture layout!');
+  }, [nodes, edges, strokes, commitState]);
 
   /** Zooms in or out anchored exactly at the viewport screen center. */
   const zoomByCenter = useCallback((deltaZoom: number) => {
@@ -6860,6 +6876,7 @@ export function ZCanvas({
         onZoomOut={() => zoomByCenter(-ZOOM_STEP)}
         onZoomToFit={handleZoomToFit}
         onResetZoom={() => setViewport({ zoom: 1, panX: 40, panY: 40 })}
+        onBeautifyLayout={handleBeautify}
         // The menu only offers what it can do: a group takes two elements, and
         // there is nothing to ungroup unless something is grouped.
         onGroup={canGroup(nodes, selectedNodeIds) ? handleGroupSelection : undefined}

@@ -22,6 +22,7 @@ import { CanvasHeader } from './CanvasHeader';
 import { ComponentLibraryPanel } from './ComponentLibraryPanel';
 import { ARCH_ICON_MAP } from './ArchitectureIcons';
 import { DocumentEditor } from '../editor/DocumentEditor';
+import { CanvasCommandPalette } from './CanvasCommandPalette';
 import { useDiagramStore } from '@/stores/diagram.store';
 import { DiagramDetail } from '@diagramz/shared';
 import { GripVertical, FileText } from 'lucide-react';
@@ -56,6 +57,31 @@ export function DiagramCanvas({
   const [splitRatio, setSplitRatio] = useState<number>(45);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      } else if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Initialize store once per diagram ID
   React.useEffect(() => {
@@ -423,6 +449,32 @@ export function DiagramCanvas({
     [zcanvasDoc, handleCanvasChange]
   );
 
+  const handleBeautifyLayout = useCallback(() => {
+    if (zcanvasDoc.nodes.length === 0) {
+      toast.info('No diagram components on canvas to align');
+      return;
+    }
+
+    const beautified = beautifyArchitectureLayout(zcanvasDoc.nodes, zcanvasDoc.edges, {
+      minHorizontalGap: 160,
+      minVerticalGap: 170,
+      containerPadding: 55,
+      containerHeaderHeight: 65,
+      containerGap: 80,
+    });
+
+    const containers = beautified.nodes.filter((n: any) => n.type === 'container' || n.type === 'frame');
+    const nonContainers = beautified.nodes.filter((n: any) => n.type !== 'container' && n.type !== 'frame');
+
+    handleCanvasChange({
+      ...zcanvasDoc,
+      nodes: [...containers, ...nonContainers],
+      edges: beautified.edges,
+    });
+
+    toast.success('Beautified diagram architecture layout!');
+  }, [zcanvasDoc, handleCanvasChange]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).diagramzInsertCanvasDoc = handleInsertNativeCanvasDoc;
@@ -438,6 +490,7 @@ export function DiagramCanvas({
         title={currentDiagram?.title || initialDiagram.title}
         workspaceName={workspaceName}
         folderName={projectName}
+        onBeautifyLayout={handleBeautifyLayout}
       />
 
       <div ref={containerRef} className="relative flex-1 flex overflow-hidden">
@@ -565,6 +618,16 @@ export function DiagramCanvas({
           />
         </div>
       </div>
+
+      {/* Global Canvas Command Palette (Ctrl+K or /) */}
+      <CanvasCommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onInsertItem={handleInsertItem}
+        onBeautifyLayout={handleBeautifyLayout}
+        onTogglePanel={(mode) => setPanelMode(panelMode === mode ? 'none' : mode)}
+        onSetViewMode={setViewMode}
+      />
     </div>
   );
 }

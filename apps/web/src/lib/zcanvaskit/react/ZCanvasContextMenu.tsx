@@ -32,6 +32,7 @@ import {
   Frame,
   Download,
   X,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZCanvasNode, ZCanvasEdge, ZCanvasDrawingStroke, hasEditableLabel, isGeometricShape } from '../core/schema';
@@ -64,6 +65,7 @@ export interface ZCanvasContextMenuProps {
   onZoomOut: () => void;
   onZoomToFit: () => void;
   onResetZoom: () => void;
+  onBeautifyLayout?: () => void;
   /** Group the selection under one box / release it again. */
   onGroup?: () => void;
   onUngroup?: () => void;
@@ -114,6 +116,7 @@ export function ZCanvasContextMenu({
   onZoomOut,
   onZoomToFit,
   onResetZoom,
+  onBeautifyLayout,
   onGroup,
   onUngroup,
   onFrameSelection,
@@ -800,6 +803,16 @@ export function ZCanvasContextMenu({
               onClose();
             }}
           />
+          {onBeautifyLayout && (
+            <MenuItem
+              icon={<Wand2 className="w-3.5 h-3.5 text-amber-500" />}
+              label="Beautify Architecture"
+              onClick={() => {
+                onBeautifyLayout();
+                onClose();
+              }}
+            />
+          )}
           <MenuItem
             icon={<RotateCcw className="w-3.5 h-3.5" />}
             label="Reset Zoom to 100%"

@@ -19,6 +19,7 @@ import {
   Palette,
   Sun,
   Moon,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,12 +52,14 @@ interface CanvasHeaderProps {
   title: string;
   workspaceName?: string;
   folderName?: string;
+  onBeautifyLayout?: () => void;
 }
 
 export function CanvasHeader({
   title,
   workspaceName = 'Workspace',
   folderName,
+  onBeautifyLayout,
 }: CanvasHeaderProps) {
   const saveStatus = useDiagramStore((s) => s.saveStatus);
   const saveDiagram = useDiagramStore((s) => s.saveDiagram);
@@ -83,6 +86,41 @@ export function CanvasHeader({
   const [isCopying, setIsCopying] = useState(false);
   const [isPublicShare, setIsPublicShare] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingTitleValue, setEditingTitleValue] = useState(title);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setEditingTitleValue(title);
+  }, [title]);
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [isEditingTitle]);
+
+  const handleCommitTitle = async () => {
+    setIsEditingTitle(false);
+    const trimmed = editingTitleValue.trim();
+    if (!trimmed || trimmed === title || !currentDiagram) {
+      setEditingTitleValue(title);
+      return;
+    }
+
+    try {
+      useDiagramStore.setState({
+        currentDiagram: { ...currentDiagram, title: trimmed },
+      });
+      await apiClient.patch(`/diagrams/${currentDiagram.id}`, { title: trimmed });
+      toast.success('Diagram renamed');
+    } catch (e: any) {
+      toast.error('Failed to rename diagram');
+      setEditingTitleValue(title);
+    }
+  };
 
   useEffect(() => {
     if (currentDiagram) {
@@ -195,7 +233,31 @@ export function CanvasHeader({
             </>
           )}
           <span className="text-muted-foreground/40">/</span>
-          <span className="text-foreground font-semibold tracking-tight">{title}</span>
+          {isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={editingTitleValue}
+              onChange={(e) => setEditingTitleValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCommitTitle();
+                if (e.key === 'Escape') {
+                  setEditingTitleValue(title);
+                  setIsEditingTitle(false);
+                }
+              }}
+              onBlur={handleCommitTitle}
+              className="text-foreground font-semibold tracking-tight text-xs bg-muted/60 border border-primary/40 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary h-6 max-w-[200px]"
+            />
+          ) : (
+            <span
+              onClick={() => setIsEditingTitle(true)}
+              className="text-foreground font-semibold tracking-tight hover:bg-muted/50 px-1.5 py-0.5 rounded cursor-pointer transition-colors max-w-[240px] truncate block"
+              title="Click to rename diagram"
+            >
+              {editingTitleValue || title}
+            </span>
+          )}
         </div>
 
         <button
@@ -300,6 +362,20 @@ export function CanvasHeader({
               </div>
             ))}
           </div>
+        )}
+
+        {/* Auto Layout / Beautify Architecture */}
+        {onBeautifyLayout && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onBeautifyLayout}
+            className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3 text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all cursor-pointer"
+            title="Auto-align and beautify diagram architecture layout"
+          >
+            <Wand2 className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden xl:inline">Auto Layout</span>
+          </Button>
         )}
 
         {/* Component Libraries Toggle */}
