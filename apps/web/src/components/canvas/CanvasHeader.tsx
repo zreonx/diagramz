@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   Code2,
@@ -20,6 +21,9 @@ import {
   Sun,
   Moon,
   Wand2,
+  History,
+  CopyPlus,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +39,7 @@ import {
 } from '@/components/ui/dialog';
 import { useDiagramStore } from '@/stores/diagram.store';
 import { ShareDiagramDialog } from './ShareDiagramDialog';
+import { VersionHistoryDialog } from './VersionHistoryDialog';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -53,6 +58,12 @@ interface CanvasHeaderProps {
   workspaceName?: string;
   folderName?: string;
   onBeautifyLayout?: () => void;
+  onRestoreSnapshot?: (snapshot: {
+    canvasData?: unknown;
+    mermaidCode?: string;
+    documentContent?: string;
+    title?: string;
+  }) => void;
 }
 
 export function CanvasHeader({
@@ -60,7 +71,9 @@ export function CanvasHeader({
   workspaceName = 'Workspace',
   folderName,
   onBeautifyLayout,
+  onRestoreSnapshot,
 }: CanvasHeaderProps) {
+  const router = useRouter();
   const saveStatus = useDiagramStore((s) => s.saveStatus);
   const saveDiagram = useDiagramStore((s) => s.saveDiagram);
   const currentDiagram = useDiagramStore((s) => s.currentDiagram);
@@ -79,13 +92,16 @@ export function CanvasHeader({
   const [isStarred, setIsStarred] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | 'svg'>('png');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'png' | 'pdf' | 'svg' | 'json'>('png');
   const [exportScale, setExportScale] = useState<number>(2);
   const [exportTransparent, setExportTransparent] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [isPublicShare, setIsPublicShare] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const jsonFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitleValue, setEditingTitleValue] = useState(title);
@@ -140,15 +156,93 @@ export function CanvasHeader({
     }
   };
 
+  const handleDuplicateDiagram = async () => {
+    if (!currentDiagram || isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      const { canvasData, mermaidCode, documentContent, viewMode: currentViewMode } =
+        useDiagramStore.getState();
+      const res = await apiClient.post(`/projects/${currentDiagram.projectId}/diagrams`, {
+        title: `${currentDiagram.title} (Copy)`,
+        folderId: currentDiagram.folderId || null,
+        viewMode: currentViewMode || 'canvas',
+        documentContent: documentContent || '',
+        mermaidCode: mermaidCode || '',
+        canvasData: canvasData || { nodes: [], edges: [] },
+      });
+      toast.success('Diagram duplicated! Opening copy...');
+      router.push(`/diagram/${res.data.id}`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to duplicate diagram');
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const handleImportJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const canvasData = parsed.canvasData || (parsed.nodes ? parsed : null);
+      if (!canvasData) {
+        toast.error('Invalid Diagramz JSON file format');
+        return;
+      }
+      onRestoreSnapshot?.({
+        canvasData,
+        mermaidCode: typeof parsed.mermaidCode === 'string' ? parsed.mermaidCode : undefined,
+        documentContent:
+          typeof parsed.documentContent === 'string' ? parsed.documentContent : undefined,
+        title: typeof parsed.title === 'string' ? parsed.title : undefined,
+      });
+      setShowExportModal(false);
+      toast.success(`Imported "${file.name}" onto canvas!`);
+    } catch {
+      toast.error('Could not parse JSON file');
+    } finally {
+      if (jsonFileInputRef.current) {
+        jsonFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleExport = async () => {
     if (!currentDiagram) return;
     setIsExporting(true);
     try {
-      const { canvasData } = useDiagramStore.getState();
+      const { canvasData, mermaidCode, documentContent, viewMode: currentViewMode } =
+        useDiagramStore.getState();
       const doc = normalizeToZCanvasDocument(canvasData);
       const safeTitle = (currentDiagram.title || 'diagram')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '-');
+
+      if (exportFormat === 'json') {
+        const jsonPayload = {
+          version: '2.0',
+          title: currentDiagram.title,
+          viewMode: currentViewMode,
+          mermaidCode,
+          documentContent,
+          canvasData: doc,
+          exportedAt: new Date().toISOString(),
+        };
+        const blob = new Blob([JSON.stringify(jsonPayload, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeTitle}.diagramz.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Exported editable .diagramz.json backup');
+        setShowExportModal(false);
+        return;
+      }
+
       const filename = `${safeTitle}.${exportFormat}`;
 
       if (exportFormat === 'svg') {
@@ -419,6 +513,35 @@ export function CanvasHeader({
           <span className="hidden lg:inline">AI Architect</span>
         </Button>
 
+        {/* Version History Button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowHistoryModal(true)}
+          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/70 cursor-pointer"
+          title="Version History & Named Checkpoints"
+        >
+          <History className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="hidden 2xl:inline">History</span>
+        </Button>
+
+        {/* Duplicate Diagram Button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleDuplicateDiagram}
+          disabled={isDuplicating}
+          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/70 cursor-pointer"
+          title="Duplicate this diagram"
+        >
+          {isDuplicating ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <CopyPlus className="w-3.5 h-3.5" />
+          )}
+          <span className="hidden 2xl:inline">Duplicate</span>
+        </Button>
+
         {/* Share Button */}
         <Button
           size="sm"
@@ -437,7 +560,7 @@ export function CanvasHeader({
           variant="outline"
           onClick={() => setShowExportModal(true)}
           className="h-8 text-xs gap-1.5 rounded-lg border-border/60 px-2 sm:px-3"
-          title="Export diagram"
+          title="Export or Import diagram"
         >
           <Download className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Export</span>
@@ -471,13 +594,39 @@ export function CanvasHeader({
         />
       )}
 
-      {/* Export Dialog */}
+      {/* Version History Dialog */}
+      {currentDiagram && (
+        <VersionHistoryDialog
+          open={showHistoryModal}
+          onOpenChange={setShowHistoryModal}
+          diagramId={currentDiagram.id}
+          onRestoreVersion={(version) => {
+            onRestoreSnapshot?.({
+              canvasData: version.canvasData,
+              mermaidCode: version.mermaidCode ?? undefined,
+            });
+          }}
+        />
+      )}
+
+      {/* Hidden File Input for JSON Import */}
+      <input
+        ref={jsonFileInputRef}
+        type="file"
+        accept=".json,.diagramz.json"
+        onChange={handleImportJsonFile}
+        className="hidden"
+      />
+
+      {/* Export & Import Dialog */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
         <DialogContent className="sm:max-w-md rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md p-6 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold tracking-tight">Export Diagram</DialogTitle>
+            <DialogTitle className="text-base font-semibold tracking-tight">
+              Export & Backup Diagram
+            </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Generate crisp, publication-quality assets optimized for presentations, docs, and print.
+              Generate crisp visual assets (PNG, SVG, PDF) or export/import editable .diagramz.json backups.
             </DialogDescription>
           </DialogHeader>
 
@@ -485,8 +634,8 @@ export function CanvasHeader({
             {/* Format Selector */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Format</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['png', 'svg', 'pdf'] as const).map((fmt) => (
+              <div className="grid grid-cols-4 gap-2">
+                {(['png', 'svg', 'pdf', 'json'] as const).map((fmt) => (
                   <Button
                     key={fmt}
                     type="button"
@@ -501,57 +650,86 @@ export function CanvasHeader({
               </div>
             </div>
 
-            {/* Resolution Scale (for PNG and PDF) */}
-            {exportFormat !== 'svg' && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Resolution Quality</Label>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {exportScale === 1 ? '72 DPI' : exportScale === 2 ? '144 DPI (Retina HD)' : '300 DPI (Ultra 4K)'}
+            {exportFormat === 'json' ? (
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Exports the full editable <strong className="text-foreground">.diagramz.json</strong> bundle (nodes, connectors, Mermaid code, and markdown spec) for Git repositories or offline backups.
+                </p>
+                <div className="pt-1 border-t border-border/40 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    Have an existing backup?
                   </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map((s) => (
-                    <Button
-                      key={s}
-                      type="button"
-                      size="sm"
-                      variant={exportScale === s ? 'default' : 'outline'}
-                      onClick={() => setExportScale(s)}
-                      className="text-xs font-medium h-8 rounded-lg border-border/60"
-                    >
-                      {s}x {s === 2 ? '(HD)' : s === 3 ? '(4K)' : '(Std)'}
-                    </Button>
-                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => jsonFileInputRef.current?.click()}
+                    className="h-7 text-xs gap-1.5 rounded-lg border-border/60"
+                  >
+                    <Upload className="w-3 h-3 text-primary" />
+                    <span>Import .json File</span>
+                  </Button>
                 </div>
               </div>
-            )}
+            ) : (
+              <>
+                {/* Resolution Scale (for PNG and PDF) */}
+                {exportFormat !== 'svg' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">Resolution Quality</Label>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {exportScale === 1
+                          ? '72 DPI'
+                          : exportScale === 2
+                            ? '144 DPI (Retina HD)'
+                            : '300 DPI (Ultra 4K)'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((s) => (
+                        <Button
+                          key={s}
+                          type="button"
+                          size="sm"
+                          variant={exportScale === s ? 'default' : 'outline'}
+                          onClick={() => setExportScale(s)}
+                          className="text-xs font-medium h-8 rounded-lg border-border/60"
+                        >
+                          {s}x {s === 2 ? '(HD)' : s === 3 ? '(4K)' : '(Std)'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Background Style */}
-            {exportFormat !== 'pdf' && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Background</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={!exportTransparent ? 'default' : 'outline'}
-                    onClick={() => setExportTransparent(false)}
-                    className="text-xs font-medium h-8 rounded-lg border-border/60"
-                  >
-                    Canvas {isDark ? 'Dark (#020617)' : 'Light (#FFFFFF)'}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={exportTransparent ? 'default' : 'outline'}
-                    onClick={() => setExportTransparent(true)}
-                    className="text-xs font-medium h-8 rounded-lg border-border/60"
-                  >
-                    Transparent
-                  </Button>
-                </div>
-              </div>
+                {/* Background Style */}
+                {exportFormat !== 'pdf' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Background</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!exportTransparent ? 'default' : 'outline'}
+                        onClick={() => setExportTransparent(false)}
+                        className="text-xs font-medium h-8 rounded-lg border-border/60"
+                      >
+                        Canvas {isDark ? 'Dark (#020617)' : 'Light (#FFFFFF)'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={exportTransparent ? 'default' : 'outline'}
+                        onClick={() => setExportTransparent(true)}
+                        className="text-xs font-medium h-8 rounded-lg border-border/60"
+                      >
+                        Transparent
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { DiagramDetail, PresenceUser } from '@diagramz/shared';
 import { apiClient } from '../lib/api';
+import { exportDocumentToSvg, normalizeToZCanvasDocument } from '../lib/zcanvaskit';
 
 export type PanelMode = 'none' | 'mermaid' | 'ai' | 'library';
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -122,11 +123,34 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
     set({ saveStatus: 'saving' });
     try {
+      let thumbnailKey: string | null | undefined = undefined;
+      try {
+        const doc = normalizeToZCanvasDocument(canvasData);
+        if (doc.nodes.length > 0 || (doc.strokes && doc.strokes.length > 0)) {
+          const isDark =
+            typeof document !== 'undefined' &&
+            document.documentElement.classList.contains('dark');
+          const svg = exportDocumentToSvg(doc, {
+            isDark,
+            transparentBackground: true,
+            fitToContent: true,
+            padding: 24,
+          });
+          const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+          if (dataUrl.length < 90000) {
+            thumbnailKey = dataUrl;
+          }
+        }
+      } catch {
+        // Ignore thumbnail generation error and proceed with save
+      }
+
       await apiClient.patch(`/diagrams/${currentDiagram.id}`, {
         mermaidCode,
         canvasData,
         documentContent,
         viewMode,
+        ...(thumbnailKey !== undefined ? { thumbnailKey } : {}),
       });
       set({ saveStatus: 'saved' });
     } catch {

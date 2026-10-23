@@ -475,6 +475,28 @@ export function DiagramCanvas({
     toast.success('Beautified diagram architecture layout!');
   }, [zcanvasDoc, handleCanvasChange]);
 
+  const handleRestoreSnapshot = useCallback(
+    (snapshot: {
+      canvasData?: unknown;
+      mermaidCode?: string;
+      documentContent?: string;
+      title?: string;
+    }) => {
+      if (snapshot.canvasData !== undefined) {
+        const normalized = normalizeToZCanvasDocument(snapshot.canvasData);
+        handleCanvasChange(normalized);
+      }
+      if (snapshot.mermaidCode !== undefined) {
+        setMermaidCode(snapshot.mermaidCode);
+      }
+      if (snapshot.documentContent !== undefined) {
+        useDiagramStore.getState().setDocumentContent(snapshot.documentContent);
+      }
+      triggerAutoSave();
+    },
+    [handleCanvasChange, setMermaidCode, triggerAutoSave]
+  );
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).diagramzInsertCanvasDoc = handleInsertNativeCanvasDoc;
@@ -491,6 +513,7 @@ export function DiagramCanvas({
         workspaceName={workspaceName}
         folderName={projectName}
         onBeautifyLayout={handleBeautifyLayout}
+        onRestoreSnapshot={handleRestoreSnapshot}
       />
 
       <div ref={containerRef} className="relative flex-1 flex overflow-hidden">

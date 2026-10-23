@@ -343,6 +343,30 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDuplicateDiagram = async (diagram: DiagramSummary, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      const detailRes = await apiClient.get(`/diagrams/${diagram.id}`);
+      const detail = detailRes.data;
+      const res = await apiClient.post<DiagramSummary>(
+        `/projects/${diagram.projectId}/diagrams`,
+        {
+          title: `${diagram.title} (Copy)`,
+          folderId: diagram.folderId || null,
+          viewMode: detail.viewMode || 'canvas',
+          documentContent: detail.documentContent || '',
+          mermaidCode: detail.mermaidCode || '',
+          canvasData: detail.canvasData || { nodes: [], edges: [] },
+        }
+      );
+      setDiagrams((prev) => [res.data, ...prev]);
+      toast.success(`Duplicated "${diagram.title}"`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to duplicate diagram');
+    }
+  };
+
   const handleDeleteDiagram = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -912,6 +936,19 @@ export default function DashboardPage() {
                     {/* Subtle grid background accent */}
                     <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#888_1px,transparent_1px)] [background-size:12px_12px]" />
 
+                    {/* Live SVG Thumbnail Preview */}
+                    {diagram.thumbnailKey?.startsWith('data:image/svg+xml') ? (
+                      <img
+                        src={diagram.thumbnailKey}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain p-2.5 pointer-events-none opacity-85 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-200"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-25 group-hover:opacity-40 transition-opacity">
+                        <Layers className="size-8 text-muted-foreground" />
+                      </div>
+                    )}
+
                     {/* Multi-select Checkbox */}
                     <button
                       type="button"
@@ -1012,6 +1049,13 @@ export default function DashboardPage() {
                           >
                             <Edit2 className="size-3.5" />
                             <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => handleDuplicateDiagram(diagram, e)}
+                            className="gap-2 text-xs cursor-pointer"
+                          >
+                            <Copy className="size-3.5" />
+                            <span>Duplicate</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {
@@ -1197,6 +1241,13 @@ export default function DashboardPage() {
                           >
                             <Edit2 className="size-3.5" />
                             <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => handleDuplicateDiagram(diagram, e)}
+                            className="gap-2 text-xs cursor-pointer"
+                          >
+                            <Copy className="size-3.5" />
+                            <span>Duplicate</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {
