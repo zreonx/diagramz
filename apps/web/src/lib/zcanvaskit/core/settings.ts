@@ -35,7 +35,7 @@ export const ZCanvasSettingsSchema = z.object({
   snapSize: z.number().default(12),
   showGuides: z.boolean().default(true),
   showMinimap: z.boolean().default(true),
-  edgeRouting: z.enum(['bezier', 'step']).default('bezier'),
+  edgeRouting: z.enum(['bezier', 'step', 'straight']).default('bezier'),
   backgroundTone: ZCanvasBackgroundToneSchema.default('default'),
   fontFamily: ZCanvasFontFamilySchema.default('sans'),
   fontSize: z.number().min(8).max(120).default(16),

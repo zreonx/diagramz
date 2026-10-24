@@ -301,21 +301,72 @@ export function computeOrthogonalStepPath(
   sourcePos: ZCanvasHandlePosition = 'right',
   targetPos: ZCanvasHandlePosition = 'left',
   stepOffset = 0
-): { pathD: string; midPoint: ZCanvasPoint } {
-  const midX = (p1.x + p2.x) / 2 + (sourcePos === 'left' || sourcePos === 'right' ? stepOffset : 0);
-  const midY = (p1.y + p2.y) / 2 + (sourcePos === 'top' || sourcePos === 'bottom' ? stepOffset : 0);
+): { pathD: string; midPoint: ZCanvasPoint; vertices: ZCanvasPoint[] } {
+  const srcHoriz = sourcePos === 'left' || sourcePos === 'right';
+  const tgtHoriz = targetPos === 'left' || targetPos === 'right';
 
-  let pathD = '';
-  if (sourcePos === 'left' || sourcePos === 'right') {
-    pathD = `M ${p1.x} ${p1.y} L ${midX} ${p1.y} L ${midX} ${p2.y} L ${p2.x} ${p2.y}`;
-  } else {
-    pathD = `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`;
+  // When no manual stepOffset is set, route perpendicular port pairs (e.g. right -> top,
+  // bottom -> left) via a clean 2-segment Draw.io L-bend, and same-side port pairs
+  // (e.g. top -> top, right -> right) via a 28px outer jetty U-turn.
+  if (stepOffset === 0 && srcHoriz !== tgtHoriz) {
+    const corner = srcHoriz ? { x: p2.x, y: p1.y } : { x: p1.x, y: p2.y };
+    const vertices = [p1, corner, p2];
+    return {
+      pathD: `M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`,
+      midPoint: corner,
+      vertices,
+    };
   }
 
-  return {
-    pathD,
-    midPoint: { x: midX, y: midY },
-  };
+  if (stepOffset === 0 && sourcePos === targetPos) {
+    const JETTY = 28;
+    if (sourcePos === 'top' || sourcePos === 'bottom') {
+      const outerY =
+        sourcePos === 'top'
+          ? Math.min(p1.y, p2.y) - JETTY
+          : Math.max(p1.y, p2.y) + JETTY;
+      const b1 = { x: p1.x, y: outerY };
+      const b2 = { x: p2.x, y: outerY };
+      return {
+        pathD: `M ${p1.x} ${p1.y} L ${b1.x} ${b1.y} L ${b2.x} ${b2.y} L ${p2.x} ${p2.y}`,
+        midPoint: { x: (p1.x + p2.x) / 2, y: outerY },
+        vertices: [p1, b1, b2, p2],
+      };
+    } else {
+      const outerX =
+        sourcePos === 'left'
+          ? Math.min(p1.x, p2.x) - JETTY
+          : Math.max(p1.x, p2.x) + JETTY;
+      const b1 = { x: outerX, y: p1.y };
+      const b2 = { x: outerX, y: p2.y };
+      return {
+        pathD: `M ${p1.x} ${p1.y} L ${b1.x} ${b1.y} L ${b2.x} ${b2.y} L ${p2.x} ${p2.y}`,
+        midPoint: { x: outerX, y: (p1.y + p2.y) / 2 },
+        vertices: [p1, b1, b2, p2],
+      };
+    }
+  }
+
+  const midX = (p1.x + p2.x) / 2 + (srcHoriz ? stepOffset : 0);
+  const midY = (p1.y + p2.y) / 2 + (!srcHoriz ? stepOffset : 0);
+
+  if (srcHoriz) {
+    const b1 = { x: midX, y: p1.y };
+    const b2 = { x: midX, y: p2.y };
+    return {
+      pathD: `M ${p1.x} ${p1.y} L ${midX} ${p1.y} L ${midX} ${p2.y} L ${p2.x} ${p2.y}`,
+      midPoint: { x: midX, y: midY },
+      vertices: [p1, b1, b2, p2],
+    };
+  } else {
+    const b1 = { x: p1.x, y: midY };
+    const b2 = { x: p2.x, y: midY };
+    return {
+      pathD: `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`,
+      midPoint: { x: midX, y: midY },
+      vertices: [p1, b1, b2, p2],
+    };
+  }
 }
 
 export interface EdgeGeometryInput {
@@ -329,6 +380,7 @@ export interface EdgeGeometryInput {
   sourceOffset?: number;
   targetOffset?: number;
   stepOffset?: number;
+  waypoints?: ZCanvasPoint[];
   style?: ZCanvasEdgeRouting;
   label?: string;
   labelOffset?: { x: number; y: number };
@@ -341,6 +393,10 @@ export interface EdgeGeometry {
   targetPos: ZCanvasHandlePosition;
   pathD: string;
   midPoint: ZCanvasPoint;
+  /** Ordered polyline vertices (including endpoints and bends/waypoints). */
+  vertices: ZCanvasPoint[];
+  /** Midpoints of each segment in `vertices`, with `index` indicating the waypoint insertion index. */
+  segmentMidpoints: Array<{ x: number; y: number; index: number }>;
   /**
    * The box the drawn path is contained in.
    *
@@ -353,6 +409,36 @@ export interface EdgeGeometry {
    * curve's slack, but it can never miss the path.
    */
   bounds: ZCanvasBox;
+}
+
+function buildSegmentMidpoints(
+  vertices: ZCanvasPoint[],
+  hasCustomWaypoints: boolean
+): Array<{ x: number; y: number; index: number }> {
+  const result: Array<{ x: number; y: number; index: number }> = [];
+  for (let i = 0; i < vertices.length - 1; i++) {
+    const a = vertices[i];
+    const b = vertices[i + 1];
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    if (dist < 14) continue;
+    result.push({
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+      index: hasCustomWaypoints ? i : i,
+    });
+  }
+  return result;
+}
+
+function computeChainMidPoint(chain: ZCanvasPoint[]): ZCanvasPoint {
+  if (chain.length === 0) return { x: 0, y: 0 };
+  if (chain.length === 1) return chain[0];
+  if (chain.length % 2 === 1) {
+    return chain[Math.floor(chain.length / 2)];
+  }
+  const a = chain[chain.length / 2 - 1];
+  const b = chain[chain.length / 2];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
 /**
@@ -468,7 +554,7 @@ export function computeMultiConnectionOffsets(
 export function computeEdgeGeometry(
   edge: EdgeGeometryInput,
   nodeMap: Map<string, ZCanvasOrientedBox>,
-  defaultRouting: 'bezier' | 'step' = 'bezier',
+  defaultRouting: ZCanvasEdgeRouting = 'bezier',
   portOffsets?: { sourceOffset?: number; targetOffset?: number }
 ): EdgeGeometry | null {
   const srcNode = edge.source ? nodeMap.get(edge.source) : undefined;
@@ -479,6 +565,7 @@ export function computeEdgeGeometry(
   const resolvedSourceOffset = edge.sourceOffset ?? portOffsets?.sourceOffset ?? 0;
   const resolvedTargetOffset = edge.targetOffset ?? portOffsets?.targetOffset ?? 0;
   const stepOffset = edge.stepOffset || 0;
+  const waypoints = edge.waypoints && edge.waypoints.length > 0 ? edge.waypoints : undefined;
 
   /**
    * Routes between two resolved anchors, and reports what bounds the result.
@@ -491,16 +578,68 @@ export function computeEdgeGeometry(
     p1: ZCanvasPoint,
     p2: ZCanvasPoint,
     sourcePos: ZCanvasHandlePosition,
-    targetPos: ZCanvasHandlePosition
-  ): { pathD: string; midPoint: ZCanvasPoint; points: ZCanvasPoint[] } => {
-    if (edge.style === 'step' || defaultRouting === 'step') {
-      return { ...computeOrthogonalStepPath(p1, p2, sourcePos, targetPos, stepOffset), points: [p1, p2] };
+    targetPos: ZCanvasHandlePosition,
+    effectiveStyle: ZCanvasEdgeRouting
+  ): {
+    pathD: string;
+    midPoint: ZCanvasPoint;
+    points: ZCanvasPoint[];
+    vertices: ZCanvasPoint[];
+    segmentMidpoints: Array<{ x: number; y: number; index: number }>;
+  } => {
+    if (waypoints) {
+      const chain = [p1, ...waypoints, p2];
+      const pathD =
+        effectiveStyle === 'bezier'
+          ? getCatmullRomPath(chain)
+          : chain.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+      return {
+        pathD,
+        midPoint: computeChainMidPoint(chain),
+        points: chain,
+        vertices: chain,
+        segmentMidpoints: buildSegmentMidpoints(chain, true),
+      };
+    }
+
+    if (effectiveStyle === 'straight') {
+      const vertices = [p1, p2];
+      return {
+        pathD: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`,
+        midPoint: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+        points: vertices,
+        vertices,
+        segmentMidpoints: buildSegmentMidpoints(vertices, false),
+      };
+    }
+
+    if (effectiveStyle === 'step') {
+      const res = computeOrthogonalStepPath(p1, p2, sourcePos, targetPos, stepOffset);
+      return {
+        pathD: res.pathD,
+        midPoint: res.midPoint,
+        points: res.vertices,
+        vertices: res.vertices,
+        segmentMidpoints: buildSegmentMidpoints(res.vertices, false),
+      };
     }
 
     const { c1, c2 } = bezierControlPoints(p1, p2, sourcePos, targetPos);
+    const res = computeSmoothBezierPath(p1, p2, sourcePos, targetPos, stepOffset);
+    const curveMid = {
+      x: 0.125 * p1.x + 0.375 * c1.x + 0.375 * c2.x + 0.125 * p2.x,
+      y: 0.125 * p1.y + 0.375 * c1.y + 0.375 * c2.y + 0.125 * p2.y,
+    };
+    const vertices = [p1, p2];
     return {
-      ...computeSmoothBezierPath(p1, p2, sourcePos, targetPos, stepOffset),
+      pathD: res.pathD,
+      midPoint: res.midPoint,
       points: [p1, c1, c2, p2],
+      vertices,
+      segmentMidpoints:
+        Math.hypot(p2.x - p1.x, p2.y - p1.y) >= 14
+          ? [{ x: curveMid.x, y: curveMid.y, index: 0 }]
+          : [],
     };
   };
 
@@ -508,45 +647,28 @@ export function computeEdgeGeometry(
   if (edge.sourcePoint && edge.targetPoint) {
     const p1 = edge.sourcePoint;
     const p2 = edge.targetPoint;
-    if (edge.style === 'step') {
-      const sourcePos = edge.sourceHandle || (p1.x <= p2.x ? 'right' : 'left');
-      const targetPos = edge.targetHandle || (p1.x <= p2.x ? 'left' : 'right');
-      const res = computeOrthogonalStepPath(p1, p2, sourcePos, targetPos, stepOffset);
-      return {
-        p1,
-        p2,
-        sourcePos,
-        targetPos,
-        pathD: res.pathD,
-        midPoint: res.midPoint,
-        bounds: spansBox([p1, p2, res.midPoint]),
-      };
-    }
-    if (edge.style === 'bezier') {
-      const sourcePos = edge.sourceHandle || (p1.x <= p2.x ? 'right' : 'left');
-      const targetPos = edge.targetHandle || (p1.x <= p2.x ? 'left' : 'right');
-      const { c1, c2 } = bezierControlPoints(p1, p2, sourcePos, targetPos);
-      const res = computeSmoothBezierPath(p1, p2, sourcePos, targetPos, stepOffset);
-      return {
-        p1,
-        p2,
-        sourcePos,
-        targetPos,
-        pathD: res.pathD,
-        midPoint: res.midPoint,
-        bounds: spansBox([p1, c1, c2, p2]),
-      };
-    }
+    const effectiveStyle: ZCanvasEdgeRouting = edge.style || 'straight';
+    const sourcePos =
+      edge.sourceHandle ||
+      (effectiveStyle === 'straight' ? 'right' : p1.x <= p2.x ? 'right' : 'left');
+    const targetPos =
+      edge.targetHandle ||
+      (effectiveStyle === 'straight' ? 'left' : p1.x <= p2.x ? 'left' : 'right');
+    const res = route(p1, p2, sourcePos, targetPos, effectiveStyle);
     return {
       p1,
       p2,
-      sourcePos: 'right',
-      targetPos: 'left',
-      pathD: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`,
-      midPoint: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
-      bounds: spansBox([p1, p2]),
+      sourcePos,
+      targetPos,
+      pathD: res.pathD,
+      midPoint: res.midPoint,
+      vertices: res.vertices,
+      segmentMidpoints: res.segmentMidpoints,
+      bounds: spansBox(res.points),
     };
   }
+
+  const effectiveConnectedStyle: ZCanvasEdgeRouting = edge.style || defaultRouting;
 
   // B. Both endpoints are attached to nodes.
   if (!edge.sourcePoint && !edge.targetPoint && srcNode && tgtNode) {
@@ -555,7 +677,7 @@ export function computeEdgeGeometry(
     const targetPos = edge.targetHandle || optimal.targetPos;
     const p1 = getHandlePoint(srcNode, sourcePos, srcRotation, resolvedSourceOffset);
     const p2 = getHandlePoint(tgtNode, targetPos, tgtRotation, resolvedTargetOffset);
-    const res = route(p1, p2, sourcePos, targetPos);
+    const res = route(p1, p2, sourcePos, targetPos, effectiveConnectedStyle);
 
     return {
       p1,
@@ -564,6 +686,8 @@ export function computeEdgeGeometry(
       targetPos,
       pathD: res.pathD,
       midPoint: res.midPoint,
+      vertices: res.vertices,
+      segmentMidpoints: res.segmentMidpoints,
       bounds: spansBox(res.points),
     };
   }
@@ -596,7 +720,7 @@ export function computeEdgeGeometry(
 
   const resolvedSourcePos = sourcePos ?? 'right';
   const resolvedTargetPos = targetPos ?? 'left';
-  const res = route(p1, p2, resolvedSourcePos, resolvedTargetPos);
+  const res = route(p1, p2, resolvedSourcePos, resolvedTargetPos, effectiveConnectedStyle);
 
   return {
     p1,
@@ -605,6 +729,8 @@ export function computeEdgeGeometry(
     targetPos: resolvedTargetPos,
     pathD: res.pathD,
     midPoint: res.midPoint,
+    vertices: res.vertices,
+    segmentMidpoints: res.segmentMidpoints,
     bounds: spansBox(res.points),
   };
 }
@@ -625,7 +751,7 @@ export function edgeIntersectsBox(
   edge: EdgeGeometryInput,
   box: ZCanvasBox,
   nodeMap: Map<string, ZCanvasOrientedBox>,
-  defaultRouting: 'bezier' | 'step' = 'bezier'
+  defaultRouting: ZCanvasEdgeRouting = 'bezier'
 ): boolean {
   const geo = computeEdgeGeometry(edge, nodeMap, defaultRouting);
   return geo !== null && doBoxesIntersect(box, geo.bounds);
@@ -921,7 +1047,7 @@ export function calculateAlignmentGuides(
 export function resolveEdgeLabelPositions(
   edges: readonly EdgeGeometryInput[],
   nodeMap: Map<string, ZCanvasOrientedBox>,
-  defaultRouting: 'bezier' | 'step' = 'bezier',
+  defaultRouting: ZCanvasEdgeRouting = 'bezier',
   edgeGeometries?: Map<string, EdgeGeometry | null>
 ): Map<string, ZCanvasPoint> {
   const positions = new Map<string, ZCanvasPoint>();

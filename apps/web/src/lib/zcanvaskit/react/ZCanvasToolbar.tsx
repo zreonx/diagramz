@@ -34,7 +34,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { ZCanvasTool } from '../core/schema';
+import { ZCanvasTool, ZCanvasEdgeRouting } from '../core/schema';
 import { writeDragItem, type ZCanvasToolName } from '../stencils';
 import { FRAME_PRESETS, type ZCanvasFramePreset } from '../core/boundaries';
 
@@ -50,8 +50,8 @@ export interface ZCanvasToolbarProps {
   onExportPng?: () => void;
   onOpenShortcuts?: () => void;
   onOpenSettings?: () => void;
-  edgeRouting?: 'bezier' | 'step';
-  onToggleEdgeRouting?: (routing: 'bezier' | 'step') => void;
+  edgeRouting?: ZCanvasEdgeRouting;
+  onToggleEdgeRouting?: (routing: ZCanvasEdgeRouting) => void;
 }
 
 export function ZCanvasToolbar({
@@ -470,6 +470,18 @@ export function ZCanvasToolbar({
                     <span>Orthogonal (Step)</span>
                   </div>
                   {edgeRouting === 'step' && <Check className="w-3.5 h-3.5 text-primary" />}
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  data-testid="menu-toggle-straight"
+                  onSelect={() => onToggleEdgeRouting('straight')}
+                  className="flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Minus className="w-3.5 h-3.5 text-primary" />
+                    <span>Straight (Direct)</span>
+                  </div>
+                  {edgeRouting === 'straight' && <Check className="w-3.5 h-3.5 text-primary" />}
                 </DropdownMenuItem>
               </>
             )}

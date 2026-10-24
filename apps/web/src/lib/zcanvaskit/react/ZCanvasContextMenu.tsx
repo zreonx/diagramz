@@ -33,6 +33,7 @@ import {
   Download,
   X,
   Wand2,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZCanvasNode, ZCanvasEdge, ZCanvasDrawingStroke, hasEditableLabel, isGeometricShape } from '../core/schema';
@@ -81,6 +82,7 @@ export interface ZCanvasContextMenuProps {
   canUndo: boolean;
   canRedo: boolean;
   onToggleEdgeStyle?: () => void;
+  onReverseEdgeDirection?: () => void;
   onResetEdgeLabel?: () => void;
   onResetLinePosition?: () => void;
   onResetEdgeAnchors?: () => void;
@@ -127,6 +129,7 @@ export function ZCanvasContextMenu({
   canUndo,
   canRedo,
   onToggleEdgeStyle,
+  onReverseEdgeDirection,
   onResetEdgeLabel,
   onResetLinePosition,
   onResetEdgeAnchors,
@@ -627,9 +630,26 @@ export function ZCanvasContextMenu({
           {onToggleEdgeStyle && (
             <MenuItem
               icon={selectedEdge.style === 'step' ? <Spline className="w-3.5 h-3.5 text-primary" /> : <GitCommit className="w-3.5 h-3.5 text-indigo-500" />}
-              label={selectedEdge.style === 'step' ? 'Switch to Bezier Curve' : 'Switch to Orthogonal Step'}
+              label={
+                selectedEdge.style === 'step'
+                  ? 'Switch to Bezier Curve'
+                  : selectedEdge.style === 'bezier'
+                    ? 'Switch to Straight Line'
+                    : 'Switch to Orthogonal Step'
+              }
               onClick={() => {
                 onToggleEdgeStyle();
+                onClose();
+              }}
+            />
+          )}
+
+          {onReverseEdgeDirection && (
+            <MenuItem
+              icon={<ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />}
+              label="Reverse Line Direction"
+              onClick={() => {
+                onReverseEdgeDirection();
                 onClose();
               }}
             />
@@ -646,16 +666,24 @@ export function ZCanvasContextMenu({
             />
           )}
 
-          {onResetLinePosition && Boolean(selectedEdge.stepOffset && selectedEdge.stepOffset !== 0) && (
-            <MenuItem
-              icon={<RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />}
-              label="Reset Line Position"
-              onClick={() => {
-                onResetLinePosition();
-                onClose();
-              }}
-            />
-          )}
+          {onResetLinePosition &&
+            Boolean(
+              (selectedEdge.stepOffset && selectedEdge.stepOffset !== 0) ||
+                (selectedEdge.waypoints && selectedEdge.waypoints.length > 0)
+            ) && (
+              <MenuItem
+                icon={<RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />}
+                label={
+                  selectedEdge.waypoints && selectedEdge.waypoints.length > 0
+                    ? `Clear Waypoints (${selectedEdge.waypoints.length})`
+                    : 'Reset Line Position'
+                }
+                onClick={() => {
+                  onResetLinePosition();
+                  onClose();
+                }}
+              />
+            )}
 
           {onResetEdgeAnchors && Boolean((selectedEdge.sourceOffset && selectedEdge.sourceOffset !== 0) || (selectedEdge.targetOffset && selectedEdge.targetOffset !== 0)) && (
             <MenuItem

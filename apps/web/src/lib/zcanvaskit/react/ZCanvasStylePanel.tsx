@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Eraser,
   RotateCcw,
+  ArrowLeftRight,
   X,
   AlignLeft,
   AlignCenter,
@@ -73,6 +74,8 @@ export type ZCanvasEdgeStylePatch = Partial<
     | 'target'
     | 'sourceHandle'
     | 'targetHandle'
+    | 'waypoints'
+    | 'animated'
   >
 >;
 
@@ -242,6 +245,9 @@ const ARROWHEAD_OPTIONS: Array<{
   { value: 'none', label: 'None' },
   { value: 'arrow', label: 'Arrow' },
   { value: 'barbs', label: 'Barbs' },
+  { value: 'triangle', label: 'Triangle' },
+  { value: 'circle', label: 'Circle' },
+  { value: 'diamond', label: 'Diamond' },
 ];
 
 const SLOPPINESS_OPTIONS: Array<{
@@ -316,6 +322,7 @@ const ROUTING_OPTIONS: Array<{
 }> = [
   { value: 'step', label: 'Step', title: 'Orthogonal right-angle routing' },
   { value: 'bezier', label: 'Curve', title: 'Smooth curved routing' },
+  { value: 'straight', label: 'Straight', title: 'Direct straight / polyline routing' },
 ];
 
 /** What a routing change applies to. */
@@ -1014,7 +1021,7 @@ function EdgeSections({
             label: option.label,
             title: option.title,
           }))}
-          value={edge.style === 'straight' ? 'step' : (edge.style ?? 'step')}
+          value={edge.style ?? 'step'}
           onChange={(style) => onCommitRouting(style, routingScope)}
         />
         <div className="mt-2 flex items-center justify-between px-0.5">
@@ -1042,6 +1049,32 @@ function EdgeSections({
         </div>
       </Row>
 
+      <Row label="Flow animation" hint="Animate directional flow along the connector line.">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[11px] text-muted-foreground select-none">
+            Animated flow (marching ants)
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(edge.animated)}
+            title="Toggle directional flow animation"
+            onClick={() => onCommit({ animated: !edge.animated })}
+            className={cn(
+              'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              edge.animated ? 'bg-primary' : 'bg-muted-foreground/25'
+            )}
+          >
+            <span
+              className={cn(
+                'pointer-events-none inline-block h-3 w-3 rounded-full bg-background shadow-xs ring-0 transition-transform duration-150 mt-0.5 ml-0.5',
+                edge.animated ? 'translate-x-3 bg-primary-foreground' : 'translate-x-0'
+              )}
+            />
+          </button>
+        </div>
+      </Row>
+
       <Row label="Start head">
         <ArrowheadPicker
           value={startArrow}
@@ -1054,6 +1087,32 @@ function EdgeSections({
           value={endArrow}
           onChange={(value) => onCommit({ endArrowhead: value })}
         />
+      </Row>
+
+      <Row label="Direction">
+        <button
+          type="button"
+          className="h-7 px-2.5 text-xs w-full flex items-center justify-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium transition-colors cursor-pointer"
+          onClick={() =>
+            onCommit({
+              source: edge.target,
+              target: edge.source,
+              sourceHandle: edge.targetHandle,
+              targetHandle: edge.sourceHandle,
+              sourceOffset: edge.targetOffset,
+              targetOffset: edge.sourceOffset,
+              sourcePoint: edge.targetPoint,
+              targetPoint: edge.sourcePoint,
+              startArrowhead: edge.endArrowhead ?? 'arrow',
+              endArrowhead: edge.startArrowhead ?? 'none',
+              waypoints: edge.waypoints ? [...edge.waypoints].reverse() : undefined,
+            })
+          }
+          title="Reverse line direction and swap start/end arrowheads"
+        >
+          <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <span>Reverse Line Direction</span>
+        </button>
       </Row>
 
       <Row
@@ -1093,16 +1152,16 @@ function EdgeSections({
         </Row>
       )}
 
-      {Boolean(edge.stepOffset && edge.stepOffset !== 0) && (
-        <Row label="Line position">
+      {Boolean((edge.stepOffset && edge.stepOffset !== 0) || (edge.waypoints && edge.waypoints.length > 0)) && (
+        <Row label="Waypoints & bends">
           <button
             type="button"
-            className="h-7 px-2.5 text-xs w-full flex items-center justify-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium transition-colors"
-            onClick={() => onCommit({ stepOffset: 0 })}
-            title="Reset line bend position back to center"
+            className="h-7 px-2.5 text-xs w-full flex items-center justify-center gap-1.5 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium transition-colors cursor-pointer"
+            onClick={() => onCommit({ stepOffset: 0, waypoints: undefined })}
+            title="Clear custom waypoints and reset line bend position"
           >
             <RotateCcw className="w-3 h-3 text-muted-foreground" />
-            <span>Reset Line to Center</span>
+            <span>Clear Waypoints ({edge.waypoints?.length ?? 1})</span>
           </button>
         </Row>
       )}
@@ -1122,7 +1181,7 @@ function EdgeSections({
       )}
 
       <p className="px-0.5 pt-0.5 text-[10px] leading-snug text-muted-foreground">
-        Tip: Drag line midpoint or line body to adjust bend position. Drag endpoints to connect anywhere along shapes.
+        Tip: Drag any blue segment dot to add a waypoint bend. Double-click a waypoint to remove it.
       </p>
     </>
   );

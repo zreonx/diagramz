@@ -6,7 +6,7 @@ import { exportDocumentToSvg, normalizeToZCanvasDocument } from '../lib/zcanvask
 export type PanelMode = 'none' | 'mermaid' | 'ai' | 'library';
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 export type WorkspaceViewMode = 'both' | 'doc' | 'canvas';
-export type EdgeRoutingMode = 'bezier' | 'step';
+export type EdgeRoutingMode = 'bezier' | 'step' | 'straight';
 
 interface DiagramState {
   currentDiagram: DiagramDetail | null;

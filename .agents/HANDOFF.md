@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-24
 > **Branch**: `main`
-> **Test Suite Status**: 566 passing (`0` failing)
+> **Test Suite Status**: 569 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -36,6 +36,10 @@
 4. **AWS Architecture Stencils & Draw.io-Grade Canvas Interactions**:
    - Added 26 official-style AWS service stencils (`tech-aws-ec2`, `tech-aws-lambda`, `tech-aws-s3`, `tech-aws-rds`, `tech-aws-dynamodb`, `tech-aws-vpc`, `tech-aws-cloudfront`, `tech-aws-route53`, `tech-aws-apigateway`, `tech-aws-elb`, `tech-aws-sqs`, `tech-aws-sns`, `tech-aws-eventbridge`, `tech-aws-stepfunctions`, `tech-aws-iam`, `tech-aws-cognito`, `tech-aws-cloudwatch`, `tech-aws-kms`, `tech-aws-waf`, etc.) in `tech-icons.ts` and exposed a dedicated **AWS** tab in `ComponentLibraryPanel.tsx`.
    - Implemented Draw.io-style 1-click directional Quick-Clone & Connect chevrons (`N`, `E`, `S`, `W`), drop-connector-on-empty-space node spawning, double-click empty canvas node creation, and `1px` (`Alt+Arrow`) / `10px` (`Arrow`) / `20px` (`Shift+Arrow`) precision nudging in `ZCanvas.tsx`.
+5. **Draw.io Line & Connector Management**:
+   - Added custom multi-waypoint / bend routing (`edge.waypoints`) across `step`, `bezier`, and `straight` lines, with interactive virtual segment midpoint handles (`edge-virtual-midpoint-*`) to insert bends and custom waypoint handles (`edge-waypoint-*`) with orthogonal alignment snapping and double-click deletion.
+   - Upgraded `computeOrthogonalStepPath` to route perpendicular port pairs (`right -> top`, `bottom -> left`) via crisp L-bends and same-side ports (`top -> top`, `right -> right`) via a `28px` outer jetty.
+   - Added full `Straight` routing support on connected nodes, live magnetic target snapping (`drawio-connect-target-reticle`) when drawing new connections, all 6 arrowheads (`None`, `Arrow`, `Barbs`, `Triangle`, `Circle`, `Diamond`), **Flow Animation (marching ants)** (`edge.animated`), and **Reverse Line Direction**.
 
 ---
 

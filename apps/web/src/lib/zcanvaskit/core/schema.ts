@@ -182,6 +182,8 @@ export const ZCanvasEdgeSchema = z.object({
   targetOffset: z.number().optional(),
   /** Custom offset in pixels for orthogonal step or bezier line bend position. */
   stepOffset: z.number().optional(),
+  /** Custom intermediate Draw.io-style waypoints / bend coordinates along the connector. */
+  waypoints: z.array(ZCanvasPointSchema).optional(),
   label: z.string().optional(),
   /** Custom offset for the line label relative to its default midpoint along the line. */
   labelOffset: z.object({ x: z.number(), y: z.number() }).optional(),

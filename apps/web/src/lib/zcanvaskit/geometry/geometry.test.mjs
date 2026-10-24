@@ -687,4 +687,70 @@ test('resolveEdgeLabelPositions respects manual user labelOffset and avoids coll
   assert.notDeepEqual(p1, p2);
 });
 
+test('connected edge with style straight routes directly between anchor ports', () => {
+  const geo = computeEdgeGeometry(
+    { source: 'a', target: 'b', style: 'straight' },
+    twoNodeMap(),
+    'bezier'
+  );
+  assert.ok(geo);
+  assert.equal(geo.pathD, 'M 100 25 L 200 25');
+  assert.deepEqual(geo.midPoint, { x: 150, y: 25 });
+  assert.equal(geo.vertices.length, 2);
+  assert.equal(geo.segmentMidpoints.length, 1);
+  assert.deepEqual(geo.segmentMidpoints[0], { x: 150, y: 25, index: 0 });
+});
+
+test('computeOrthogonalStepPath routes perpendicular ports via a crisp Draw.io L-bend and same-side ports via a 28px jetty', () => {
+  // Perpendicular: right -> top
+  const lBend = computeEdgeGeometry(
+    { source: 'a', target: 'b', sourceHandle: 'right', targetHandle: 'top', style: 'step' },
+    new Map([
+      ['a', { x: 0, y: 0, width: 100, height: 50 }],
+      ['b', { x: 200, y: 100, width: 100, height: 50 }],
+    ])
+  );
+  assert.ok(lBend);
+  // p1 = (100, 25), p2 = (250, 100), L-corner = (250, 25)
+  assert.equal(lBend.pathD, 'M 100 25 L 250 25 L 250 100');
+  assert.deepEqual(lBend.midPoint, { x: 250, y: 25 });
+  assert.equal(lBend.vertices.length, 3);
+
+  // Same-side U-turn: top -> top (stepOffset === 0 uses 28px outer jetty)
+  const uTurn = computeEdgeGeometry(
+    { source: 'a', target: 'b', sourceHandle: 'top', targetHandle: 'top', style: 'step' },
+    twoNodeMap()
+  );
+  assert.ok(uTurn);
+  assert.equal(uTurn.pathD, 'M 50 0 L 50 -28 L 250 -28 L 250 0');
+  assert.deepEqual(uTurn.midPoint, { x: 150, y: -28 });
+  assert.equal(uTurn.vertices.length, 4);
+});
+
+test('custom waypoints route multi-segment polylines and curved Catmull-Rom splines', () => {
+  const waypoints = [
+    { x: 140, y: 25 },
+    { x: 140, y: 120 },
+    { x: 200, y: 120 },
+  ];
+  const stepGeo = computeEdgeGeometry(
+    { source: 'a', target: 'b', style: 'step', waypoints },
+    twoNodeMap()
+  );
+  assert.ok(stepGeo);
+  assert.equal(stepGeo.pathD, 'M 100 25 L 140 25 L 140 120 L 200 120 L 200 25');
+  assert.deepEqual(stepGeo.midPoint, { x: 140, y: 120 });
+  assert.equal(stepGeo.vertices.length, 5);
+  assert.equal(stepGeo.segmentMidpoints.length, 4);
+
+  const curveGeo = computeEdgeGeometry(
+    { source: 'a', target: 'b', style: 'bezier', waypoints },
+    twoNodeMap()
+  );
+  assert.ok(curveGeo);
+  assert.ok(curveGeo.pathD.includes(' C '));
+  assert.equal(curveGeo.vertices.length, 5);
+});
+
+
 

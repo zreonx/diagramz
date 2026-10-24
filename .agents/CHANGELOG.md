@@ -4,9 +4,15 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
-## [2026-10-24] — AWS Architecture Stencils & Draw.io-Grade Canvas Interactions
+## [2026-10-24] — AWS Architecture Stencils & Draw.io-Grade Line / Connector Management
 
 ### Added
+- **Draw.io Line & Connector Management** ([`geometry/index.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/index.ts), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [`ZCanvasContextMenu.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasContextMenu.tsx)):
+  - **Interactive Multi-Waypoints & Virtual Segment Midpoints (`edge.waypoints`)**: Every segment of a selected line displays a blue Draw.io virtual midpoint handle (`edge-virtual-midpoint-*`); dragging any segment midpoint inserts a new custom bend/waypoint. Existing custom waypoints (`edge-waypoint-*`) snap orthogonally (`x`/`y` alignment guides within `8px` of adjacent vertices) when dragged and can be deleted by double-clicking.
+  - **Smart Orthogonal L-Bends & U-Turn Jetties**: `computeOrthogonalStepPath` now routes perpendicular port pairs (e.g., `right -> top`, `bottom -> left`) via crisp 2-segment L-bends and same-side port pairs (`top -> top`, `right -> right`, etc.) via a `28px` outer jetty.
+  - **Full `Straight` Routing Support on Connected Nodes**: Added `Straight` alongside `Step` and `Curve` in `ZCanvasStylePanel` and context menu routing cycle (`Step -> Curve -> Straight`), and updated `computeEdgeGeometry` so connected nodes support direct straight/polyline routing.
+  - **Live Magnetic Target Snapping on New Connections**: Dragging a new connection wire from a shape anchor highlights hovered target shapes with a magnetic outline, pulsing target reticle (`drawio-connect-target-reticle`), and live `step` / `bezier` / `straight` path preview.
+  - **6 Arrowheads, Flow Animation & Reverse Direction**: Exposed all 6 arrowheads (`None`, `Arrow`, `Barbs`, `Triangle`, `Circle`, `Diamond`), **Flow Animation (marching ants)** toggle (`edge.animated`), **Reverse Line Direction**, and **Clear Waypoints** in `ZCanvasStylePanel` and `ZCanvasContextMenu`.
 - **26 AWS Architecture Service Stencils** ([`tech-icons.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [`registry.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/registry.ts), [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx)):
   - Added 26 vector AWS service icons across Compute (`EC2`, `Lambda`, `ECS`, `EKS`, `Fargate`), Storage (`S3`, `EBS`, `EFS`), Databases (`RDS`, `DynamoDB`, `Aurora`, `ElastiCache`), Networking (`VPC`, `CloudFront`, `Route 53`, `API Gateway`, `ELB`), Integration (`SQS`, `SNS`, `EventBridge`, `Step Functions`), and Security/Observability (`IAM`, `Cognito`, `CloudWatch`, `KMS`, `WAF & Shield`) with authentic AWS brand colors.
   - Added a dedicated **AWS** tab in [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx) and exposed `AWS (Amazon Web Services)` inside the main Architecture tab and Command Palette (`Ctrl+K`).

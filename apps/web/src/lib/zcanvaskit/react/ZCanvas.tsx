@@ -449,8 +449,8 @@ export interface ZCanvasProps {
    * own defaults when nothing is supplied, so it stands alone.
    */
   renderers?: ZCanvasRenderers;
-  edgeRouting?: 'bezier' | 'step';
-  onEdgeRoutingChange?: (routing: 'bezier' | 'step') => void;
+  edgeRouting?: ZCanvasEdgeRouting;
+  onEdgeRoutingChange?: (routing: ZCanvasEdgeRouting) => void;
   onNodeDoubleClick?: (node: ZCanvasNode) => void;
 }
 
@@ -586,7 +586,7 @@ export function ZCanvas({
   );
 
   // Styling & Routing Options
-  const [edgeStyle, setEdgeStyle] = useState<'bezier' | 'step'>(propEdgeRouting || 'bezier');
+  const [edgeStyle, setEdgeStyle] = useState<ZCanvasEdgeRouting>(propEdgeRouting || 'bezier');
 
   // Synchronize canvas line routing when toggled from header menu
   useEffect(() => {
@@ -781,11 +781,14 @@ export function ZCanvas({
   } | null>(null);
   const edgeDragRef = useRef<{
     edgeId: string;
-    mode: 'none' | 'move' | 'source' | 'target' | 'position';
+    mode: 'none' | 'move' | 'source' | 'target' | 'position' | 'waypoint';
     startPoint: ZCanvasPoint;
     origin: { p1: ZCanvasPoint; p2: ZCanvasPoint };
     originStepOffset?: number;
     currentStepOffset?: number;
+    waypointIndex?: number;
+    originWaypoints?: ZCanvasPoint[];
+    currentWaypoints?: ZCanvasPoint[];
     sourcePos?: ZCanvasHandlePosition;
     targetPos?: ZCanvasHandlePosition;
     edgeStyle?: ZCanvasEdgeRouting;
@@ -2237,6 +2240,59 @@ export function ZCanvas({
     if (edgeDrag && edgeDrag.mode !== 'none' && !readOnly) {
       const pt = getCanvasPoint(e.clientX, e.clientY);
 
+      if (edgeDrag.mode === 'waypoint' && edgeDrag.originWaypoints && edgeDrag.waypointIndex !== undefined) {
+        const dx = pt.x - edgeDrag.startPoint.x;
+        const dy = pt.y - edgeDrag.startPoint.y;
+
+        if (!edgeDrag.moved && Math.hypot(dx, dy) > CLICK_SLOP_PX) {
+          edgeDrag.moved = true;
+        }
+
+        if (!edgeDrag.moved) return;
+
+        const wpIdx = edgeDrag.waypointIndex;
+        const origWp = edgeDrag.originWaypoints[wpIdx];
+        if (!origWp) return;
+
+        let nextX = snap(origWp.x + dx);
+        let nextY = snap(origWp.y + dy);
+
+        // Draw.io orthogonal alignment snapping against neighboring vertices (within 8px)
+        const prevVertex = wpIdx === 0 ? edgeDrag.origin.p1 : edgeDrag.originWaypoints[wpIdx - 1];
+        const nextVertex =
+          wpIdx === edgeDrag.originWaypoints.length - 1
+            ? edgeDrag.origin.p2
+            : edgeDrag.originWaypoints[wpIdx + 1];
+        const guides: AlignmentGuide[] = [];
+
+        if (prevVertex && Math.abs(nextX - prevVertex.x) < 8) {
+          nextX = prevVertex.x;
+          guides.push({ type: 'vertical', coordinate: prevVertex.x });
+        } else if (nextVertex && Math.abs(nextX - nextVertex.x) < 8) {
+          nextX = nextVertex.x;
+          guides.push({ type: 'vertical', coordinate: nextVertex.x });
+        }
+
+        if (prevVertex && Math.abs(nextY - prevVertex.y) < 8) {
+          nextY = prevVertex.y;
+          guides.push({ type: 'horizontal', coordinate: prevVertex.y });
+        } else if (nextVertex && Math.abs(nextY - nextVertex.y) < 8) {
+          nextY = nextVertex.y;
+          guides.push({ type: 'horizontal', coordinate: nextVertex.y });
+        }
+
+        setActiveGuides(guides);
+
+        const nextWaypoints = edgeDrag.originWaypoints.map((w, idx) =>
+          idx === wpIdx ? { x: nextX, y: nextY } : w
+        );
+        edgeDrag.currentWaypoints = nextWaypoints;
+        setEdges((prev) =>
+          prev.map((ed) => (ed.id === edgeDrag.edgeId ? { ...ed, waypoints: nextWaypoints } : ed))
+        );
+        return;
+      }
+
       if (edgeDrag.mode === 'position') {
         const dx = pt.x - edgeDrag.startPoint.x;
         const dy = pt.y - edgeDrag.startPoint.y;
@@ -2853,6 +2909,15 @@ export function ZCanvas({
       edgeDragRef.current = null;
       edgeDraftRef.current = null;
       setEdgeDraft(null);
+
+      if (dragMode === 'waypoint') {
+        if (edgeDrag.moved && edgeDrag.currentWaypoints) {
+          flushStyleBaseline();
+        } else {
+          gestureBaselineRef.current = null;
+        }
+        return;
+      }
 
       if (dragMode === 'position') {
         flushStyleBaseline();
@@ -3625,6 +3690,82 @@ export function ZCanvas({
     };
   };
 
+  // Drag an existing custom waypoint handle
+  const handleWaypointMouseDown = (
+    e: React.MouseEvent,
+    edge: ZCanvasEdge,
+    waypointIndex: number,
+    geo: { p1: ZCanvasPoint; p2: ZCanvasPoint }
+  ) => {
+    if (readOnly || activeTool !== 'select' || e.button !== 0) return;
+    e.stopPropagation();
+
+    setSelectedEdgeIds([edge.id]);
+    setSelectedNodeIds([]);
+    setSelectedStrokeIds([]);
+    setPrimarySelectedNodeId(null);
+
+    if (isLocked(edge) || !edge.waypoints || !edge.waypoints[waypointIndex]) return;
+
+    const originWaypoints = edge.waypoints.map((w) => ({ ...w }));
+    beginStylePreview();
+    edgeDragRef.current = {
+      edgeId: edge.id,
+      mode: 'waypoint',
+      startPoint: getCanvasPoint(e.clientX, e.clientY),
+      origin: { p1: geo.p1, p2: geo.p2 },
+      waypointIndex,
+      originWaypoints,
+      currentWaypoints: originWaypoints,
+      edgeStyle: edge.style ?? edgeStyle,
+      moved: false,
+    };
+  };
+
+  // Drag a Draw.io virtual segment midpoint handle to insert and move a new bend/waypoint
+  const handleVirtualMidpointMouseDown = (
+    e: React.MouseEvent,
+    edge: ZCanvasEdge,
+    segmentIndex: number,
+    midPt: ZCanvasPoint,
+    geo: { p1: ZCanvasPoint; p2: ZCanvasPoint; vertices: ZCanvasPoint[] }
+  ) => {
+    if (readOnly || activeTool !== 'select' || e.button !== 0) return;
+    e.stopPropagation();
+
+    setSelectedEdgeIds([edge.id]);
+    setSelectedNodeIds([]);
+    setSelectedStrokeIds([]);
+    setPrimarySelectedNodeId(null);
+
+    if (isLocked(edge)) return;
+
+    const baseInterior =
+      edge.waypoints && edge.waypoints.length > 0
+        ? edge.waypoints.map((w) => ({ ...w }))
+        : geo.vertices.slice(1, -1).map((w) => ({ ...w }));
+
+    const insertIdx = Math.max(0, Math.min(baseInterior.length, segmentIndex));
+    const originWaypoints = [
+      ...baseInterior.slice(0, insertIdx),
+      { x: Math.round(midPt.x), y: Math.round(midPt.y) },
+      ...baseInterior.slice(insertIdx),
+    ];
+
+    beginStylePreview();
+    edgeDragRef.current = {
+      edgeId: edge.id,
+      mode: 'waypoint',
+      startPoint: getCanvasPoint(e.clientX, e.clientY),
+      origin: { p1: geo.p1, p2: geo.p2 },
+      waypointIndex: insertIdx,
+      originWaypoints,
+      currentWaypoints: originWaypoints,
+      edgeStyle: edge.style ?? edgeStyle,
+      moved: false,
+    };
+  };
+
   // Edge Label Drag Start (slide along / near the line)
   const handleEdgeLabelMouseDown = (
     e: React.MouseEvent,
@@ -4180,10 +4321,9 @@ export function ZCanvas({
         );
       }
 
-      const finalStyle = style === 'straight' ? 'bezier' : style;
-      setEdgeStyle(finalStyle);
-      handleUpdateSettings({ edgeRouting: finalStyle });
-      onEdgeRoutingChange?.(finalStyle);
+      setEdgeStyle(style);
+      handleUpdateSettings({ edgeRouting: style });
+      onEdgeRoutingChange?.(style);
     },
     [readOnly, nodes, edges, strokes, commitState, selectedEdgeId, handleUpdateSettings, isLockedEdge, onEdgeRoutingChange]
   );
@@ -4826,24 +4966,68 @@ export function ZCanvas({
             );
           })()}
 
-        {/* Dynamic Connecting Line */}
+        {/* Dynamic Connecting Line with Draw.io Magnetic Target Snapping */}
         {connectingSourceId && connectLinePos && (
           (() => {
             const srcNode = nodeMap.get(connectingSourceId);
             if (!srcNode) return null;
             const srcPt = getHandlePoint(srcNode, connectingHandlePos, rotationOf(srcNode), connectingSourceOffset);
-            const { pathD } =
-              edgeStyle === 'step'
-                ? computeOrthogonalStepPath(srcPt, connectLinePos, connectingHandlePos, 'left')
-                : computeSmoothBezierPath(srcPt, connectLinePos, connectingHandlePos, 'left');
+            const hoveredTarget =
+              findNodeAt(connectLinePos, { allowBoundary: false }) ??
+              findNodeAt(connectLinePos, { allowBoundary: true, boundaryThreshold: 14 });
+            const snapRes =
+              hoveredTarget && hoveredTarget.id !== connectingSourceId
+                ? getNearestSideAndOffset(hoveredTarget, connectLinePos)
+                : null;
+            const endPt = snapRes ? snapRes.point : connectLinePos;
+            const tgtHandle = snapRes ? snapRes.side : 'left';
+            const pathD =
+              edgeStyle === 'straight'
+                ? `M ${srcPt.x} ${srcPt.y} L ${endPt.x} ${endPt.y}`
+                : edgeStyle === 'step'
+                  ? computeOrthogonalStepPath(srcPt, endPt, connectingHandlePos, tgtHandle).pathD
+                  : computeSmoothBezierPath(srcPt, endPt, connectingHandlePos, tgtHandle).pathD;
             return (
-              <path
-                d={pathD}
-                stroke="#60a5fa"
-                strokeWidth={2.5}
-                strokeDasharray="6 6"
-                fill="none"
-              />
+              <g className="pointer-events-none select-none">
+                <path
+                  d={pathD}
+                  stroke="#60a5fa"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 6"
+                  fill="none"
+                  markerEnd="url(#zcanvas-head-arrow)"
+                />
+                {snapRes && hoveredTarget && (
+                  <g data-testid="drawio-connect-target-reticle">
+                    <rect
+                      x={hoveredTarget.x - 3}
+                      y={hoveredTarget.y - 3}
+                      width={hoveredTarget.width + 6}
+                      height={hoveredTarget.height + 6}
+                      rx={8}
+                      fill={isDark ? '#38BDF80d' : '#0284C70a'}
+                      stroke={isDark ? '#38BDF8' : '#0284C7'}
+                      strokeWidth={1.5 / viewport.zoom}
+                      strokeDasharray={`${5 / viewport.zoom} ${4 / viewport.zoom}`}
+                    />
+                    <circle
+                      cx={endPt.x}
+                      cy={endPt.y}
+                      r={8.5 / viewport.zoom}
+                      fill={isDark ? '#38BDF833' : '#0284C733'}
+                      stroke={isDark ? '#38BDF8' : '#0284C7'}
+                      strokeWidth={2 / viewport.zoom}
+                      className="animate-pulse"
+                    />
+                    <circle
+                      cx={endPt.x}
+                      cy={endPt.y}
+                      r={3 / viewport.zoom}
+                      fill={isDark ? '#38BDF8' : '#0284C7'}
+                    />
+                  </g>
+                )}
+              </g>
             );
           })()
         )}
@@ -4877,7 +5061,7 @@ export function ZCanvas({
 
           const isStraight = (edge.style ?? edgeStyle) === 'straight' || Boolean(draft);
           const computedPathD =
-            isStraight && edgeEffectiveRoughness > 0
+            isStraight && edgeEffectiveRoughness > 0 && (!edge.waypoints || edge.waypoints.length === 0)
               ? getSketchEdgePath(p1, p2, edge.seed || edge.id, edgeEffectiveRoughness)
               : draft
               ? `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`
@@ -4966,14 +5150,28 @@ export function ZCanvas({
                 stroke={isSelected ? selectedEdgeColor : edge.color || defaultEdgeColor}
                 strokeWidth={edgeStrokeWidth}
                 fill="none"
-                strokeDasharray={getStrokeDashArray(edge.strokeStyle, edgeStrokeWidth)}
+                strokeDasharray={
+                  edge.animated
+                    ? getStrokeDashArray(edge.strokeStyle, edgeStrokeWidth) || '8 6'
+                    : getStrokeDashArray(edge.strokeStyle, edgeStrokeWidth)
+                }
                 strokeLinecap={sharp ? 'butt' : 'round'}
                 strokeLinejoin={sharp ? 'miter' : 'round'}
                 markerStart={arrowheadMarkerUrl(startHead)}
                 markerEnd={arrowheadMarkerUrl(endHead)}
                 opacity={edge.opacity ?? 1}
                 className="transition-colors duration-150"
-              />
+              >
+                {edge.animated && (
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    from="28"
+                    to="0"
+                    dur="0.9s"
+                    repeatCount="indefinite"
+                  />
+                )}
+              </path>
 
               {/* Connector Label (positioned at resolved non-colliding position or custom offset) */}
               {editingConnectionId === edge.id ? (
@@ -6752,6 +6950,93 @@ export function ZCanvas({
                 )}
               </g>
 
+              {/* Draw.io Virtual Segment Midpoint Handles (drag any segment midpoint to insert a new bend/waypoint) */}
+              {geo.segmentMidpoints.map((segMid) => {
+                // Avoid overlapping the primary center position handle or existing waypoints
+                const nearPrimaryMid =
+                  Math.hypot(segMid.x - geo.midPoint.x, segMid.y - geo.midPoint.y) < 10;
+                const nearExistingWaypoint = (selected.waypoints ?? []).some(
+                  (w) => Math.hypot(segMid.x - w.x, segMid.y - w.y) < 10
+                );
+                if (nearPrimaryMid || nearExistingWaypoint) return null;
+
+                return (
+                  <g
+                    key={`vmid-${segMid.index}`}
+                    className="group/vmid cursor-crosshair pointer-events-auto"
+                    onMouseDown={(e) =>
+                      handleVirtualMidpointMouseDown(e, selected, segMid.index, segMid, geo)
+                    }
+                  >
+                    <circle
+                      cx={segMid.x}
+                      cy={segMid.y}
+                      r={12 / viewport.zoom}
+                      fill="transparent"
+                    />
+                    <circle
+                      data-testid={`edge-virtual-midpoint-${segMid.index}`}
+                      cx={segMid.x}
+                      cy={segMid.y}
+                      r={4 / viewport.zoom}
+                      fill={isDark ? '#38BDF8' : '#0284C7'}
+                      stroke="#FFFFFF"
+                      strokeWidth={1.5 / viewport.zoom}
+                      opacity={0.6}
+                      className="transition-all duration-150 group-hover/vmid:opacity-100 group-hover/vmid:scale-125"
+                    >
+                      <title>Draw.io Segment Handle · Drag to insert a new bend / waypoint</title>
+                    </circle>
+                  </g>
+                );
+              })}
+
+              {/* Draw.io Custom Waypoint Handles (drag to move with orthogonal snapping · double-click to remove) */}
+              {(selected.waypoints ?? []).map((wp, wpIdx) => (
+                <g
+                  key={`wp-${wpIdx}`}
+                  className="group/custom-wp cursor-move pointer-events-auto"
+                  onMouseDown={(e) => handleWaypointMouseDown(e, selected, wpIdx, geo)}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    const remaining = (selected.waypoints ?? []).filter((_, idx) => idx !== wpIdx);
+                    const updatedEdges = edges.map((ed) =>
+                      ed.id === selected.id
+                        ? { ...ed, waypoints: remaining.length > 0 ? remaining : undefined }
+                        : ed
+                    );
+                    setEdges(updatedEdges);
+                    commitState(nodes, updatedEdges, strokes);
+                  }}
+                >
+                  <circle
+                    cx={wp.x}
+                    cy={wp.y}
+                    r={14 / viewport.zoom}
+                    fill="transparent"
+                  />
+                  <circle
+                    data-testid={`edge-waypoint-${wpIdx}`}
+                    cx={wp.x}
+                    cy={wp.y}
+                    r={5.5 / viewport.zoom}
+                    fill="#FFFFFF"
+                    stroke={isDark ? '#F59E0B' : '#D97706'}
+                    strokeWidth={2 / viewport.zoom}
+                    className="transition-colors duration-150 group-hover/custom-wp:stroke-amber-400 shadow-md"
+                  >
+                    <title>Draw.io Waypoint #{wpIdx + 1} · Drag to move (snaps orthogonally) · Double-click to delete</title>
+                  </circle>
+                  <circle
+                    cx={wp.x}
+                    cy={wp.y}
+                    r={2.5 / viewport.zoom}
+                    fill={isDark ? '#F59E0B' : '#D97706'}
+                    className="pointer-events-none"
+                  />
+                </g>
+              ))}
+
               {/* Draw.io Style Waypoint / Line Position Handle */}
               <g
                 className={cn(
@@ -6760,10 +7045,22 @@ export function ZCanvas({
                     ? (geo.sourcePos === 'left' || geo.sourcePos === 'right' ? 'cursor-ew-resize' : 'cursor-ns-resize')
                     : 'cursor-move'
                 )}
-                onMouseDown={(e) => handleLinePositionMouseDown(e, selected, geo)}
+                onMouseDown={(e) =>
+                  selected.style === 'straight' || (selected.waypoints && selected.waypoints.length > 0)
+                    ? handleVirtualMidpointMouseDown(
+                        e,
+                        selected,
+                        Math.floor((selected.waypoints?.length ?? 0) / 2),
+                        geo.midPoint,
+                        geo
+                      )
+                    : handleLinePositionMouseDown(e, selected, geo)
+                }
                 onDoubleClick={(e) => {
                   e.stopPropagation();
-                  const resetEdges = edges.map((ed) => (ed.id === selected.id ? { ...ed, stepOffset: 0 } : ed));
+                  const resetEdges = edges.map((ed) =>
+                    ed.id === selected.id ? { ...ed, stepOffset: 0, waypoints: undefined } : ed
+                  );
                   setEdges(resetEdges);
                   commitState(nodes, resetEdges, strokes);
                 }}
@@ -6784,9 +7081,19 @@ export function ZCanvas({
                   stroke={isDark ? '#38BDF8' : '#0284C7'}
                   strokeWidth={2 / viewport.zoom}
                   className="transition-colors duration-150 group-hover/waypoint:stroke-sky-400 group-hover/waypoint:stroke-[2.5px] shadow-md"
-                  onMouseDown={(e) => handleLinePositionMouseDown(e, selected, geo)}
+                  onMouseDown={(e) =>
+                    selected.style === 'straight' || (selected.waypoints && selected.waypoints.length > 0)
+                      ? handleVirtualMidpointMouseDown(
+                          e,
+                          selected,
+                          Math.floor((selected.waypoints?.length ?? 0) / 2),
+                          geo.midPoint,
+                          geo
+                        )
+                      : handleLinePositionMouseDown(e, selected, geo)
+                  }
                 >
-                  <title>Draw.io Waypoint · Drag to adjust line position · Double-click to reset to center</title>
+                  <title>Draw.io Waypoint · Drag to adjust line position or add bend · Double-click to reset to center</title>
                 </circle>
                 <circle
                   cx={geo.midPoint.x}
@@ -7063,17 +7370,14 @@ export function ZCanvas({
         canRedo={canRedo}
         onToggleEdgeStyle={() => {
           if (selectedEdgeIds.length === 0) return;
-          // The menu acts on what is selected, and by now that can be several
-          // connectors. They all take the routing of the one the panel is
-          // showing, flipped — so a set picked together stays uniform instead
-          // of being half straight and half stepped.
           const primary = edges.find((e) => e.id === selectedEdgeId);
           if (!primary) return;
-          const nextStyle = primary.style === 'step' ? 'bezier' : 'step';
-          // A locked connector keeps the routing it was locked with — the same
-          // rule the style panel's own routing control follows. The rest of the
-          // selection still takes the new one: a lock on one member is not a
-          // reason for the others to ignore what was asked.
+          const nextStyle: ZCanvasEdgeRouting =
+            primary.style === 'step'
+              ? 'bezier'
+              : primary.style === 'bezier'
+                ? 'straight'
+                : 'step';
           const toggled = new Set(movable(selectedEdgeIds));
           if (toggled.size === 0) return;
           commitState(
@@ -7083,6 +7387,33 @@ export function ZCanvas({
           );
           setEdgeStyle(nextStyle);
           onEdgeRoutingChange?.(nextStyle);
+        }}
+        onReverseEdgeDirection={() => {
+          if (!selectedEdgeId) return;
+          const edge = edges.find((e) => e.id === selectedEdgeId);
+          if (!edge || edge.locked) return;
+          commitState(
+            nodes,
+            edges.map((e) =>
+              e.id === selectedEdgeId
+                ? {
+                    ...e,
+                    source: e.target,
+                    target: e.source,
+                    sourceHandle: e.targetHandle,
+                    targetHandle: e.sourceHandle,
+                    sourceOffset: e.targetOffset,
+                    targetOffset: e.sourceOffset,
+                    sourcePoint: e.targetPoint,
+                    targetPoint: e.sourcePoint,
+                    startArrowhead: e.endArrowhead ?? 'arrow',
+                    endArrowhead: e.startArrowhead ?? 'none',
+                    waypoints: e.waypoints ? [...e.waypoints].reverse() : undefined,
+                  }
+                : e
+            ),
+            strokes
+          );
         }}
         onResetEdgeLabel={() => {
           if (!selectedEdgeId) return;
@@ -7100,7 +7431,9 @@ export function ZCanvas({
           if (!edge || edge.locked) return;
           commitState(
             nodes,
-            edges.map((e) => (e.id === selectedEdgeId ? { ...e, stepOffset: 0 } : e)),
+            edges.map((e) =>
+              e.id === selectedEdgeId ? { ...e, stepOffset: 0, waypoints: undefined } : e
+            ),
             strokes
           );
         }}

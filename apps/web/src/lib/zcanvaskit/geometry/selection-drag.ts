@@ -131,7 +131,19 @@ export function beginSelectionDrag(
   }
 
   for (const edge of doc.edges) {
-    if (edgeIds.has(edge.id) && !isLocked(edge)) snapshot.edges.set(edge.id, edge);
+    if (edgeIds.has(edge.id) && !isLocked(edge)) {
+      snapshot.edges.set(edge.id, edge);
+    } else if (
+      !isLocked(edge) &&
+      edge.waypoints &&
+      edge.waypoints.length > 0 &&
+      edge.source &&
+      edge.target &&
+      snapshot.nodes.has(edge.source) &&
+      snapshot.nodes.has(edge.target)
+    ) {
+      snapshot.edges.set(edge.id, edge);
+    }
   }
   for (const stroke of doc.strokes) {
     if (strokeIds.has(stroke.id) && !isLocked(stroke)) snapshot.strokes.set(stroke.id, stroke);
@@ -185,11 +197,33 @@ export function translateSelection(
     }),
     edges: doc.edges.map((edge) => {
       const origin = snapshot.edges.get(edge.id);
+      if (!origin) return edge;
+
+      const translatedWaypoints =
+        origin.waypoints && origin.waypoints.length > 0
+          ? origin.waypoints.map((wp) => ({ x: wp.x + dx, y: wp.y + dy }))
+          : undefined;
+
       // An attached connector has no endpoint of its own to shift: where it
       // starts and ends is decided by the shapes it is anchored to, which have
       // moved themselves. Only a connector carrying both of its own points is
-      // geometry the drag can translate.
-      if (!origin || !isFreeConnector(origin)) return edge;
+      // geometry the drag can translate, unless both anchored nodes are moving
+      // together and the edge carries custom intermediate waypoints.
+      if (!isFreeConnector(origin)) {
+        if (
+          translatedWaypoints &&
+          origin.source &&
+          origin.target &&
+          snapshot.nodes.has(origin.source) &&
+          snapshot.nodes.has(origin.target)
+        ) {
+          return {
+            ...edge,
+            waypoints: translatedWaypoints,
+          };
+        }
+        return edge;
+      }
 
       return {
         ...edge,
@@ -201,6 +235,7 @@ export function translateSelection(
           x: origin.targetPoint!.x + dx,
           y: origin.targetPoint!.y + dy,
         },
+        ...(translatedWaypoints ? { waypoints: translatedWaypoints } : {}),
       };
     }),
     strokes: doc.strokes.map((stroke) => {
