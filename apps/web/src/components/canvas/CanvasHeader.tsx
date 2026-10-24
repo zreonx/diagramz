@@ -25,11 +25,21 @@ import {
   CopyPlus,
   Upload,
   Presentation,
+  MoreHorizontal,
+  Keyboard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -459,7 +469,55 @@ export function CanvasHeader({
           </div>
         )}
 
-        {/* Presentation Mode Toggle */}
+        {/* Cohesive Segmented Panel Group: Stencils, AI Architect, Mermaid Code */}
+        <div className="flex items-center p-0.5 rounded-xl bg-muted/60 border border-border/60 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => togglePanel('library')}
+            className={cn(
+              'h-7 px-2.5 text-xs gap-1.5 rounded-lg font-medium flex items-center transition-all cursor-pointer',
+              panelMode === 'library'
+                ? 'bg-background text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            )}
+            title="Software Architecture & Cloud Stencils"
+          >
+            <Boxes className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="hidden xl:inline">Stencils</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => togglePanel('ai')}
+            className={cn(
+              'h-7 px-2.5 text-xs gap-1.5 rounded-lg font-medium flex items-center transition-all cursor-pointer',
+              panelMode === 'ai'
+                ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300 shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            )}
+            title="AI Architect Assistant"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+            <span className="hidden xl:inline">AI Assistant</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => togglePanel('mermaid')}
+            className={cn(
+              'h-7 px-2.5 text-xs gap-1.5 rounded-lg font-medium flex items-center transition-all cursor-pointer',
+              panelMode === 'mermaid'
+                ? 'bg-background text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            )}
+            title="Mermaid Live Code Editor"
+          >
+            <Code2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden xl:inline">Code</span>
+          </button>
+        </div>
+
+        {/* Presentation Mode */}
         <Button
           size="sm"
           variant="ghost"
@@ -472,103 +530,7 @@ export function CanvasHeader({
           title="Full-Screen Presentation Mode (F5)"
         >
           <Presentation className="w-3.5 h-3.5 text-rose-500" />
-          <span className="hidden xl:inline">Present</span>
-        </Button>
-
-        {/* Auto Layout / Beautify Architecture */}
-        {onBeautifyLayout && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onBeautifyLayout}
-            className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3 text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all cursor-pointer"
-            title="Auto-align and beautify diagram architecture layout"
-          >
-            <Wand2 className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden xl:inline">Auto Layout</span>
-          </Button>
-        )}
-
-        {/* Component Libraries Toggle */}
-        <Button
-          size="sm"
-          variant={panelMode === 'library' ? 'secondary' : 'ghost'}
-          onClick={() => togglePanel('library')}
-          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3"
-          title="Browse & insert software architecture & cloud components"
-        >
-          <Boxes className="w-3.5 h-3.5 text-blue-500" />
-          <span className="hidden xl:inline">Components</span>
-        </Button>
-
-        {/* Mermaid Code Mode Toggle */}
-        <Button
-          size="sm"
-          variant={panelMode === 'mermaid' ? 'secondary' : 'ghost'}
-          onClick={() => togglePanel('mermaid')}
-          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3"
-          title="Mermaid Live Code Editor"
-        >
-          <Code2 className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline">Code</span>
-        </Button>
-
-        {/* AI Assistant Mode Toggle */}
-        <Button
-          size="sm"
-          variant={panelMode === 'ai' ? 'secondary' : 'outline'}
-          onClick={() => togglePanel('ai')}
-          className={cn(
-            'h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-3 transition-all',
-            panelMode === 'ai'
-              ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30'
-              : 'border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-300 hover:bg-purple-500/15',
-          )}
-          title="AI Architect Assistant"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-          <span className="hidden lg:inline">AI Architect</span>
-        </Button>
-
-        {/* Version History Button */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setShowHistoryModal(true)}
-          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/70 cursor-pointer"
-          title="Version History & Named Checkpoints"
-        >
-          <History className="w-3.5 h-3.5 text-emerald-500" />
-          <span className="hidden 2xl:inline">History</span>
-        </Button>
-
-        {/* Duplicate Diagram Button */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleDuplicateDiagram}
-          disabled={isDuplicating}
-          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/70 cursor-pointer"
-          title="Duplicate this diagram"
-        >
-          {isDuplicating ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <CopyPlus className="w-3.5 h-3.5" />
-          )}
-          <span className="hidden 2xl:inline">Duplicate</span>
-        </Button>
-
-        {/* Share Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setShowShareModal(true)}
-          className="h-8 text-xs gap-1.5 rounded-lg border-border/60 px-2 sm:px-3"
-          title="Share diagram"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Share</span>
+          <span className="hidden 2xl:inline">Present</span>
         </Button>
 
         {/* Export Button */}
@@ -576,12 +538,84 @@ export function CanvasHeader({
           size="sm"
           variant="outline"
           onClick={() => setShowExportModal(true)}
-          className="h-8 text-xs gap-1.5 rounded-lg border-border/60 px-2 sm:px-3"
-          title="Export or Import diagram"
+          className="h-8 text-xs gap-1.5 rounded-lg border-border/70 px-2 sm:px-3 font-medium cursor-pointer"
+          title="Export diagram as PNG, SVG, PDF or .diagramz.json"
         >
           <Download className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Export</span>
         </Button>
+
+        {/* Primary Share Button */}
+        <Button
+          size="sm"
+          onClick={() => setShowShareModal(true)}
+          className="h-8 text-xs gap-1.5 rounded-lg px-3 bg-primary text-primary-foreground font-semibold shadow-xs hover:bg-primary/90 cursor-pointer"
+          title="Share diagram or copy public link"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          <span>Share</span>
+        </Button>
+
+        {/* Figma-Style More Diagram Actions Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="size-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 cursor-pointer shrink-0"
+              title="More diagram actions"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-border/80 bg-popover/95 backdrop-blur-2xl">
+            {onBeautifyLayout && (
+              <DropdownMenuItem onClick={onBeautifyLayout} className="gap-2.5 cursor-pointer text-xs rounded-lg py-2">
+                <Wand2 className="w-4 h-4 text-amber-500" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Auto Layout</span>
+                  <span className="text-[10px] text-muted-foreground">Auto-align architecture nodes</span>
+                </div>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setShowHistoryModal(true)} className="gap-2.5 cursor-pointer text-xs rounded-lg py-2">
+              <History className="w-4 h-4 text-emerald-500" />
+              <div className="flex flex-col">
+                <span className="font-medium">Version History</span>
+                <span className="text-[10px] text-muted-foreground">Checkpoints & restore points</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDuplicateDiagram} disabled={isDuplicating} className="gap-2.5 cursor-pointer text-xs rounded-lg py-2">
+              {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin text-sky-500" /> : <CopyPlus className="w-4 h-4 text-sky-500" />}
+              <div className="flex flex-col">
+                <span className="font-medium">Duplicate Diagram</span>
+                <span className="text-[10px] text-muted-foreground">Create identical copy</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onClick={() => jsonFileInputRef.current?.click()} className="gap-2.5 cursor-pointer text-xs rounded-lg py-2">
+              <Upload className="w-4 h-4 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span className="font-medium">Import JSON Backup</span>
+                <span className="text-[10px] text-muted-foreground">Restore .diagramz.json</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+                }
+              }}
+              className="gap-2.5 cursor-pointer text-xs rounded-lg py-2"
+            >
+              <Keyboard className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-between w-full">
+                <span className="font-medium">Command Palette</span>
+                <span className="text-[10px] font-mono text-muted-foreground">Ctrl+K</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Theme toggle */}
         <Button

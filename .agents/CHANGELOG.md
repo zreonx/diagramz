@@ -4,6 +4,32 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-25] — Figma-Grade Header Ergonomics, Canvas & Page Properties Inspector, Collapsible Inspector Dock & Bottom Status HUD
+
+### Added
+- **Figma-Grade Header Hierarchy & More Actions Dropdown** ([`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx)):
+  - Reorganized header controls into clean semantic clusters:
+    - **Unified Segmented Panel Group**: `[ ⊞ Stencils | ✦ AI Assistant | ⌨ Code ]` in a pill toggle container.
+    - **Primary Actions**: Prominent primary `Share` button (brand accent with icon), `Export` button, and full-screen `Present (F5)` button.
+    - **`···` (More Actions) Dropdown**: Consolidated secondary actions into a Radix dropdown menu: `Auto Layout Architecture (Wand2)`, `Version History & Checkpoints (History)`, `Duplicate Diagram (CopyPlus)`, `Import JSON Backup (Upload)`, and `Command Palette (Ctrl+K)`.
+    - Eliminates header button wrapping on laptops and screens down to 1024px.
+- **Canvas & Page Properties Inspector When Unselected** ([`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - When no shape or connector is selected, the inspector panel no longer disappears; it smoothly transitions to the **Canvas & Page Properties** inspector:
+    - **Active Sheet / Page Card**: Live sheet name with inline rename on click, plus node and connector statistics (`N nodes · M edges`).
+    - **Grid Style Selector**: 4-pill instant toggle (`Dots`, `Mesh`, `Cross`, `None`).
+    - **Canvas Background Tone Swatches**: Clean Default (`#ffffff` / dark), Warm Slate (`#faf8f5`), Blueprint Navy (`#0c1524`), Charcoal (`#121214`).
+    - **Snapping & Guides Controls**: Toggles for `Snap to Grid`, `Smart Alignment Guides`, and `Show Minimap`.
+    - **Auto-Layout Quick Action**: 1-click button to trigger `beautifyArchitectureLayout`.
+- **Collapsible Inspector & Dynamic Drawer Collision Prevention** ([`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`DiagramCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx)):
+  - Added a Collapse / Minimize button (`PanelRightClose`) on the inspector header to minimize into a floating `[ Sliders Inspector ]` tab, maximizing visual drawing area.
+  - Added `rightOffset` prop to `ZCanvas` wired to `DiagramCanvas.tsx`: when the 384px AI Assistant or Mermaid Code editor drawer is open, `ZCanvasStylePanel` glides smoothly to `right-[400px]` (`rightOffset + 16px`), completely eliminating panel overlap and collision.
+- **Interactive Bottom Canvas Status HUD** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Subtle floating HUD pill centered between sheet tabs and zoom dock:
+    - When elements are selected: displays live selection count and dimensions (`1 item selected · 140 × 80px`).
+    - When unselected: displays keyboard shortcut hints (`Space Pan • / Quick Add • L Laser • F5 Present`).
+
+---
+
 ## [2026-10-24] — Quick Connect Picker, Smart Alignment Guidelines, Crossing Line Jumps, Multi-Point Labels, Cloud Stencils (K8s, GCP, Azure), Presentation Mode & Multi-Page Workbook Sheets
 
 ### Added

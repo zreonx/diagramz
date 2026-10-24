@@ -1,6 +1,6 @@
 # Diagramz Session Handoff (`HANDOFF.md`)
 
-> **Last Updated**: 2026-10-24
+> **Last Updated**: 2026-10-25
 > **Branch**: `main`
 > **Test Suite Status**: 581 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
@@ -20,7 +20,16 @@
 
 ## 2. Recently Completed Work
 
-1. **Quick Connect Picker (Draw.io / Eraser Drop Wire Popover)**:
+1. **Figma-Grade Header Hierarchy & More Actions Dropdown**:
+   - Reorganized header controls into clean semantic clusters: segmented pill for `[ ⊞ Stencils | ✦ AI Assistant | ⌨ Code ]`, elevated primary brand `Share` button, and consolidated secondary actions (`Auto Layout`, `Version History`, `Duplicate`, `Import JSON`) inside a Figma-style `···` (More) dropdown menu.
+2. **Canvas & Page Properties Inspector**:
+   - When no elements are selected, `ZCanvasStylePanel` displays active sheet properties (inline sheet name renaming, live node/edge statistics), instant 4-pill grid selector (`Dots`, `Mesh`, `Cross`, `None`), 4 background tone swatches (`Clean`, `Warm`, `Blueprint`, `Charcoal`), snapping and smart guides switches, and 1-click Auto Layout.
+3. **Collapsible Inspector & Dynamic Drawer Collision Prevention**:
+   - Added `PanelRightClose` minimize button to collapse the inspector into a compact `[ Sliders Inspector ]` tab.
+   - Connected `rightOffset` from `DiagramCanvas.tsx` to `ZCanvas`: when the 384px AI Assistant or Mermaid Editor drawer opens, the inspector panel glides smoothly to `right-[400px]`, eliminating panel overlap.
+4. **Bottom Status & Context HUD**:
+   - Added floating context HUD centered above the bottom bar, showing live selection stats (`1 item selected · 140 × 80px`) or keyboard shortcuts (`Space Pan • / Quick Add • L Laser • F5 Present`).
+5. **Quick Connect Picker (Draw.io / Eraser Drop Wire Popover)**:
    - When a user pulls a connector wire from an anchor handle and drops it on empty canvas space, a floating radial popover appears right at the drop point with 1-click presets: Clone Source (`1`), Step / Rectangle (`2`), Decision / Diamond (`3`), Service Card (`4`), Database Table (`5`), State / Circle (`6`), and Text Note (`7`).
    - Automatically connects the edge to the newly spawned node and focuses inline label editing.
 2. **Smart Alignment Guidelines & Dynamic Spacing Snapping**:

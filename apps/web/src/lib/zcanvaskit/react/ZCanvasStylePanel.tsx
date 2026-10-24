@@ -18,9 +18,17 @@ import {
   Ungroup as UngroupIcon,
   Scaling,
   CornerUpLeft,
+  CircleDot,
+  Grid3X3,
+  Plus,
+  Square,
+  Wand2,
+  Sliders,
+  PanelRightClose,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZCanvasDrawingStroke, ZCanvasEdge, ZCanvasEdgeRouting, ZCanvasNode, ZCanvasNodeType } from '../core/schema';
+import type { ZCanvasSettings } from '../core/settings';
 import {
   NODE_DEFAULT_APPEARANCE,
   PEN_MIN_OPACITY,
@@ -90,7 +98,7 @@ export type ZCanvasEdgeStylePatch = Partial<
 
 export type ZCanvasPenStylePatch = Partial<ZCanvasPenStyle>;
 
-/** Selected element the panel is editing. Exactly one element at a time. */
+/** Selected element the panel is editing. Exactly one element at a time, or canvas. */
 export type ZCanvasStyleTarget =
   | { kind: 'node'; node: ZCanvasNode }
   | { kind: 'edge'; edge: ZCanvasEdge }
@@ -104,10 +112,11 @@ export type ZCanvasStyleTarget =
    * The freehand pen. Not an element: the panel is configuring what the tool
    * will draw, so these edits land on the pen, never on existing ink.
    */
-  | { kind: 'pen'; pen: ZCanvasPenStyle };
+  | { kind: 'pen'; pen: ZCanvasPenStyle }
+  | { kind: 'canvas' };
 
 export interface ZCanvasStylePanelProps {
-  target: ZCanvasStyleTarget;
+  target: ZCanvasStyleTarget | null;
   /** Live edit while a control is being dragged (no undo entry yet). */
   onPreviewNode: (patch: ZCanvasNodeStylePatch) => void;
   /** Final value for a control — records one undo step for the whole gesture. */
@@ -139,6 +148,13 @@ export interface ZCanvasStylePanelProps {
   onGroup?: () => void;
   onUngroup?: () => void;
   onExitGroup?: () => void;
+  canvasSettings?: ZCanvasSettings;
+  onUpdateCanvasSettings?: (settings: Partial<ZCanvasSettings>) => void;
+  activePageName?: string;
+  onRenameActivePage?: (newName: string) => void;
+  onBeautifyLayout?: () => void;
+  stats?: { nodesCount: number; edgesCount: number; pagesCount?: number };
+  rightOffset?: number;
 }
 
 /** Border / stroke swatches, ordered dark → light like a classic palette. */
@@ -363,6 +379,208 @@ const NODE_TYPE_LABELS: Partial<Record<ZCanvasNodeType, string>> = {
   svg: 'Component',
 };
 
+/**
+ * Figma / Draw.io style canvas and sheet properties displayed when
+ * no shape or wire is currently selected.
+ */
+function CanvasPropertiesSections({
+  settings,
+  onUpdateSettings,
+  activePageName,
+  onRenameActivePage,
+  onBeautifyLayout,
+  stats,
+}: {
+  settings?: ZCanvasSettings;
+  onUpdateSettings?: (patch: Partial<ZCanvasSettings>) => void;
+  activePageName?: string;
+  onRenameActivePage?: (newName: string) => void;
+  onBeautifyLayout?: () => void;
+  stats?: { nodesCount: number; edgesCount: number; pagesCount?: number };
+}) {
+  const [isEditingPageName, setIsEditingPageName] = React.useState(false);
+  const [tempPageName, setTempPageName] = React.useState(activePageName || 'Page 1');
+
+  React.useEffect(() => {
+    setTempPageName(activePageName || 'Page 1');
+  }, [activePageName]);
+
+  const handleSavePageName = () => {
+    const trimmed = tempPageName.trim();
+    if (trimmed && onRenameActivePage) {
+      onRenameActivePage(trimmed);
+    }
+    setIsEditingPageName(false);
+  };
+
+  return (
+    <div className="space-y-3.5">
+      {/* Current Sheet / Page Card */}
+      <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60">
+        <div className="flex items-center justify-between text-muted-foreground mb-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider">Active Sheet</span>
+          {stats && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-foreground">
+              {stats.nodesCount} nodes · {stats.edgesCount} edges
+            </span>
+          )}
+        </div>
+        {isEditingPageName ? (
+          <input
+            type="text"
+            autoFocus
+            value={tempPageName}
+            onChange={(e) => setTempPageName(e.target.value)}
+            onBlur={handleSavePageName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSavePageName();
+              if (e.key === 'Escape') {
+                setTempPageName(activePageName || 'Page 1');
+                setIsEditingPageName(false);
+              }
+            }}
+            className="w-full text-xs font-semibold bg-background border border-primary/50 rounded px-2 py-1 outline-none"
+          />
+        ) : (
+          <div
+            onClick={() => setIsEditingPageName(true)}
+            className="flex items-center justify-between text-xs font-semibold text-foreground hover:bg-muted/60 p-1 rounded cursor-pointer transition-colors"
+            title="Click to rename active sheet"
+          >
+            <span>{activePageName || 'Page 1'}</span>
+            <span className="text-[10px] text-muted-foreground font-normal">Edit</span>
+          </div>
+        )}
+      </div>
+
+      {/* Canvas Grid Style */}
+      {settings && onUpdateSettings && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] font-medium text-foreground">
+            <span>Grid Style</span>
+            <span className="text-[10px] text-muted-foreground capitalize">{settings.gridStyle}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1 p-0.5 rounded-xl bg-muted/50 border border-border/50">
+            {[
+              { id: 'dots', label: 'Dots', icon: CircleDot },
+              { id: 'mesh', label: 'Mesh', icon: Grid3X3 },
+              { id: 'cross', label: 'Cross', icon: Plus },
+              { id: 'none', label: 'None', icon: Square },
+            ].map((g) => {
+              const Icon = g.icon;
+              const isActive = settings.gridStyle === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => onUpdateSettings({ gridStyle: g.id as any })}
+                  className={cn(
+                    'flex flex-col items-center justify-center py-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer',
+                    isActive
+                      ? 'bg-card text-foreground shadow-xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  )}
+                  title={`Grid: ${g.label}`}
+                >
+                  <Icon className="w-3.5 h-3.5 mb-0.5" />
+                  <span>{g.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Background Tone Swatches */}
+      {settings && onUpdateSettings && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] font-medium text-foreground">
+            <span>Background Tone</span>
+            <span className="text-[10px] text-muted-foreground capitalize">{settings.backgroundTone}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1 p-0.5 rounded-xl bg-muted/50 border border-border/50">
+            {[
+              { id: 'default', label: 'Clean', swatch: 'bg-white dark:bg-slate-950 border border-border' },
+              { id: 'warm', label: 'Warm', swatch: 'bg-[#faf8f5] dark:bg-[#1a1816]' },
+              { id: 'cool', label: 'Blueprint', swatch: 'bg-[#f0f4f8] dark:bg-[#0c1524]' },
+              { id: 'contrast', label: 'Charcoal', swatch: 'bg-[#f4f4f5] dark:bg-[#121214]' },
+            ].map((t) => {
+              const isActive = settings.backgroundTone === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onUpdateSettings({ backgroundTone: t.id as any })}
+                  className={cn(
+                    'flex flex-col items-center justify-center py-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer gap-1',
+                    isActive
+                      ? 'bg-card text-foreground shadow-xs font-semibold ring-1 ring-primary/40'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  )}
+                  title={`Tone: ${t.label}`}
+                >
+                  <div className={cn('w-4 h-4 rounded-full shadow-2xs', t.swatch)} />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Snapping & Smart Guides */}
+      {settings && onUpdateSettings && (
+        <div className="space-y-1 pt-0.5">
+          <label className="flex items-center justify-between p-1.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors text-xs">
+            <span className="font-medium text-foreground">Snap to Grid</span>
+            <input
+              type="checkbox"
+              checked={settings.snapToGrid}
+              onChange={(e) => onUpdateSettings({ snapToGrid: e.target.checked })}
+              className="accent-primary w-4 h-4 rounded cursor-pointer"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-1.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors text-xs">
+            <span className="font-medium text-foreground">Smart Alignment Guides</span>
+            <input
+              type="checkbox"
+              checked={settings.showGuides}
+              onChange={(e) => onUpdateSettings({ showGuides: e.target.checked })}
+              className="accent-primary w-4 h-4 rounded cursor-pointer"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-1.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors text-xs">
+            <span className="font-medium text-foreground">Show Minimap</span>
+            <input
+              type="checkbox"
+              checked={settings.showMinimap}
+              onChange={(e) => onUpdateSettings({ showMinimap: e.target.checked })}
+              className="accent-primary w-4 h-4 rounded cursor-pointer"
+            />
+          </label>
+        </div>
+      )}
+
+      {/* Auto-Layout Architecture Action */}
+      {onBeautifyLayout && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onBeautifyLayout}
+            className="w-full h-8 flex items-center justify-center gap-2 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold transition-colors cursor-pointer border border-primary/20"
+            title="Auto-arrange shapes into clean architectural hierarchy"
+          >
+            <Wand2 className="w-3.5 h-3.5 text-primary" />
+            <span>Auto Layout Architecture</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ZCanvasStylePanel({
   target,
   onPreviewNode,
@@ -385,34 +603,61 @@ export function ZCanvasStylePanel({
   onGroup,
   onUngroup,
   onExitGroup,
+  canvasSettings,
+  onUpdateCanvasSettings,
+  activePageName,
+  onRenameActivePage,
+  onBeautifyLayout,
+  stats,
+  rightOffset = 0,
 }: ZCanvasStylePanelProps) {
-  const title =
-    target.kind === 'node'
-      ? NODE_TYPE_LABELS[target.node.type] ?? 'Shape'
-      : target.kind === 'edge'
-      ? 'Connector'
-      : target.kind === 'stroke'
-      ? 'Ink'
-      : 'Freehand Pen';
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const isCanvasTarget = !target || target.kind === 'canvas';
+
+  const title = isCanvasTarget
+    ? 'Canvas & Page'
+    : target.kind === 'node'
+    ? NODE_TYPE_LABELS[target.node.type] ?? 'Shape'
+    : target.kind === 'edge'
+    ? 'Connector'
+    : target.kind === 'stroke'
+    ? 'Ink'
+    : 'Freehand Pen';
 
   // Routing scope is panel state, not document state: it says whether the next
   // routing press lands on this connector or on all of them.
   const [routingScope, setRoutingScope] = React.useState<ZCanvasRoutingScope>('single');
 
+  if (isCollapsed) {
+    return (
+      <div
+        role="group"
+        data-testid="style-panel-collapsed"
+        style={rightOffset ? { right: `${rightOffset + 16}px` } : undefined}
+        className="absolute top-20 right-4 z-30 transition-all duration-200 select-none"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(false)}
+          className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-card/95 backdrop-blur-2xl border border-border/80 shadow-xl text-xs font-semibold text-foreground hover:bg-muted cursor-pointer transition-all"
+          title="Expand Inspector Panel"
+        >
+          <Sliders className="w-3.5 h-3.5 text-primary" />
+          <span>Inspector</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       role="group"
       data-testid="style-panel"
-      aria-label={target.kind === 'pen' ? 'Freehand pen options' : `${title} style`}
-      className="absolute top-20 right-4 z-30 w-64 max-h-[calc(100%-6rem)] overflow-y-auto no-scrollbar rounded-2xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-3 text-xs animate-in fade-in-50 slide-in-from-right-2 duration-150"
-      // The canvas listens for pointer gestures on the root element; keep every
-      // interaction inside the panel from reaching it. A release is deliberately
-      // not among them: it belongs to whatever press is already being dragged,
-      // and a drag that is let go over the panel is a drag that has ended, so
-      // swallowing it would leave the component stuck to the pointer until the
-      // next click. With no drag in flight there is nothing for it to disturb —
-      // the canvas handler does nothing but clear two pieces of state it has
-      // already cleared.
+      aria-label={isCanvasTarget ? 'Canvas and page properties' : target?.kind === 'pen' ? 'Freehand pen options' : `${title} style`}
+      style={rightOffset ? { right: `${rightOffset + 16}px` } : undefined}
+      className="absolute top-20 right-4 z-30 w-64 max-h-[calc(100%-6rem)] overflow-y-auto no-scrollbar rounded-2xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-3 text-xs animate-in fade-in-50 slide-in-from-right-2 duration-150 transition-[right] duration-200"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
@@ -423,28 +668,50 @@ export function ZCanvasStylePanel({
           {title}
         </span>
         <div className="flex items-center gap-0.5">
+          {!isCanvasTarget && (
+            <button
+              type="button"
+              title="Reset to default appearance"
+              aria-label="Reset to default appearance"
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              onClick={onReset}
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+          {!isCanvasTarget && (
+            <button
+              type="button"
+              title={target?.kind === 'pen' ? 'Done — back to the select tool' : 'Deselect'}
+              aria-label={target?.kind === 'pen' ? 'Done drawing' : 'Deselect'}
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              onClick={onDeselect}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
           <button
             type="button"
-            title="Reset to default appearance"
-            aria-label="Reset to default appearance"
-            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            onClick={onReset}
+            title="Collapse Inspector"
+            aria-label="Collapse Inspector"
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5"
+            onClick={() => setIsCollapsed(true)}
           >
-            <RotateCcw className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            title={target.kind === 'pen' ? 'Done — back to the select tool' : 'Deselect'}
-            aria-label={target.kind === 'pen' ? 'Done drawing' : 'Deselect'}
-            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            onClick={onDeselect}
-          >
-            <X className="w-3 h-3" />
+            <PanelRightClose className="w-3 h-3" />
           </button>
         </div>
       </div>
 
-      {target.kind === 'node' ? (
+      {isCanvasTarget ? (
+        <CanvasPropertiesSections
+          settings={canvasSettings}
+          onUpdateSettings={onUpdateCanvasSettings}
+          activePageName={activePageName}
+          onRenameActivePage={onRenameActivePage}
+          onBeautifyLayout={onBeautifyLayout}
+          stats={stats}
+        />
+      ) : target.kind === 'node' ? (
         <NodeSections
           node={target.node}
           onPreview={onPreviewNode}

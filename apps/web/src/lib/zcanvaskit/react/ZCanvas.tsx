@@ -526,6 +526,8 @@ export interface ZCanvasProps {
   edgeRouting?: ZCanvasEdgeRouting;
   onEdgeRoutingChange?: (routing: ZCanvasEdgeRouting) => void;
   onNodeDoubleClick?: (node: ZCanvasNode) => void;
+  /** Right margin offset in pixels when side drawer (e.g. AI or Code) is open */
+  rightOffset?: number;
 }
 
 export function ZCanvas({
@@ -536,6 +538,7 @@ export function ZCanvas({
   edgeRouting: propEdgeRouting,
   onEdgeRoutingChange,
   onNodeDoubleClick,
+  rightOffset = 0,
 }: ZCanvasProps) {
   const iconMap = useMemo(() => resolveIconMap(renderers), [renderers]);
   const [nodes, setNodes] = useState<ZCanvasNode[]>(initialDocument.nodes || []);
@@ -8442,44 +8445,40 @@ export function ZCanvas({
           );
         })()}
 
-      {/* Appearance panel for the selected element, or the
-          freehand pen's own options while that tool is in hand. */}
-      {styleTarget && !isPresentationMode && (
+      {/* Appearance panel for selected element, or canvas & page properties when unselected */}
+      {!readOnly && !isPresentationMode && (
         <ZCanvasStylePanel
           target={styleTarget}
           onPreviewNode={(patch) => {
-            if (styleTarget.kind === 'node') previewNodeStyle(styleTarget.node.id, patch);
+            if (styleTarget?.kind === 'node') previewNodeStyle(styleTarget.node.id, patch);
           }}
           onCommitNode={(patch) => {
-            if (styleTarget.kind === 'node') commitNodeStyle(styleTarget.node.id, patch);
+            if (styleTarget?.kind === 'node') commitNodeStyle(styleTarget.node.id, patch);
           }}
           onPreviewEdge={(patch) => {
-            if (styleTarget.kind === 'edge') previewEdgeStyle(styleTarget.edge.id, patch);
+            if (styleTarget?.kind === 'edge') previewEdgeStyle(styleTarget.edge.id, patch);
           }}
           onCommitEdge={(patch) => {
-            if (styleTarget.kind === 'edge') commitEdgeStyle(styleTarget.edge.id, patch);
+            if (styleTarget?.kind === 'edge') commitEdgeStyle(styleTarget.edge.id, patch);
           }}
           onCommitRouting={commitEdgeRouting}
           onChangePen={updatePenStyle}
           onPreviewStroke={(patch) => {
-            if (styleTarget.kind === 'stroke') previewStrokeStyle(styleTarget.stroke.id, patch);
+            if (styleTarget?.kind === 'stroke') previewStrokeStyle(styleTarget.stroke.id, patch);
           }}
           onCommitStroke={(patch) => {
-            if (styleTarget.kind === 'stroke') commitStrokeStyle(styleTarget.stroke.id, patch);
+            if (styleTarget?.kind === 'stroke') commitStrokeStyle(styleTarget.stroke.id, patch);
           }}
           onReset={() => {
-            if (styleTarget.kind === 'node') resetNodeStyle(styleTarget.node.id);
-            else if (styleTarget.kind === 'edge') resetEdgeStyle(styleTarget.edge.id);
-            else if (styleTarget.kind === 'stroke') resetStrokeStyle(styleTarget.stroke.id);
-            else {
-              // The pen's reset is its factory nib, not the document's theme.
+            if (styleTarget?.kind === 'node') resetNodeStyle(styleTarget.node.id);
+            else if (styleTarget?.kind === 'edge') resetEdgeStyle(styleTarget.edge.id);
+            else if (styleTarget?.kind === 'stroke') resetStrokeStyle(styleTarget.stroke.id);
+            else if (styleTarget?.kind === 'pen') {
               updatePenStyle(DEFAULT_PEN_STYLE);
             }
           }}
           onDeselect={() => {
-            if (styleTarget.kind === 'pen') {
-              // Nothing is selected to drop, so the close button puts the pen
-              // away and hands the canvas back to the select tool.
+            if (styleTarget?.kind === 'pen') {
               selectTool('select');
             } else {
               setEnteredGroupId(null);
@@ -8504,6 +8503,17 @@ export function ZCanvas({
             }
           }}
           selectedCount={selectedNodeIds.length}
+          canvasSettings={settings}
+          onUpdateCanvasSettings={handleUpdateSettings}
+          activePageName={pages.find((p) => p.id === activePageId)?.name}
+          onRenameActivePage={(name) => handleRenamePage(activePageId, name)}
+          onBeautifyLayout={handleBeautify}
+          stats={{
+            nodesCount: nodes.length,
+            edgesCount: edges.length,
+            pagesCount: pages.length,
+          }}
+          rightOffset={rightOffset}
         />
       )}
 
@@ -8715,6 +8725,55 @@ export function ZCanvas({
           onDeletePage={handleDeletePage}
           readOnly={readOnly}
         />
+      )}
+
+      {/* Center Context & Shortcut HUD */}
+      {!isPresentationMode && (
+        <div
+          data-testid="zcanvas-status-hud"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card/85 backdrop-blur-md border border-border/70 shadow-md text-[11px] font-medium text-muted-foreground select-none pointer-events-none transition-all animate-in fade-in-50"
+        >
+          {selectedNodeIds.length + selectedEdgeIds.length + selectedStrokeIds.length > 0 ? (
+            <div className="flex items-center gap-1.5 text-foreground">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span>
+                {selectedNodeIds.length + selectedEdgeIds.length + selectedStrokeIds.length === 1
+                  ? '1 item selected'
+                  : `${selectedNodeIds.length + selectedEdgeIds.length + selectedStrokeIds.length} items selected`}
+              </span>
+              {selectedNodeIds.length === 1 && (() => {
+                const n = nodes.find((x) => x.id === selectedNodeIds[0]);
+                if (!n) return null;
+                return (
+                  <>
+                    <span className="text-muted-foreground/40">•</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {Math.round(n.width)} × {Math.round(n.height)}px
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">Space</kbd> Pan
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">/</kbd> Quick Add
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">L</kbd> Laser
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">F5</kbd> Present
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Interactive Presentation Mode Dock */}
