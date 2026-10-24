@@ -12,11 +12,11 @@
    - Keep the core engine framework-independent and modular (`zcanvaskit`).
    - Treat the document model as the source of truth with strict versioned schemas.
 
-3. **Agent Harness (`.agent/`)**:
-   - **Session State & Handoffs**: Read [`.agent/HANDOFF.md`](./.agent/HANDOFF.md) at the start of sessions and update it upon completing tasks.
-   - **Changelog**: Record shipped features, fixes, and architectural updates in [`.agent/CHANGELOG.md`](./.agent/CHANGELOG.md).
-   - **System Map**: Reference [`.agent/ARCHITECTURE.md`](./.agent/ARCHITECTURE.md) for monorepo boundaries and production proxy configuration.
-   - **Rules & Skills**: Follow workspace rules in `.agent/rules/` and activate specialized runbooks in `.agent/skills/` (`zcanvaskit-engine`, `fullstack-feature`, `deploy-production`, `session-handoff`).
+3. **Agent Harness (`.agents/`)**:
+   - **Session State & Handoffs**: Read [`.agents/HANDOFF.md`](./.agents/HANDOFF.md) at the start of sessions and update it upon completing tasks.
+   - **Changelog**: Record shipped features, fixes, and architectural updates in [`.agents/CHANGELOG.md`](./.agents/CHANGELOG.md).
+   - **System Map**: Reference [`.agents/ARCHITECTURE.md`](./.agents/ARCHITECTURE.md) for monorepo boundaries and production proxy configuration.
+   - **Rules & Skills**: Follow workspace rules in `.agents/rules/` and activate specialized runbooks in `.agents/skills/` (`zcanvaskit-engine`, `fullstack-feature`, `deploy-production`, `session-handoff`).
 
 <!-- BEGIN:turborepo-agent-rules -->
 

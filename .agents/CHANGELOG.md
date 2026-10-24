@@ -18,8 +18,8 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 - **Live SVG Thumbnail Previews on Dashboard Cards** ([`diagram.store.ts`](file:///D:/Projects/diagramz/apps/web/src/stores/diagram.store.ts), [`dashboard/page.tsx`](file:///D:/Projects/diagramz/apps/web/src/app/dashboard/page.tsx)):
   - Auto-generates a lightweight vector SVG data URL via `exportDocumentToSvg` during `saveDiagram()` and persists it to `thumbnailKey`.
   - Dashboard cards now render live miniature visual previews of each diagram.
-- **AI Agent Harness (`.agent/`)**:
-  - Established `.agent/ARCHITECTURE.md`, `.agent/CHANGELOG.md`, `.agent/HANDOFF.md`, `.agent/rules/`, and `.agent/skills/` for seamless multi-session AI engineering.
+- **AI Agent Harness (`.agents/`)**:
+  - Established `.agents/ARCHITECTURE.md`, `.agents/CHANGELOG.md`, `.agents/HANDOFF.md`, `.agents/rules/`, and `.agents/skills/` for seamless multi-session AI engineering.
 
 ---
 

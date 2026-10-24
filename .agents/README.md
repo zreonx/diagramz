@@ -1,4 +1,4 @@
-# Diagramz Agent Harness (`.agent/`)
+# Diagramz Agent Harness (`.agents/`)
 
 Welcome to the **Diagramz** AI Agent Harness. This directory provides persistent memory, architectural blueprints, operational runbooks (Skills), contextual guardrails (Rules), changelogs, and session handoffs for AI coding agents working on this repository.
 
@@ -7,7 +7,7 @@ Welcome to the **Diagramz** AI Agent Harness. This directory provides persistent
 ## Directory Structure
 
 ```text
-.agent/
+.agents/
 ├── README.md                             # This overview & quick-start guide
 ├── ARCHITECTURE.md                       # Full-stack system map, data flow, and engine boundaries
 ├── CHANGELOG.md                          # Chronological log of shipped features, fixes, and infra changes
