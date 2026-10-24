@@ -150,6 +150,20 @@ const ARROWHEAD_MARKERS: Record<ArrowheadType, string> = {
   diamond: `<marker id="zcanvas-head-diamond" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" fill="context-stroke">
       <path d="M 5 0.5 L 9.5 5 L 5 9.5 L 0.5 5 z" />
     </marker>`,
+  'er-one': `<marker id="zcanvas-head-er-one" viewBox="0 0 12 10" refX="10" refY="5" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 5.5 1.2 L 5.5 8.8 M 9 1.2 L 9 8.8" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" />
+    </marker>`,
+  'er-zero-one': `<marker id="zcanvas-head-er-zero-one" viewBox="0 0 12 10" refX="10" refY="5" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <circle cx="4" cy="5" r="2.4" fill="none" stroke="context-stroke" stroke-width="1.5" />
+      <line x1="9" y1="1.2" x2="9" y2="8.8" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" />
+    </marker>`,
+  'er-many': `<marker id="zcanvas-head-er-many" viewBox="0 0 12 10" refX="10.5" refY="5" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 3 1.2 L 3 8.8 M 3 5 L 10.5 1.2 M 3 5 L 10.5 5 M 3 5 L 10.5 8.8" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    </marker>`,
+  'er-zero-many': `<marker id="zcanvas-head-er-zero-many" viewBox="0 0 12 10" refX="10.5" refY="5" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <circle cx="2.6" cy="5" r="2.1" fill="none" stroke="context-stroke" stroke-width="1.4" />
+      <path d="M 5 5 L 10.5 1.2 M 5 5 L 10.5 5 M 5 5 L 10.5 8.8" fill="none" stroke="context-stroke" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+    </marker>`,
 };
 
 /** Stable order so marker output does not depend on edge order. */
@@ -160,6 +174,10 @@ const ARROWHEAD_ORDER: ArrowheadType[] = [
   'triangle',
   'circle',
   'diamond',
+  'er-one',
+  'er-zero-one',
+  'er-many',
+  'er-zero-many',
 ];
 
 /**
@@ -558,7 +576,7 @@ export function exportDocumentToSvg(
         const fieldsSvg = (n.fields || [])
           .map(
             (f, i) =>
-              `<text x="12" y="${46 + i * 18}" fill="${mutedText}" font-size="11" font-family="monospace">${f.pk ? '🔑 ' : ''}${escapeXml(f.name)}</text>
+              `<text x="12" y="${46 + i * 18}" fill="${mutedText}" font-size="11" font-family="monospace">${f.pk ? '🔑 ' : ''}${f.fk ? '🔗 ' : ''}${escapeXml(f.name)}</text>
                <text x="${n.width - 12}" y="${46 + i * 18}" fill="${faintText}" font-size="10" font-family="monospace" text-anchor="end">${escapeXml(f.type)}</text>`
           )
           .join('\n');

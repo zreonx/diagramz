@@ -91,9 +91,13 @@ export function normalizeToZCanvasDocument(raw: unknown): ZCanvasDocument {
         target: conn.to || conn.target,
         sourceHandle: conn.sourceHandle || 'right',
         targetHandle: conn.targetHandle || 'left',
+        ...(conn.sourceOffset !== undefined ? { sourceOffset: conn.sourceOffset } : {}),
+        ...(conn.targetOffset !== undefined ? { targetOffset: conn.targetOffset } : {}),
+        ...(conn.startArrowhead ? { startArrowhead: conn.startArrowhead } : {}),
+        ...(conn.endArrowhead ? { endArrowhead: conn.endArrowhead } : {}),
         label: conn.label,
         color: conn.color || '#3b82f6',
-        style: 'bezier',
+        style: conn.style === 'step' || conn.style === 'straight' ? conn.style : 'bezier',
       })
     );
 

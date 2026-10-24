@@ -179,9 +179,10 @@ export const STARTER_ERASER_TEMPLATES: Record<string, EraserDiagramData> = {
         x: 420,
         y: 100,
         width: 220,
-        height: 160,
+        height: 180,
         columns: [
           { name: 'id', type: 'uuid', pk: true },
+          { name: 'owner_id', type: 'uuid', fk: true },
           { name: 'slug', type: 'varchar(50)' },
           { name: 'name', type: 'varchar(100)' },
         ],
@@ -206,11 +207,24 @@ export const STARTER_ERASER_TEMPLATES: Record<string, EraserDiagramData> = {
     ],
     connections: [
       {
+        id: 'c-user-org',
+        from: 'users',
+        to: 'organizations',
+        label: '1 : N',
+        color: '#8b5cf6',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-many',
+      },
+      {
         id: 'c-org-diagram',
         from: 'organizations',
         to: 'diagrams',
-        label: '1:N',
+        label: '1 : N',
         color: '#10b981',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-many',
       },
     ],
   },
@@ -468,12 +482,28 @@ function parseMermaidErDiagram(code: string): EraserDiagramData {
       if (!tables.has(src)) tables.set(src, { id: src, title: src, fields: [] });
       if (!tables.has(tgt)) tables.set(tgt, { id: tgt, title: tgt, fields: [] });
 
+      // Parse Mermaid erDiagram cardinality markers into Crow's Foot arrowheads
+      const [leftSide = '', rightSide = ''] = rel.split(/--|\.\./);
+      const parseErSide = (
+        token: string
+      ): 'er-one' | 'er-zero-one' | 'er-many' | 'er-zero-many' => {
+        const hasMany = token.includes('{') || token.includes('}');
+        const hasZero = token.includes('o');
+        if (hasMany && hasZero) return 'er-zero-many';
+        if (hasMany) return 'er-many';
+        if (hasZero) return 'er-zero-one';
+        return 'er-one';
+      };
+
       connections.push({
         id: `c-${src}-${tgt}-${connections.length}`,
         from: src,
         to: tgt,
         label: label ? label.trim() : rel,
         color: '#0d9488',
+        style: 'step',
+        startArrowhead: parseErSide(leftSide),
+        endArrowhead: parseErSide(rightSide),
       });
       continue;
     }

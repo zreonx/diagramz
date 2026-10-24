@@ -235,6 +235,10 @@ export const ARROWHEAD_TYPES: ZCanvasArrowhead[] = [
   'triangle',
   'circle',
   'diamond',
+  'er-one',
+  'er-zero-one',
+  'er-many',
+  'er-zero-many',
 ];
 
 /**
@@ -247,6 +251,9 @@ export const ARROWHEAD_MARKERS: Array<{
   type: Exclude<ZCanvasArrowhead, 'none'>;
   refX: number;
   refY: number;
+  viewBox?: string;
+  markerWidth?: string;
+  markerHeight?: string;
   content: React.ReactNode;
 }> = [
   { type: 'arrow', refX: 9, refY: 5, content: <path d="M 0 1.5 L 10 5 L 0 8.5 z" /> },
@@ -284,6 +291,64 @@ export const ARROWHEAD_MARKERS: Array<{
   { type: 'triangle', refX: 9, refY: 5, content: <path d="M 0 0 L 10 5 L 0 10 z" /> },
   { type: 'circle', refX: 5, refY: 5, content: <circle cx="5" cy="5" r="3.6" /> },
   { type: 'diamond', refX: 5, refY: 5, content: <path d="M 5 0.5 L 9.5 5 L 5 9.5 L 0.5 5 z" /> },
+  {
+    type: 'er-one',
+    refX: 15,
+    refY: 6,
+    viewBox: '0 0 16 12',
+    markerWidth: '9',
+    markerHeight: '7',
+    content: (
+      <g stroke="context-stroke" strokeWidth="1.6" fill="none" strokeLinecap="round">
+        <line x1="8" y1="1.5" x2="8" y2="10.5" />
+        <line x1="12.5" y1="1.5" x2="12.5" y2="10.5" />
+      </g>
+    ),
+  },
+  {
+    type: 'er-zero-one',
+    refX: 15,
+    refY: 6,
+    viewBox: '0 0 16 12',
+    markerWidth: '9',
+    markerHeight: '7',
+    content: (
+      <g stroke="context-stroke" strokeWidth="1.5" fill="none" strokeLinecap="round">
+        <circle cx="5.5" cy="6" r="3.2" fill="var(--card, #0f172a)" />
+        <line x1="12.5" y1="1.5" x2="12.5" y2="10.5" />
+      </g>
+    ),
+  },
+  {
+    type: 'er-many',
+    refX: 15,
+    refY: 6,
+    viewBox: '0 0 16 12',
+    markerWidth: '9',
+    markerHeight: '7',
+    content: (
+      <g stroke="context-stroke" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="6.5" y1="1.5" x2="6.5" y2="10.5" />
+        <path d="M 15 1.2 L 8 6 L 15 10.8" />
+        <line x1="8" y1="6" x2="15" y2="6" />
+      </g>
+    ),
+  },
+  {
+    type: 'er-zero-many',
+    refX: 15,
+    refY: 6,
+    viewBox: '0 0 16 12',
+    markerWidth: '9',
+    markerHeight: '7',
+    content: (
+      <g stroke="context-stroke" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="4.5" cy="6" r="3" fill="var(--card, #0f172a)" />
+        <path d="M 15 1.2 L 8.5 6 L 15 10.8" />
+        <line x1="8.5" y1="6" x2="15" y2="6" />
+      </g>
+    ),
+  },
 ];
 
 /** `marker-start` / `marker-end` URL for a resolved arrowhead type. */
@@ -3177,8 +3242,10 @@ export function ZCanvas({
       if (lastMousePosRef.current) {
         const pt = getCanvasPoint(lastMousePosRef.current.clientX, lastMousePosRef.current.clientY);
         const targetNode = findNodeAt(pt);
+        const sourceNode = nodes.find((n) => n.id === connectingSourceId);
         if (targetNode && targetNode.id !== connectingSourceId) {
           const res = getNearestSideAndOffset(targetNode, pt);
+          const isErdRelation = sourceNode?.type === 'table' && targetNode.type === 'table';
           const newEdge: ZCanvasEdge = {
             id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
             source: connectingSourceId,
@@ -3187,15 +3254,17 @@ export function ZCanvas({
             sourceOffset: connectingSourceOffset !== 0 ? connectingSourceOffset : undefined,
             targetHandle: res.side,
             targetOffset: res.offset !== 0 ? res.offset : undefined,
-            label: 'Flow',
-            color: activeColor,
-            style: edgeStyle,
+            label: isErdRelation ? '1 : N' : 'Flow',
+            color: isErdRelation ? '#0d9488' : activeColor,
+            style: isErdRelation ? 'step' : edgeStyle,
+            ...(isErdRelation
+              ? { startArrowhead: 'er-one', endArrowhead: 'er-many' }
+              : {}),
           };
           commitState(nodes, [...edges, newEdge], strokes);
         } else if (!targetNode) {
           // Draw.io style: releasing a dragged connector over empty canvas space
           // (>= 60px away from source anchor) automatically spawns a connected node at the drop point.
-          const sourceNode = nodes.find((n) => n.id === connectingSourceId);
           if (sourceNode) {
             const srcAnchor = getHandlePoint(
               sourceNode,
@@ -3219,6 +3288,7 @@ export function ZCanvas({
                 locked: undefined,
               };
               const targetRes = getNearestSideAndOffset(spawnedNode, srcAnchor);
+              const isErdRelation = sourceNode.type === 'table';
               const newEdge: ZCanvasEdge = {
                 id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
                 source: connectingSourceId,
@@ -3226,8 +3296,11 @@ export function ZCanvas({
                 sourceHandle: connectingHandlePos,
                 sourceOffset: connectingSourceOffset !== 0 ? connectingSourceOffset : undefined,
                 targetHandle: targetRes.side,
-                style: edgeStyle,
-                color: activeColor,
+                style: isErdRelation ? 'step' : edgeStyle,
+                color: isErdRelation ? '#0d9488' : activeColor,
+                ...(isErdRelation
+                  ? { label: '1 : N', startArrowhead: 'er-one', endArrowhead: 'er-many' }
+                  : {}),
               };
               commitState([...nodes, spawnedNode], [...edges, newEdge], strokes);
               setSelectedNodeIds([newId]);
@@ -3890,6 +3963,9 @@ export function ZCanvas({
     e.stopPropagation();
 
     if (connectingSourceId && connectingSourceId !== targetNodeId) {
+      const sourceNode = nodes.find((n) => n.id === connectingSourceId);
+      const targetNode = nodes.find((n) => n.id === targetNodeId);
+      const isErdRelation = sourceNode?.type === 'table' && targetNode?.type === 'table';
       const newEdge: ZCanvasEdge = {
         id: `edge-${Date.now().toString(36)}`,
         source: connectingSourceId,
@@ -3898,9 +3974,12 @@ export function ZCanvas({
         sourceOffset: connectingSourceOffset !== 0 ? connectingSourceOffset : undefined,
         targetHandle: targetPos,
         targetOffset: offset !== 0 ? offset : undefined,
-        label: 'Flow',
-        color: activeColor,
-        style: edgeStyle,
+        label: isErdRelation ? '1 : N' : 'Flow',
+        color: isErdRelation ? '#0d9488' : activeColor,
+        style: isErdRelation ? 'step' : edgeStyle,
+        ...(isErdRelation
+          ? { startArrowhead: 'er-one', endArrowhead: 'er-many' }
+          : {}),
       };
       commitState(nodes, [...edges, newEdge], strokes);
     }
@@ -4148,6 +4227,26 @@ export function ZCanvas({
       nodes.map((n) =>
         n.id === nodeId ? { ...n, fields: nextFields, height: newHeight } : n
       ),
+      edges,
+      strokes
+    );
+  };
+
+  const handleToggleFieldFlag = (nodeId: string, fieldIndex: number, flag: 'pk' | 'fk') => {
+    if (readOnly) return;
+    const targetNode = nodes.find((n) => n.id === nodeId);
+    if (!targetNode || targetNode.type !== 'table') return;
+    if (isLocked(targetNode)) return;
+
+    const currentFields = targetNode.fields || [];
+    if (fieldIndex < 0 || fieldIndex >= currentFields.length) return;
+
+    const nextFields = currentFields.map((f, i) =>
+      i === fieldIndex ? { ...f, [flag]: !f[flag] } : f
+    );
+
+    commitState(
+      nodes.map((n) => (n.id === nodeId ? { ...n, fields: nextFields } : n)),
       edges,
       strokes
     );
@@ -4826,15 +4925,15 @@ export function ZCanvas({
             </pattern>
           )}
 
-          {ARROWHEAD_MARKERS.map(({ type, refX, refY, content }) => (
+          {ARROWHEAD_MARKERS.map(({ type, refX, refY, viewBox, markerWidth, markerHeight, content }) => (
             <marker
               key={type}
               id={`zcanvas-head-${type}`}
-              viewBox="0 0 10 10"
+              viewBox={viewBox ?? '0 0 10 10'}
               refX={refX}
               refY={refY}
-              markerWidth="6"
-              markerHeight="6"
+              markerWidth={markerWidth ?? '6'}
+              markerHeight={markerHeight ?? '6'}
               orient="auto-start-reverse"
             >
               <g fill="context-stroke">{content}</g>
@@ -5793,91 +5892,182 @@ export function ZCanvas({
                     <span className="text-[10px] text-teal-600 dark:text-teal-400 font-sans font-medium shrink-0">TABLE</span>
                   </div>
                   <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-[11px] font-mono">
-                    {node.fields?.map((f, i) => (
-                      <div
-                        key={i}
-                        className="group flex items-center justify-between text-foreground/90 hover:bg-muted/40 px-1 py-0.5 rounded cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center gap-1 min-w-0 flex-1 mr-2">
-                          {f.pk && <Key className="w-2.5 h-2.5 text-amber-500 shrink-0" />}
-                          {editingNodeId === node.id && editingField === 'field_name' && editingFieldIndex === i ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              onBlur={saveEditing}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveEditing();
-                                if (e.key === 'Escape') setEditingNodeId(null);
-                              }}
-                              className="bg-transparent border-none text-[11px] font-mono text-foreground outline-none w-full p-0 shadow-none ring-0"
-                            />
-                          ) : (
-                            <span
-                              className="truncate cursor-text"
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                startEditing(node.id, 'field_name', f.name, i);
-                              }}
-                            >
-                              {f.name}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="shrink-0 flex items-center gap-1">
-                          {editingNodeId === node.id && editingField === 'field_type' && editingFieldIndex === i ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              onBlur={saveEditing}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveEditing();
-                                if (e.key === 'Escape') setEditingNodeId(null);
-                              }}
-                              className="bg-transparent border-none text-[10px] font-mono text-muted-foreground outline-none w-20 text-right p-0 shadow-none ring-0"
-                            />
-                          ) : (
-                            <span
-                              className="text-muted-foreground text-[10px] hover:text-foreground cursor-text"
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                startEditing(node.id, 'field_type', f.type, i);
-                              }}
-                            >
-                              {f.type}
-                            </span>
-                          )}
-
-                          {!readOnly && (
-                            <button
-                              type="button"
-                              aria-label={`Remove column ${f.name}`}
-                              title={`Remove column "${f.name}"`}
+                    {node.fields?.map((f, i) => {
+                      const rowOffset = Math.round(44 + i * 24 - node.height / 2);
+                      return (
+                        <div
+                          key={i}
+                          className="group relative flex items-center justify-between text-foreground/90 hover:bg-muted/40 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                        >
+                          {/* Row-Level Left Connection Port (Drag from / drop onto specific column) */}
+                          {!readOnly && activeTool === 'select' && (
+                            <div
+                              data-testid={`erd-row-anchor-left-${i}`}
+                              title={`Connect column "${f.name}" (Left)`}
                               className={cn(
-                                'w-4 h-4 shrink-0 flex items-center justify-center rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all',
-                                // Reveal on row hover, and keep every row's button
-                                // faintly visible while the table is selected so the
-                                // affordance is discoverable without hovering each row.
-                                isSelected
-                                  ? 'opacity-50 hover:opacity-100'
-                                  : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                                'absolute -left-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900 bg-teal-500 shadow-xs cursor-crosshair transition-all hover:scale-150 z-20',
+                                connectingSourceId
+                                  ? 'opacity-90 scale-110'
+                                  : 'opacity-0 group-hover:opacity-100'
                               )}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveField(node.id, i);
-                              }}
-                            >
-                              <X className="w-2.5 h-2.5" />
-                            </button>
+                              onMouseDown={(e) => handleAnchorMouseDown(e, node.id, 'left', rowOffset)}
+                              onMouseUp={(e) => handleAnchorMouseUp(e, node.id, 'left', rowOffset)}
+                            />
+                          )}
+
+                          <div className="flex items-center gap-1 min-w-0 flex-1 mr-1.5">
+                            {/* Interactive PK / FK Badges */}
+                            {!readOnly ? (
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                {(f.pk || isSelected) && (
+                                  <button
+                                    type="button"
+                                    title={f.pk ? 'Primary Key (Click to toggle)' : 'Set as Primary Key (PK)'}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleFieldFlag(node.id, i, 'pk');
+                                    }}
+                                    className={cn(
+                                      'px-1 py-0 rounded text-[8px] font-bold leading-tight border transition-all cursor-pointer',
+                                      f.pk
+                                        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50'
+                                        : 'opacity-0 group-hover:opacity-75 hover:!opacity-100 text-muted-foreground border-border/60'
+                                    )}
+                                  >
+                                    PK
+                                  </button>
+                                )}
+                                {(f.fk || isSelected) && (
+                                  <button
+                                    type="button"
+                                    title={f.fk ? 'Foreign Key (Click to toggle)' : 'Set as Foreign Key (FK)'}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleFieldFlag(node.id, i, 'fk');
+                                    }}
+                                    className={cn(
+                                      'px-1 py-0 rounded text-[8px] font-bold leading-tight border transition-all cursor-pointer',
+                                      f.fk
+                                        ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/50'
+                                        : 'opacity-0 group-hover:opacity-75 hover:!opacity-100 text-muted-foreground border-border/60'
+                                    )}
+                                  >
+                                    FK
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <>
+                                {f.pk && (
+                                  <span className="px-1 py-0 rounded text-[8px] font-bold leading-tight bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50 shrink-0">
+                                    PK
+                                  </span>
+                                )}
+                                {f.fk && (
+                                  <span className="px-1 py-0 rounded text-[8px] font-bold leading-tight bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/50 shrink-0">
+                                    FK
+                                  </span>
+                                )}
+                              </>
+                            )}
+
+                            {editingNodeId === node.id && editingField === 'field_name' && editingFieldIndex === i ? (
+                              <input
+                                type="text"
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={saveEditing}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveEditing();
+                                  if (e.key === 'Escape') setEditingNodeId(null);
+                                }}
+                                className="bg-transparent border-none text-[11px] font-mono text-foreground outline-none w-full p-0 shadow-none ring-0"
+                              />
+                            ) : (
+                              <span
+                                className={cn(
+                                  'truncate cursor-text',
+                                  f.pk && 'font-semibold text-foreground'
+                                )}
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(node.id, 'field_name', f.name, i);
+                                }}
+                              >
+                                {f.name}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-1">
+                            {editingNodeId === node.id && editingField === 'field_type' && editingFieldIndex === i ? (
+                              <input
+                                type="text"
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={saveEditing}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveEditing();
+                                  if (e.key === 'Escape') setEditingNodeId(null);
+                                }}
+                                className="bg-transparent border-none text-[10px] font-mono text-muted-foreground outline-none w-20 text-right p-0 shadow-none ring-0"
+                              />
+                            ) : (
+                              <span
+                                className="text-muted-foreground text-[10px] hover:text-foreground cursor-text"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(node.id, 'field_type', f.type, i);
+                                }}
+                              >
+                                {f.type}
+                              </span>
+                            )}
+
+                            {!readOnly && (
+                              <button
+                                type="button"
+                                aria-label={`Remove column ${f.name}`}
+                                title={`Remove column "${f.name}"`}
+                                className={cn(
+                                  'w-4 h-4 shrink-0 flex items-center justify-center rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all',
+                                  isSelected
+                                    ? 'opacity-50 hover:opacity-100'
+                                    : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                                )}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveField(node.id, i);
+                                }}
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Row-Level Right Connection Port (Drag from / drop onto specific column) */}
+                          {!readOnly && activeTool === 'select' && (
+                            <div
+                              data-testid={`erd-row-anchor-right-${i}`}
+                              title={`Connect column "${f.name}" (Right)`}
+                              className={cn(
+                                'absolute -right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900 bg-teal-500 shadow-xs cursor-crosshair transition-all hover:scale-150 z-20',
+                                connectingSourceId
+                                  ? 'opacity-90 scale-110'
+                                  : 'opacity-0 group-hover:opacity-100'
+                              )}
+                              onMouseDown={(e) => handleAnchorMouseDown(e, node.id, 'right', rowOffset)}
+                              onMouseUp={(e) => handleAnchorMouseUp(e, node.id, 'right', rowOffset)}
+                            />
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Add Column Quick Button at bottom of table */}

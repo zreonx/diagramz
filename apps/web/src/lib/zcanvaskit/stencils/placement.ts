@@ -420,6 +420,10 @@ function placePattern(
       label: edge.label,
       color: edge.color,
       style: edge.style ?? 'bezier',
+      ...(edge.startArrowhead ? { startArrowhead: edge.startArrowhead } : {}),
+      ...(edge.endArrowhead ? { endArrowhead: edge.endArrowhead } : {}),
+      ...(edge.sourceOffset !== undefined ? { sourceOffset: edge.sourceOffset } : {}),
+      ...(edge.targetOffset !== undefined ? { targetOffset: edge.targetOffset } : {}),
     });
   }
 
@@ -442,6 +446,7 @@ function patternNode(node: ZCanvasPatternNode): Omit<ZCanvasNode, 'id' | 'x' | '
     badge: node.badge,
     icon: node.icon,
     color: node.color,
+    ...(node.fields ? { fields: node.fields } : {}),
   };
 }
 

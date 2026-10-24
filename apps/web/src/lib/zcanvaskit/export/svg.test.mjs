@@ -574,3 +574,52 @@ test('an svg node with raw markup (e.g. Mermaid component) exports its inner SVG
   assert.match(svg, /viewBox="0 0 400 300"/);
 });
 
+test('ERD table nodes and Crow\'s Foot relationship markers export cleanly to SVG', () => {
+  const doc = ZCanvasDocumentSchema.parse({
+    nodes: [
+      {
+        id: 'users',
+        type: 'table',
+        x: 0,
+        y: 0,
+        width: 220,
+        height: 160,
+        title: 'users',
+        fields: [
+          { name: 'id', type: 'uuid', pk: true },
+          { name: 'org_id', type: 'uuid', fk: true },
+        ],
+      },
+      {
+        id: 'orgs',
+        type: 'table',
+        x: 340,
+        y: 0,
+        width: 220,
+        height: 160,
+        title: 'organizations',
+        fields: [{ name: 'id', type: 'uuid', pk: true }],
+      },
+    ],
+    edges: [
+      {
+        id: 'e-erd',
+        source: 'orgs',
+        target: 'users',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-zero-many',
+      },
+    ],
+  });
+
+  const svg = exportDocumentToSvg(doc);
+  assert.match(svg, /id="zcanvas-head-er-one"/);
+  assert.match(svg, /id="zcanvas-head-er-zero-many"/);
+  assert.match(svg, /marker-start="url\(#zcanvas-head-er-one\)"/);
+  assert.match(svg, /marker-end="url\(#zcanvas-head-er-zero-many\)"/);
+  assert.match(svg, /🔑 id/);
+  assert.match(svg, /🔗 org_id/);
+});
+
+

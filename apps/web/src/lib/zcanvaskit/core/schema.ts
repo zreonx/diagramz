@@ -22,6 +22,8 @@ export const ZCanvasFieldItemSchema = z.object({
   type: z.string(),
   pk: z.boolean().optional(),
   fk: z.boolean().optional(),
+  nullable: z.boolean().optional(),
+  unique: z.boolean().optional(),
 });
 export type ZCanvasFieldItem = z.infer<typeof ZCanvasFieldItemSchema>;
 
@@ -168,6 +170,20 @@ export function holdsAspect(type: ZCanvasNodeType | undefined): boolean {
 export const ZCanvasEdgeRoutingSchema = z.enum(['bezier', 'step', 'straight']);
 export type ZCanvasEdgeRouting = z.infer<typeof ZCanvasEdgeRoutingSchema>;
 
+export const ZCanvasArrowheadEnum = z.enum([
+  'none',
+  'arrow',
+  'barbs',
+  'architectural',
+  'triangle',
+  'circle',
+  'diamond',
+  'er-one',
+  'er-zero-one',
+  'er-many',
+  'er-zero-many',
+]);
+
 export const ZCanvasEdgeSchema = z.object({
   id: z.string(),
   source: z.string(),
@@ -201,8 +217,8 @@ export const ZCanvasEdgeSchema = z.object({
   opacity: z.number().min(0).max(1).optional(),
   roughness: z.number().min(0).max(5).optional(),
   seed: z.union([z.number(), z.string()]).optional(),
-  startArrowhead: z.enum(['none', 'arrow', 'barbs', 'architectural', 'triangle', 'circle', 'diamond']).optional(),
-  endArrowhead: z.enum(['none', 'arrow', 'barbs', 'architectural', 'triangle', 'circle', 'diamond']).optional(),
+  startArrowhead: ZCanvasArrowheadEnum.optional(),
+  endArrowhead: ZCanvasArrowheadEnum.optional(),
   /** See {@link ZCanvasNodeSchema}'s `locked`. */
   locked: z.boolean().optional(),
 });

@@ -46,6 +46,8 @@ export type ZCanvasNodeStylePatch = Partial<
     | 'badge'
     | 'description'
     | 'subtitle'
+    | 'fields'
+    | 'height'
   >
 >;
 
@@ -248,6 +250,10 @@ const ARROWHEAD_OPTIONS: Array<{
   { value: 'triangle', label: 'Triangle' },
   { value: 'circle', label: 'Circle' },
   { value: 'diamond', label: 'Diamond' },
+  { value: 'er-one', label: 'ER One (||)' },
+  { value: 'er-zero-one', label: 'ER 0..1 (o|)' },
+  { value: 'er-many', label: 'ER 1..N (|<)' },
+  { value: 'er-zero-many', label: 'ER 0..N (o<)' },
 ];
 
 const SLOPPINESS_OPTIONS: Array<{
@@ -833,6 +839,110 @@ function NodeSections({
         </>
       )}
 
+      {/* Entity Relationship (ERD) Table Columns Inspector */}
+      {node.type === 'table' && (
+        <Row
+          label={`Columns (${node.fields?.length ?? 0})`}
+          hint="Configure entity columns, types, Primary Keys (PK), and Foreign Keys (FK)."
+        >
+          <div className="space-y-1.5">
+            {(node.fields ?? []).map((field, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextFields = (node.fields ?? []).map((f, i) =>
+                      i === idx ? { ...f, pk: !f.pk } : f
+                    );
+                    onCommit({ fields: nextFields });
+                  }}
+                  title="Toggle Primary Key (PK)"
+                  className={cn(
+                    'px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors cursor-pointer shrink-0',
+                    field.pk
+                      ? 'bg-amber-500/20 text-amber-500 border-amber-500/50'
+                      : 'border-border/50 text-muted-foreground/50 hover:text-foreground'
+                  )}
+                >
+                  PK
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextFields = (node.fields ?? []).map((f, i) =>
+                      i === idx ? { ...f, fk: !f.fk } : f
+                    );
+                    onCommit({ fields: nextFields });
+                  }}
+                  title="Toggle Foreign Key (FK)"
+                  className={cn(
+                    'px-1 py-0.5 rounded text-[9px] font-mono font-bold border transition-colors cursor-pointer shrink-0',
+                    field.fk
+                      ? 'bg-sky-500/20 text-sky-400 border-sky-500/50'
+                      : 'border-border/50 text-muted-foreground/50 hover:text-foreground'
+                  )}
+                >
+                  FK
+                </button>
+                <input
+                  type="text"
+                  value={field.name}
+                  placeholder="column"
+                  onChange={(e) => {
+                    const nextFields = (node.fields ?? []).map((f, i) =>
+                      i === idx ? { ...f, name: e.target.value } : f
+                    );
+                    onCommit({ fields: nextFields });
+                  }}
+                  className="h-6 px-1.5 text-[11px] font-mono flex-1 min-w-0 rounded border border-input/70 bg-background text-foreground outline-none focus:border-primary"
+                />
+                <input
+                  type="text"
+                  value={field.type}
+                  placeholder="type"
+                  onChange={(e) => {
+                    const nextFields = (node.fields ?? []).map((f, i) =>
+                      i === idx ? { ...f, type: e.target.value } : f
+                    );
+                    onCommit({ fields: nextFields });
+                  }}
+                  className="h-6 px-1.5 text-[10px] font-mono w-18 rounded border border-input/70 bg-background text-muted-foreground outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextFields = (node.fields ?? []).filter((_, i) => i !== idx);
+                    onCommit({ fields: nextFields });
+                  }}
+                  title="Delete column"
+                  className="h-6 w-5 flex items-center justify-center rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const current = node.fields ?? [];
+                const nextFields = [
+                  ...current,
+                  { name: `column_${current.length + 1}`, type: 'varchar(255)' },
+                ];
+                const minHeight = Math.max(node.height, 56 + nextFields.length * 28 + 28);
+                onCommit({ fields: nextFields, height: minHeight });
+              }}
+              className="w-full h-7 rounded-md border border-dashed border-teal-500/40 text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 text-[11px] font-mono font-medium transition-colors cursor-pointer"
+            >
+              + Add Entity Column
+            </button>
+          </div>
+        </Row>
+      )}
+
       {/* Alignment & Distribution Operations */}
       {onAlign && (
         <div className="pt-2.5 border-t border-border/50 space-y-2">
@@ -1087,6 +1197,41 @@ function EdgeSections({
           value={endArrow}
           onChange={(value) => onCommit({ endArrowhead: value })}
         />
+      </Row>
+
+      <Row label="ER cardinality" hint="1-click Crow's Foot Entity-Relationship notation.">
+        <div className="grid grid-cols-4 gap-1">
+          {[
+            { label: '1 : 1', start: 'er-one' as const, end: 'er-one' as const, title: 'One-to-One (|| — ||)' },
+            { label: '1 : N', start: 'er-one' as const, end: 'er-many' as const, title: 'One-to-Many (|| — |<)' },
+            { label: '0..1 : N', start: 'er-zero-one' as const, end: 'er-zero-many' as const, title: 'Zero/One-to-Many (o| — o<)' },
+            { label: 'N : M', start: 'er-many' as const, end: 'er-many' as const, title: 'Many-to-Many (>< — |<)' },
+          ].map((preset) => {
+            const active = startArrow === preset.start && endArrow === preset.end;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                title={preset.title}
+                onClick={() =>
+                  onCommit({
+                    startArrowhead: preset.start,
+                    endArrowhead: preset.end,
+                    label: preset.label,
+                  })
+                }
+                className={cn(
+                  'h-6.5 rounded-md border text-[10px] font-mono font-semibold transition-colors cursor-pointer',
+                  active
+                    ? 'bg-primary/15 border-primary text-primary'
+                    : 'border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
       </Row>
 
       <Row label="Direction">
@@ -1401,6 +1546,37 @@ function ArrowheadGlyph({ type }: { type: NonNullable<ZCanvasEdge['endArrowhead'
       {type === 'triangle' && <path d="M 14 2 L 22 7 L 14 12 z" fill={stroke} />}
       {type === 'circle' && <circle cx="18" cy="7" r="3" fill={stroke} />}
       {type === 'diamond' && <path d="M 18 3 L 22 7 L 18 11 L 14 7 z" fill={stroke} />}
+      {type === 'er-one' && (
+        <path
+          d="M 15 3 L 15 11 M 19 3 L 19 11"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      )}
+      {type === 'er-zero-one' && (
+        <g fill="none" stroke={stroke} strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="13" cy="7" r="2.5" fill="var(--background)" />
+          <line x1="19" y1="3" x2="19" y2="11" />
+        </g>
+      )}
+      {type === 'er-many' && (
+        <path
+          d="M 13 3 L 13 11 M 13 7 L 21 2.5 M 13 7 L 21 7 M 13 7 L 21 11.5"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+      {type === 'er-zero-many' && (
+        <g fill="none" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11.5" cy="7" r="2.3" fill="var(--background)" />
+          <path d="M 14 7 L 21 2.5 M 14 7 L 21 7 M 14 7 L 21 11.5" />
+        </g>
+      )}
     </svg>
   );
 }

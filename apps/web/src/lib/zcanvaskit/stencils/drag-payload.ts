@@ -99,6 +99,14 @@ export interface ZCanvasPatternNode {
   badge?: string;
   icon?: string;
   color?: string;
+  fields?: Array<{
+    name: string;
+    type: string;
+    pk?: boolean;
+    fk?: boolean;
+    nullable?: boolean;
+    unique?: boolean;
+  }>;
 }
 
 /**
@@ -115,6 +123,10 @@ export interface ZCanvasPatternEdge {
   label?: string;
   color?: string;
   style?: 'bezier' | 'step' | 'straight';
+  startArrowhead?: NonNullable<import('../core/schema').ZCanvasEdge['startArrowhead']>;
+  endArrowhead?: NonNullable<import('../core/schema').ZCanvasEdge['endArrowhead']>;
+  sourceOffset?: number;
+  targetOffset?: number;
 }
 
 export interface ZCanvasPatternPayload {
@@ -378,6 +390,18 @@ function nodeItem(
   if (icon) node.icon = icon;
   const color = asString(raw.color);
   if (color) node.color = color;
+  if (Array.isArray(raw.fields)) {
+    node.fields = raw.fields
+      .filter((f): f is Record<string, unknown> => isRecord(f) && typeof f.name === 'string')
+      .map((f) => ({
+        name: String(f.name),
+        type: typeof f.type === 'string' ? f.type : 'varchar(255)',
+        ...(f.pk === true ? { pk: true } : {}),
+        ...(f.fk === true ? { fk: true } : {}),
+        ...(f.nullable === true ? { nullable: true } : {}),
+        ...(f.unique === true ? { unique: true } : {}),
+      }));
+  }
 
   return node;
 }
@@ -463,6 +487,14 @@ function adaptLegacyPattern(value: unknown): ZCanvasPatternDragItem | null {
     if (raw.style === 'bezier' || raw.style === 'step' || raw.style === 'straight') {
       edge.style = raw.style;
     }
+    const startArrowhead = asString(raw.startArrowhead);
+    if (startArrowhead) edge.startArrowhead = startArrowhead as ZCanvasPatternEdge['startArrowhead'];
+    const endArrowhead = asString(raw.endArrowhead);
+    if (endArrowhead) edge.endArrowhead = endArrowhead as ZCanvasPatternEdge['endArrowhead'];
+    const sourceOffset = asNumber(raw.sourceOffset);
+    if (sourceOffset !== undefined) edge.sourceOffset = sourceOffset;
+    const targetOffset = asNumber(raw.targetOffset);
+    if (targetOffset !== undefined) edge.targetOffset = targetOffset;
     edges.push(edge);
   }
 

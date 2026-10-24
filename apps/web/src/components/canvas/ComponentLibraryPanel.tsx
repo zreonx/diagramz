@@ -41,6 +41,14 @@ export interface ArchitecturePatternNode {
   width: number;
   height: number;
   color?: string;
+  fields?: Array<{
+    name: string;
+    type: string;
+    pk?: boolean;
+    fk?: boolean;
+    nullable?: boolean;
+    unique?: boolean;
+  }>;
 }
 
 export interface ArchitecturePatternEdge {
@@ -50,6 +58,10 @@ export interface ArchitecturePatternEdge {
   label?: string;
   color?: string;
   style?: 'bezier' | 'step' | 'straight';
+  startArrowhead?: 'er-one' | 'er-zero-one' | 'er-many' | 'er-zero-many';
+  endArrowhead?: 'er-one' | 'er-zero-one' | 'er-many' | 'er-zero-many';
+  sourceOffset?: number;
+  targetOffset?: number;
 }
 
 export interface ArchitecturePatternDef {
@@ -169,6 +181,164 @@ export const BUILTIN_ARCHITECTURE_PATTERNS: ArchitecturePatternDef[] = [
       { id: 'e3', source: 'auth', target: 'session', label: 'Store Session', color: '#ef4444' },
       { id: 'e4', source: 'gw', target: 'api', label: 'Authorized Request', color: '#10b981' },
     ],
+  },
+  {
+    id: 'pattern-erd-ecommerce',
+    title: 'Relational ERD Schema (Crow\'s Foot)',
+    subtitle: 'Users, Orders, Pivot Table & Products with PK/FK',
+    badge: 'ERD 1:N / N:M',
+    category: 'Architecture Diagrams',
+    flowPreview: ['users (PK)', 'orders (FK)', 'order_items (PK/FK)', 'products (PK)'],
+    nodes: [
+      {
+        id: 'users',
+        type: 'table',
+        title: 'users',
+        x: 0,
+        y: 60,
+        width: 230,
+        height: 196,
+        color: '#0d9488',
+        fields: [
+          { name: 'id', type: 'uuid', pk: true },
+          { name: 'email', type: 'varchar(255)', unique: true },
+          { name: 'full_name', type: 'varchar(120)' },
+          { name: 'created_at', type: 'timestamptz' },
+        ],
+      },
+      {
+        id: 'orders',
+        type: 'table',
+        title: 'orders',
+        x: 340,
+        y: 60,
+        width: 230,
+        height: 196,
+        color: '#3b82f6',
+        fields: [
+          { name: 'id', type: 'uuid', pk: true },
+          { name: 'user_id', type: 'uuid', fk: true },
+          { name: 'status', type: 'varchar(32)' },
+          { name: 'total_cents', type: 'integer' },
+        ],
+      },
+      {
+        id: 'order_items',
+        type: 'table',
+        title: 'order_items',
+        x: 680,
+        y: 60,
+        width: 240,
+        height: 196,
+        color: '#8b5cf6',
+        fields: [
+          { name: 'order_id', type: 'uuid', pk: true, fk: true },
+          { name: 'product_id', type: 'uuid', pk: true, fk: true },
+          { name: 'quantity', type: 'integer' },
+          { name: 'unit_price', type: 'integer' },
+        ],
+      },
+      {
+        id: 'products',
+        type: 'table',
+        title: 'products',
+        x: 1030,
+        y: 60,
+        width: 230,
+        height: 196,
+        color: '#10b981',
+        fields: [
+          { name: 'id', type: 'uuid', pk: true },
+          { name: 'sku', type: 'varchar(64)', unique: true },
+          { name: 'title', type: 'varchar(255)' },
+          { name: 'price_cents', type: 'integer' },
+        ],
+      },
+    ],
+    edges: [
+      {
+        id: 'e-user-orders',
+        source: 'users',
+        target: 'orders',
+        label: '1 : N',
+        color: '#0d9488',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-many',
+      },
+      {
+        id: 'e-order-items',
+        source: 'orders',
+        target: 'order_items',
+        label: '1 : N',
+        color: '#3b82f6',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-many',
+      },
+      {
+        id: 'e-product-items',
+        source: 'products',
+        target: 'order_items',
+        label: '1 : N',
+        color: '#10b981',
+        style: 'step',
+        startArrowhead: 'er-one',
+        endArrowhead: 'er-zero-many',
+      },
+    ],
+  },
+];
+
+export const ERD_TABLE_PRESETS: Array<{
+  id: string;
+  title: string;
+  badge: string;
+  subtitle: string;
+  node: ArchitecturePatternNode;
+}> = [
+  {
+    id: 'erd-preset-entity',
+    title: 'Entity Table (PK/FK)',
+    badge: '1:N Entity',
+    subtitle: 'id PK, parent_id FK, timestamps',
+    node: {
+      id: 'entity_table',
+      type: 'table',
+      title: 'entities',
+      x: 0,
+      y: 0,
+      width: 235,
+      height: 196,
+      color: '#0d9488',
+      fields: [
+        { name: 'id', type: 'uuid', pk: true },
+        { name: 'parent_id', type: 'uuid', fk: true },
+        { name: 'name', type: 'varchar(255)' },
+        { name: 'created_at', type: 'timestamptz' },
+      ],
+    },
+  },
+  {
+    id: 'erd-preset-join',
+    title: 'Join / Pivot Table',
+    badge: 'N:M Join',
+    subtitle: 'Composite PK + FK join table',
+    node: {
+      id: 'pivot_table',
+      type: 'table',
+      title: 'entity_memberships',
+      x: 0,
+      y: 0,
+      width: 240,
+      height: 172,
+      color: '#8b5cf6',
+      fields: [
+        { name: 'left_id', type: 'uuid', pk: true, fk: true },
+        { name: 'right_id', type: 'uuid', pk: true, fk: true },
+        { name: 'role', type: 'varchar(64)' },
+      ],
+    },
   },
 ];
 
@@ -739,6 +909,49 @@ export function ComponentLibraryPanel({
                         <div className="min-w-0 w-full">
                           <span className="text-[11px] font-semibold text-foreground truncate block group-hover:text-primary transition-colors">
                             {shape.title}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {ERD_TABLE_PRESETS.map((preset) => (
+                      <div
+                        key={preset.id}
+                        draggable
+                        onDragStart={(e) =>
+                          writeDragItem(e.dataTransfer, {
+                            kind: 'node',
+                            node: preset.node,
+                          })
+                        }
+                        onClick={() =>
+                          onInsertItem?.({
+                            kind: 'node',
+                            node: preset.node,
+                          })
+                        }
+                        className={cn(
+                          'group flex flex-col justify-between p-2 rounded-xl border border-teal-500/40 bg-teal-500/5',
+                          'hover:bg-teal-500/10 hover:border-teal-500/70 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-left'
+                        )}
+                        title={`Click or drag "${preset.title}" (${preset.subtitle})`}
+                      >
+                        <div className="flex items-start justify-between gap-1 mb-1.5 w-full pointer-events-none">
+                          <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-500/40 flex items-center justify-center p-1">
+                            <div className="w-6 h-5 rounded-sm border border-teal-500 overflow-hidden bg-teal-500/10 flex flex-col">
+                              <div className="h-1.5 bg-teal-500/45 border-b border-teal-500 shrink-0" />
+                              <div className="flex items-center gap-0.5 px-0.5 pt-0.5">
+                                <span className="w-1.5 h-1 rounded-xs bg-amber-500" />
+                                <span className="w-1.5 h-1 rounded-xs bg-sky-500" />
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-teal-500/15 text-teal-600 dark:text-teal-400 font-mono">
+                            {preset.badge}
+                          </span>
+                        </div>
+                        <div className="min-w-0 w-full">
+                          <span className="text-[11px] font-semibold text-foreground truncate block group-hover:text-teal-500 transition-colors">
+                            {preset.title}
                           </span>
                         </div>
                       </div>

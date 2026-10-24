@@ -129,6 +129,13 @@ erDiagram
   assert.equal(zdoc.nodes.every((n) => n.type === 'table'), true, 'All nodes should have type table');
   assert.equal(zdoc.nodes[0].fields?.length, 4);
   assert.equal(zdoc.edges.length, 2);
+  // USERS ||--o{ ORDERS -> er-one to er-zero-many
+  assert.equal(zdoc.edges[0].startArrowhead, 'er-one');
+  assert.equal(zdoc.edges[0].endArrowhead, 'er-zero-many');
+  assert.equal(zdoc.edges[0].style, 'step');
+  // ORDERS ||--|{ ORDER_ITEMS -> er-one to er-many
+  assert.equal(zdoc.edges[1].startArrowhead, 'er-one');
+  assert.equal(zdoc.edges[1].endArrowhead, 'er-many');
 });
 
 test('parseMermaidToEraser parses sequenceDiagram into participants and message connectors', () => {

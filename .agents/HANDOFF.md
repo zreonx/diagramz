@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-24
 > **Branch**: `main`
-> **Test Suite Status**: 569 passing (`0` failing)
+> **Test Suite Status**: 570 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -39,7 +39,12 @@
 5. **Draw.io Line & Connector Management**:
    - Added custom multi-waypoint / bend routing (`edge.waypoints`) across `step`, `bezier`, and `straight` lines, with interactive virtual segment midpoint handles (`edge-virtual-midpoint-*`) to insert bends and custom waypoint handles (`edge-waypoint-*`) with orthogonal alignment snapping and double-click deletion.
    - Upgraded `computeOrthogonalStepPath` to route perpendicular port pairs (`right -> top`, `bottom -> left`) via crisp L-bends and same-side ports (`top -> top`, `right -> right`) via a `28px` outer jetty.
-   - Added full `Straight` routing support on connected nodes, live magnetic target snapping (`drawio-connect-target-reticle`) when drawing new connections, all 6 arrowheads (`None`, `Arrow`, `Barbs`, `Triangle`, `Circle`, `Diamond`), **Flow Animation (marching ants)** (`edge.animated`), and **Reverse Line Direction**.
+   - Added full `Straight` routing support on connected nodes, live magnetic target snapping (`drawio-connect-target-reticle`) when drawing new connections, all arrowheads (`None`, `Arrow`, `Barbs`, `Triangle`, `Circle`, `Diamond`, plus 4 Crow's Foot ER markers), **Flow Animation (marching ants)** (`edge.animated`), and **Reverse Line Direction**.
+6. **Entity-Relationship (ERD) Crow's Foot Notation & Column-Level Connections**:
+   - Added `er-one` (`||`), `er-zero-one` (`o|`), `er-many` (`|<`), and `er-zero-many` (`o<`) Crow's Foot arrowheads across `schema.ts`, `ZCanvas.tsx`, `export/svg.ts`, and `ZCanvasStylePanel.tsx`.
+   - Added 1-click **ER Cardinality Presets** (`1 : 1`, `1 : N`, `0..1 : N`, `N : M`) on selected connectors and a full **Entity Columns (`PK` / `FK`)** editor in `ZCanvasStylePanel.tsx`.
+   - Upgraded `table` nodes on the canvas (`ZCanvas.tsx`) with interactive `PK` (amber) and `FK` (sky) badge pills and row-level Left & Right connection anchor ports (`erd-row-anchor-left-*` / `erd-row-anchor-right-*`), plus automatic `1 : N` Crow's Foot defaults when wiring two `table` nodes.
+   - Mapped Mermaid `erDiagram` operators (`||--o{`, `||--|{`, etc.) to Crow's Foot markers in `eraser-templates.ts` and added **Entity Table (`PK`/`FK`)**, **Join / Pivot Table (`N:M`)**, and **Relational ERD Schema** templates in `ComponentLibraryPanel.tsx`.
 
 ---
 
