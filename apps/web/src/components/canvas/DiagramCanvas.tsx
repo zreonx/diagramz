@@ -24,6 +24,8 @@ import { ARCH_ICON_MAP } from './ArchitectureIcons';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { CanvasCommandPalette } from './CanvasCommandPalette';
 import { useDiagramStore } from '@/stores/diagram.store';
+import { useAuthStore } from '@/stores/auth.store';
+import { useCollab } from '@/hooks/useCollab';
 import { DiagramDetail } from '@diagramz/shared';
 import { GripVertical, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,6 +53,28 @@ export function DiagramCanvas({
   const panelMode = useDiagramStore((s) => s.panelMode);
   const setPanelMode = useDiagramStore((s) => s.setPanelMode);
   const saveDiagram = useDiagramStore((s) => s.saveDiagram);
+  const collaborators = useDiagramStore((s) => s.collaborators);
+  const currentUser = useAuthStore((s) => s.user);
+
+  const isRemoteUpdatingRef = useRef(false);
+  const lastLocalCursorRef = useRef<{ x: number; y: number } | null>(null);
+  const selectedElementIdsRef = useRef<string[]>([]);
+
+  const handleRemoteCanvasChange = useCallback((remoteCanvasData: any) => {
+    if (!remoteCanvasData) return;
+    isRemoteUpdatingRef.current = true;
+    const normalized = normalizeToZCanvasDocument(remoteCanvasData);
+    setZcanvasDoc(normalized);
+    useDiagramStore.getState().setCanvasData(exportZCanvasToStorage(normalized));
+    setTimeout(() => {
+      isRemoteUpdatingRef.current = false;
+    }, 50);
+  }, []);
+
+  const { sendCursorPosition, broadcastCanvasChange } = useCollab(
+    currentDiagram?.id || initialDiagram.id,
+    { onRemoteCanvasChange: handleRemoteCanvasChange }
+  );
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef<string | null>(null);
@@ -111,10 +135,30 @@ export function DiagramCanvas({
   const handleCanvasChange = useCallback(
     (newDoc: ZCanvasDocument) => {
       setZcanvasDoc(newDoc);
-      useDiagramStore.getState().setCanvasData(exportZCanvasToStorage(newDoc));
+      const exported = exportZCanvasToStorage(newDoc);
+      useDiagramStore.getState().setCanvasData(exported);
       triggerAutoSave();
+      if (!isRemoteUpdatingRef.current) {
+        broadcastCanvasChange(exported);
+      }
     },
-    [triggerAutoSave]
+    [triggerAutoSave, broadcastCanvasChange]
+  );
+
+  const handleCursorMove = useCallback(
+    (pt: { x: number; y: number } | null) => {
+      lastLocalCursorRef.current = pt;
+      sendCursorPosition(pt, selectedElementIdsRef.current);
+    },
+    [sendCursorPosition]
+  );
+
+  const handleSelectionChange = useCallback(
+    (ids: string[]) => {
+      selectedElementIdsRef.current = ids;
+      sendCursorPosition(lastLocalCursorRef.current, ids);
+    },
+    [sendCursorPosition]
   );
 
   // Splitter drag handling
@@ -599,6 +643,10 @@ export function DiagramCanvas({
               edgeRouting={edgeRouting}
               onEdgeRoutingChange={setEdgeRouting}
               rightOffset={panelMode === 'mermaid' || panelMode === 'ai' ? 384 : 0}
+              collaborators={collaborators}
+              currentUserId={currentUser?.id}
+              onCursorMove={handleCursorMove}
+              onSelectionChange={handleSelectionChange}
               onNodeDoubleClick={(node) => {
                 if (node.data?.isMermaid && node.data?.mermaidCode) {
                   setMermaidCode(node.data.mermaidCode);

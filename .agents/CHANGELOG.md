@@ -4,6 +4,30 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-25] — Full Real-time Multiplayer Collaboration: Header Teammates Stack, Live SVG Cursors, Remote Selection Outlines & WebSocket Sync
+
+### Added
+- **Interactive Collaborator Stack & Live Presence Popover** ([`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx)):
+  - Top header collaborator trigger button displaying overlapped user avatars with colored borders, active status pulse rings, and participant count.
+  - Interactive Popover displaying:
+    - Active teammates indicator with pulsing emerald radar dot (`N online`).
+    - Local user item (`(You)`).
+    - Teammate list with real-time state badges (`Editing (N items)` with pencil icon vs `Viewing` with eye icon).
+    - Quick "Invite Collaborators" dialog trigger.
+- **Real-time Live Multiplayer SVG Cursors** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Rendered peer mouse pointers in world canvas space using Figma-grade SVG arrow pointers in teammate-assigned brand colors.
+  - Floating name badges attached to cursor pointers.
+  - Sized with inverse zoom factor (`1 / viewport.zoom`) to maintain sharp, readable screen dimensions at any zoom level.
+- **Teammate Selection Outlines & Badges** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Outlines nodes currently selected by peers with dashed colored bounding boxes and floating name badges (`"Alice"`).
+- **Full-Stack WebSocket Document Synchronization** ([`collab.gateway.ts`](file:///D:/Projects/diagramz/apps/api/src/modules/collab/collab.gateway.ts), [`collab.ts`](file:///D:/Projects/diagramz/packages/shared/src/types/collab.ts), [`useCollab.ts`](file:///D:/Projects/diagramz/apps/web/src/hooks/useCollab.ts), [`DiagramCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx)):
+  - Added `COLLAB_SOCKET_EVENTS.ROOM_USERS` and `COLLAB_SOCKET_EVENTS.DIAGRAM_CHANGE`.
+  - Collab Gateway now collects active sockets upon join and dispatches `room:users` to the joining client.
+  - Relay `diagram:change` events to broadcast diagram document updates across connected clients in the room.
+  - Implemented 40ms cursor position throttling and re-entrance guards in `DiagramCanvas.tsx` to prevent cyclic echo broadcasts.
+
+---
+
 ## [2026-10-25] — Figma-Grade Header Ergonomics, Canvas & Page Properties Inspector, Collapsible Inspector Dock & Bottom Status HUD
 
 ### Added

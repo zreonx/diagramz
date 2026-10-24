@@ -151,6 +151,7 @@ import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
+import type { PresenceUser } from '@diagramz/shared';
 import { getEdgeColor } from '../core/theme-tokens';
 import {
   ZCanvasElementArrayGraphic,
@@ -528,6 +529,10 @@ export interface ZCanvasProps {
   onNodeDoubleClick?: (node: ZCanvasNode) => void;
   /** Right margin offset in pixels when side drawer (e.g. AI or Code) is open */
   rightOffset?: number;
+  collaborators?: PresenceUser[];
+  currentUserId?: string;
+  onCursorMove?: (point: { x: number; y: number } | null) => void;
+  onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export function ZCanvas({
@@ -539,6 +544,10 @@ export function ZCanvas({
   onEdgeRoutingChange,
   onNodeDoubleClick,
   rightOffset = 0,
+  collaborators = [],
+  currentUserId,
+  onCursorMove,
+  onSelectionChange,
 }: ZCanvasProps) {
   const iconMap = useMemo(() => resolveIconMap(renderers), [renderers]);
   const [nodes, setNodes] = useState<ZCanvasNode[]>(initialDocument.nodes || []);
@@ -632,6 +641,22 @@ export function ZCanvas({
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
 
   const { isDark } = useTheme();
+
+  const onCursorMoveRef = useRef(onCursorMove);
+  onCursorMoveRef.current = onCursorMove;
+
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+
+  useEffect(() => {
+    const combined = [...selectedNodeIds, ...selectedEdgeIds, ...selectedStrokeIds];
+    onSelectionChangeRef.current?.(combined);
+  }, [selectedNodeIds, selectedEdgeIds, selectedStrokeIds]);
+
+  const peerCollaborators = useMemo(
+    () => (collaborators || []).filter((c) => c.userId !== currentUserId),
+    [collaborators, currentUserId]
+  );
 
   // Canvas Settings & Customizations (Grid style, snapping, routing, background tone)
   const [settings, setSettings] = useState<ZCanvasSettings>(loadCanvasSettings);
@@ -2802,6 +2827,9 @@ export function ZCanvas({
   const handleMouseMove = (e: CanvasPointer) => {
     seenPointerEventRef.current = e.nativeEvent ?? null;
     lastMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+    const canvasPt = getCanvasPoint(e.clientX, e.clientY);
+    onCursorMoveRef.current?.(canvasPt);
 
     if (activeTool === 'laser') {
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -5407,6 +5435,7 @@ export function ZCanvas({
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
+      onMouseLeave={() => onCursorMoveRef.current?.(null)}
       onMouseUp={handleMouseUp}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -8444,6 +8473,121 @@ export function ZCanvas({
             </svg>
           );
         })()}
+
+      {/* Real-time Multiplayer Collaboration Overlay: Peer Cursors & Selection Outlines */}
+      {peerCollaborators.length > 0 && (
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+          style={{
+            transform: `translate3d(${viewport.panX}px, ${viewport.panY}px, 0) scale(${viewport.zoom})`,
+            transformOrigin: '0 0',
+          }}
+        >
+          {/* 1. Remote Selections */}
+          {peerCollaborators.map((c) => {
+            if (!c.selectedElementIds || c.selectedElementIds.length === 0) return null;
+            return (
+              <g key={`collab-sel-group-${c.userId}`}>
+                {c.selectedElementIds.map((id) => {
+                  const node = nodeMap.get(id);
+                  if (!node) return null;
+                  const nw = node.width ?? 160;
+                  const nh = node.height ?? 80;
+                  const tagWidth = Math.max(50, c.name.length * 7.5 + 16);
+                  return (
+                    <g key={`collab-sel-${c.userId}-${id}`}>
+                      {/* Bounding box around peer's selected element */}
+                      <rect
+                        x={node.x - 4}
+                        y={node.y - 4}
+                        width={nw + 8}
+                        height={nh + 8}
+                        rx={8}
+                        fill={c.color}
+                        fillOpacity={0.08}
+                        stroke={c.color}
+                        strokeWidth={1.5 / viewport.zoom}
+                        strokeDasharray={`${5 / viewport.zoom} ${4 / viewport.zoom}`}
+                      />
+                      {/* Name badge floating above the node */}
+                      <g
+                        transform={`translate(${node.x - 4}, ${node.y - 4 - 22 / viewport.zoom}) scale(${1 / viewport.zoom})`}
+                      >
+                        <rect
+                          x={0}
+                          y={0}
+                          width={tagWidth}
+                          height={18}
+                          rx={4}
+                          fill={c.color}
+                        />
+                        <text
+                          x={tagWidth / 2}
+                          y={12.5}
+                          fill="#FFFFFF"
+                          fontSize={10}
+                          fontWeight={600}
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                          textAnchor="middle"
+                        >
+                          {c.name}
+                        </text>
+                      </g>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+
+          {/* 2. Remote Mouse Cursors */}
+          {peerCollaborators.map((c) => {
+            if (!c.cursor || typeof c.cursor.x !== 'number' || typeof c.cursor.y !== 'number') {
+              return null;
+            }
+            const tagWidth = Math.max(46, c.name.length * 7.5 + 16);
+            return (
+              <g
+                key={`collab-cur-${c.userId}`}
+                transform={`translate(${c.cursor.x}, ${c.cursor.y}) scale(${1 / viewport.zoom})`}
+                className="transition-transform duration-75 ease-out"
+              >
+                {/* Figma-grade pointer arrow */}
+                <path
+                  d="M0 0 L0 16 L4.2 12.2 L7.8 20.4 L10.6 19.2 L7 11.2 L12 11.2 Z"
+                  fill={c.color}
+                  stroke="#FFFFFF"
+                  strokeWidth={1.5}
+                  strokeLinejoin="round"
+                />
+                {/* Collaborator Name Tag Badge */}
+                <g transform="translate(14, 14)">
+                  <rect
+                    x={0}
+                    y={0}
+                    width={tagWidth}
+                    height={20}
+                    rx={4}
+                    fill={c.color}
+                    className="shadow-sm"
+                  />
+                  <text
+                    x={tagWidth / 2}
+                    y={13.5}
+                    fill="#FFFFFF"
+                    fontSize={10.5}
+                    fontWeight={600}
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    textAnchor="middle"
+                  >
+                    {c.name}
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+        </svg>
+      )}
 
       {/* Appearance panel for selected element, or canvas & page properties when unselected */}
       {!readOnly && !isPresentationMode && (

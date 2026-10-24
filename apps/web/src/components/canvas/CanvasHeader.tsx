@@ -27,6 +27,10 @@ import {
   Presentation,
   MoreHorizontal,
   Keyboard,
+  Users,
+  Pencil,
+  Eye,
+  UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +45,11 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,6 +58,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useDiagramStore } from '@/stores/diagram.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { ShareDiagramDialog } from './ShareDiagramDialog';
 import { VersionHistoryDialog } from './VersionHistoryDialog';
 import { apiClient } from '@/lib/api';
@@ -89,6 +99,7 @@ export function CanvasHeader({
   const saveDiagram = useDiagramStore((s) => s.saveDiagram);
   const currentDiagram = useDiagramStore((s) => s.currentDiagram);
   const collaborators = useDiagramStore((s) => s.collaborators);
+  const currentUser = useAuthStore((s) => s.user);
   const panelMode = useDiagramStore((s) => s.panelMode);
   const setPanelMode = useDiagramStore((s) => s.setPanelMode);
   const viewMode = useDiagramStore((s) => s.viewMode);
@@ -453,21 +464,133 @@ export function CanvasHeader({
 
       {/* Right: Actions, Panels, Exports */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        {/* Collaborators Avatar Stack */}
-        {collaborators.length > 0 && (
-          <div className="hidden md:flex items-center -space-x-2 mr-1">
-            {collaborators.slice(0, 4).map((c) => (
-              <div
-                key={c.userId}
-                title={c.name}
-                className="w-6.5 h-6.5 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
-                style={{ backgroundColor: c.color }}
-              >
-                {c.name.charAt(0).toUpperCase()}
+        {/* Collaborators Avatar Stack & Live Presence Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/60 hover:bg-muted/80 transition-all cursor-pointer mr-1 group text-xs font-medium',
+                collaborators.length > 0 ? 'bg-muted/40' : 'bg-transparent text-muted-foreground'
+              )}
+              title="Active Collaborators in Room"
+            >
+              <div className="flex items-center -space-x-1.5">
+                {/* Local user avatar */}
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-background bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold shadow-2xs"
+                  title={`${currentUser?.name || 'You'} (You)`}
+                >
+                  {(currentUser?.name || 'U').charAt(0).toUpperCase()}
+                </div>
+                {/* Peer collaborator avatars */}
+                {collaborators.slice(0, 3).map((c) => (
+                  <div
+                    key={c.userId}
+                    title={c.name}
+                    className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-2xs relative"
+                    style={{ backgroundColor: c.color }}
+                  >
+                    {c.name.charAt(0).toUpperCase()}
+                    {c.selectedElementIds && c.selectedElementIds.length > 0 && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-background ring-1 ring-background" />
+                    )}
+                  </div>
+                ))}
+                {collaborators.length > 3 && (
+                  <div className="w-6 h-6 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground shadow-2xs">
+                    +{collaborators.length - 3}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+              <span className="hidden xl:inline text-[11px] text-muted-foreground font-mono ml-0.5">
+                {collaborators.length + 1}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 p-3 shadow-xl">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs font-semibold text-foreground">Active Teammates</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
+                {collaborators.length + 1} online
+              </Badge>
+            </div>
+
+            <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              {/* Current user */}
+              <div className="flex items-center justify-between p-1.5 rounded-lg bg-muted/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {(currentUser?.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="truncate">
+                    <p className="text-xs font-medium truncate">
+                      {currentUser?.name || 'You'} <span className="text-[10px] text-muted-foreground font-normal">(You)</span>
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-[9px] h-4.5 px-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">
+                  Online
+                </Badge>
+              </div>
+
+              {/* Peers */}
+              {collaborators.map((c) => {
+                const isEditing = c.selectedElementIds && c.selectedElementIds.length > 0;
+                return (
+                  <div key={c.userId} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: c.color }}
+                      >
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="truncate">
+                        <p className="text-xs font-medium truncate">{c.name}</p>
+                      </div>
+                    </div>
+                    {isEditing ? (
+                      <Badge variant="outline" className="text-[9px] h-4.5 px-1.5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10">
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Editing</span>
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[9px] h-4.5 px-1.5 gap-1 border-border text-muted-foreground">
+                        <Eye className="w-2.5 h-2.5" />
+                        <span>Viewing</span>
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
+
+              {collaborators.length === 0 && (
+                <p className="text-[11px] text-muted-foreground text-center py-2">
+                  No other teammates currently in this diagram.
+                </p>
+              )}
+            </div>
+
+            <div className="pt-2 mt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowShareModal(true)}
+                className="w-full text-xs h-7 gap-1.5 justify-center cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Invite Collaborators</span>
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Cohesive Segmented Panel Group: Stencils, AI Architect, Mermaid Code */}
         <div className="flex items-center p-0.5 rounded-xl bg-muted/60 border border-border/60 shadow-2xs">

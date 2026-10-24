@@ -105,10 +105,21 @@ export class CollabGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Emit initial sync to client
       client.emit(COLLAB_SOCKET_EVENTS.YJS_SYNC, stateUpdate);
 
+      // Compile current active collaborators in room and send to the joining user
+      const sockets = await this.server.in(roomName).fetchSockets();
+      const existingUsers: PresenceUser[] = [];
+      for (const s of sockets) {
+        const u = (s.data as SocketData)?.user;
+        if (u && u.userId !== presenceUser.userId) {
+          existingUsers.push(u);
+        }
+      }
+      client.emit(COLLAB_SOCKET_EVENTS.ROOM_USERS, existingUsers);
+
       // Notify others in room
       client.to(roomName).emit(COLLAB_SOCKET_EVENTS.USER_JOINED, presenceUser);
 
-      return { status: 'joined', diagramId };
+      return { status: 'joined', diagramId, users: existingUsers };
     } catch (err: any) {
       this.logger.error(`Error in handleJoin: ${err.message}`);
       client.emit(COLLAB_SOCKET_EVENTS.ERROR, { message: 'Failed to join diagram session' });
@@ -126,6 +137,21 @@ export class CollabGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (data.user) {
       client.to(roomName).emit(COLLAB_SOCKET_EVENTS.USER_LEFT, { userId: data.user.userId });
     }
+  }
+
+  @SubscribeMessage(COLLAB_SOCKET_EVENTS.DIAGRAM_CHANGE)
+  handleDiagramChange(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      diagramId: string;
+      canvasData: any;
+      sourceUserId?: string;
+    },
+  ) {
+    const roomName = `diagram:${payload.diagramId}`;
+    // Broadcast diagram canvas changes to all other peers in the diagram room
+    client.to(roomName).emit(COLLAB_SOCKET_EVENTS.DIAGRAM_CHANGE, payload);
   }
 
   @SubscribeMessage(COLLAB_SOCKET_EVENTS.YJS_UPDATE)

@@ -20,7 +20,11 @@
 
 ## 2. Recently Completed Work
 
-1. **Figma-Grade Header Hierarchy & More Actions Dropdown**:
+1. **Full Real-time Multiplayer Collaboration Stack**:
+   - **Header Collaborator Stack & Popover** ([`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx)): Overlapped peer avatars with colored borders and online status pulse, opening a live presence popover showing active teammate status (`Editing (N items)` vs `Viewing`) and invite shortcut.
+   - **Live Multiplayer SVG Cursors & Selection Highlights** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)): Peer mouse cursors rendered in canvas world coordinates as Figma-style pointers with name badges, scaled with inverse zoom (`1 / viewport.zoom`) for consistent rendering across zoom levels. Real-time dashed bounding boxes around elements currently selected by teammates.
+   - **WebSocket Sync Engine** ([`collab.gateway.ts`](file:///D:/Projects/diagramz/apps/api/src/modules/collab/collab.gateway.ts), [`collab.ts`](file:///D:/Projects/diagramz/packages/shared/src/types/collab.ts), [`useCollab.ts`](file:///D:/Projects/diagramz/apps/web/src/hooks/useCollab.ts), [`DiagramCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx)): `room:users` and `diagram:change` events with 40ms cursor throttling and local echo prevention guards.
+2. **Figma-Grade Header Hierarchy & More Actions Dropdown**:
    - Reorganized header controls into clean semantic clusters: segmented pill for `[ ⊞ Stencils | ✦ AI Assistant | ⌨ Code ]`, elevated primary brand `Share` button, and consolidated secondary actions (`Auto Layout`, `Version History`, `Duplicate`, `Import JSON`) inside a Figma-style `···` (More) dropdown menu.
 2. **Canvas & Page Properties Inspector**:
    - When no elements are selected, `ZCanvasStylePanel` displays active sheet properties (inline sheet name renaming, live node/edge statistics), instant 4-pill grid selector (`Dots`, `Mesh`, `Cross`, `None`), 4 background tone swatches (`Clean`, `Warm`, `Blueprint`, `Charcoal`), snapping and smart guides switches, and 1-click Auto Layout.

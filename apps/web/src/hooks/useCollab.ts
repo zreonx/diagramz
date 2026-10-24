@@ -14,12 +14,18 @@ const WS_URL =
     ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '')
     : 'http://localhost:4000');
 
-export function useCollab(diagramId: string | null) {
+export function useCollab(
+  diagramId: string | null,
+  options?: {
+    onRemoteCanvasChange?: (canvasData: any) => void;
+  }
+) {
   const socketRef = useRef<Socket | null>(null);
   const ydocRef = useRef<Y.Doc>(new Y.Doc());
   const user = useAuthStore((s) => s.user);
   const setCollaborators = useDiagramStore((s) => s.setCollaborators);
-  const collaborators = useDiagramStore((s) => s.collaborators);
+  const onRemoteCanvasChangeRef = useRef(options?.onRemoteCanvasChange);
+  onRemoteCanvasChangeRef.current = options?.onRemoteCanvasChange;
 
   const sendYjsUpdate = useCallback(
     (update: Uint8Array) => {
@@ -30,20 +36,39 @@ export function useCollab(diagramId: string | null) {
         });
       }
     },
-    [diagramId],
+    [diagramId]
   );
 
+  const lastCursorSendRef = useRef<number>(0);
   const sendCursorPosition = useCallback(
     (cursor: { x: number; y: number } | null, selectedElementIds: string[] = []) => {
+      const now = Date.now();
+      // Throttle cursor sends to max 25 events per second (40ms), but always send null (cursor left)
+      if (cursor === null || now - lastCursorSendRef.current >= 40) {
+        lastCursorSendRef.current = now;
+        if (socketRef.current?.connected && diagramId) {
+          socketRef.current.emit(COLLAB_SOCKET_EVENTS.PRESENCE_UPDATE, {
+            diagramId,
+            cursor,
+            selectedElementIds,
+          });
+        }
+      }
+    },
+    [diagramId]
+  );
+
+  const broadcastCanvasChange = useCallback(
+    (canvasData: any) => {
       if (socketRef.current?.connected && diagramId) {
-        socketRef.current.emit(COLLAB_SOCKET_EVENTS.PRESENCE_UPDATE, {
+        socketRef.current.emit(COLLAB_SOCKET_EVENTS.DIAGRAM_CHANGE, {
           diagramId,
-          cursor,
-          selectedElementIds,
+          canvasData,
+          sourceUserId: user?.id,
         });
       }
     },
-    [diagramId],
+    [diagramId, user?.id]
   );
 
   useEffect(() => {
@@ -69,6 +94,7 @@ export function useCollab(diagramId: string | null) {
         diagramId,
         token,
         user: {
+          userId: user?.id,
           name: user?.name || 'Anonymous',
           avatarUrl: user?.avatarUrl,
         },
@@ -99,34 +125,55 @@ export function useCollab(diagramId: string | null) {
       }
     });
 
+    // Receive initial active collaborators in room upon joining
+    socket.on(COLLAB_SOCKET_EVENTS.ROOM_USERS, (users: PresenceUser[]) => {
+      setCollaborators(users);
+    });
+
     socket.on(COLLAB_SOCKET_EVENTS.USER_JOINED, (newUser: PresenceUser) => {
+      const current = useDiagramStore.getState().collaborators;
       setCollaborators([
-        ...collaborators.filter((c) => c.userId !== newUser.userId),
+        ...current.filter((c) => c.userId !== newUser.userId),
         newUser,
       ]);
     });
 
     socket.on(COLLAB_SOCKET_EVENTS.USER_LEFT, ({ userId }: { userId: string }) => {
-      setCollaborators(collaborators.filter((c) => c.userId !== userId));
+      const current = useDiagramStore.getState().collaborators;
+      setCollaborators(current.filter((c) => c.userId !== userId));
     });
 
     socket.on(COLLAB_SOCKET_EVENTS.PRESENCE_UPDATE, (presenceUser: PresenceUser) => {
+      const current = useDiagramStore.getState().collaborators;
       setCollaborators([
-        ...collaborators.filter((c) => c.userId !== presenceUser.userId),
+        ...current.filter((c) => c.userId !== presenceUser.userId),
         presenceUser,
       ]);
     });
+
+    // Real-time peer diagram canvas changes
+    socket.on(
+      COLLAB_SOCKET_EVENTS.DIAGRAM_CHANGE,
+      (payload: { diagramId: string; canvasData: any; sourceUserId?: string }) => {
+        if (payload.sourceUserId && payload.sourceUserId === user?.id) return;
+        if (onRemoteCanvasChangeRef.current) {
+          onRemoteCanvasChangeRef.current(payload.canvasData);
+        }
+      }
+    );
 
     return () => {
       socket.emit(COLLAB_SOCKET_EVENTS.LEAVE, { diagramId });
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [diagramId, user?.name, user?.avatarUrl]);
+  }, [diagramId, user?.id, user?.name, user?.avatarUrl, setCollaborators]);
 
   return {
     ydoc: ydocRef.current,
     sendYjsUpdate,
     sendCursorPosition,
+    broadcastCanvasChange,
+    isConnected: socketRef.current?.connected ?? false,
   };
 }

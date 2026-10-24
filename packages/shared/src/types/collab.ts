@@ -33,6 +33,8 @@ export const COLLAB_SOCKET_EVENTS = {
   PRESENCE_UPDATE: 'presence:update',
   USER_JOINED: 'user:joined',
   USER_LEFT: 'user:left',
+  ROOM_USERS: 'room:users',
+  DIAGRAM_CHANGE: 'diagram:change',
   ERROR: 'diagram:error',
 } as const;
 
