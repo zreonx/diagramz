@@ -82,6 +82,9 @@ export type ZCanvasEdgeStylePatch = Partial<
     | 'targetHandle'
     | 'waypoints'
     | 'animated'
+    | 'sourceLabel'
+    | 'targetLabel'
+    | 'lineJumps'
   >
 >;
 
@@ -1218,13 +1221,44 @@ function EdgeSections({
         />
       </Row>
 
-      <Row label="Label text" hint="Text shown on the connector line.">
+      <Row label="Center label" hint="Text shown on the middle of the connector line.">
         <textarea
           rows={2}
           value={edge.label || ''}
-          placeholder="Add text to line (Enter for new line)..."
+          placeholder="Center text (Enter for new line)..."
           onChange={(e) => onCommit({ label: e.target.value })}
           className="w-full text-xs font-mono p-1.5 rounded-md border border-input bg-background text-foreground shadow-xs resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </Row>
+
+      <Row label="Endpoints labels" hint="Source and Target endpoint labels (UML / ERD / Network ports).">
+        <div className="grid grid-cols-2 gap-1.5">
+          <input
+            type="text"
+            value={edge.sourceLabel || ''}
+            placeholder="Source (e.g. 1)"
+            onChange={(e) => onCommit({ sourceLabel: e.target.value.trim() ? e.target.value : undefined })}
+            className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background text-foreground shadow-xs outline-none focus:border-primary"
+          />
+          <input
+            type="text"
+            value={edge.targetLabel || ''}
+            placeholder="Target (e.g. 0..*)"
+            onChange={(e) => onCommit({ targetLabel: e.target.value.trim() ? e.target.value : undefined })}
+            className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background text-foreground shadow-xs outline-none focus:border-primary"
+          />
+        </div>
+      </Row>
+
+      <Row label="Line jumps" hint="Draw.io line bridges where crossing other connectors.">
+        <Segmented
+          options={[
+            { value: 'none', label: 'None', title: 'Flat crossing' },
+            { value: 'arc', label: 'Arc Bridge', title: 'Semi-circular jump arc (Draw.io)' },
+            { value: 'gap', label: 'Gap', title: 'Gap bridge' },
+          ]}
+          value={edge.lineJumps ?? 'none'}
+          onChange={(lineJumps) => onCommit({ lineJumps })}
         />
       </Row>
 

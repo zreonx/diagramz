@@ -24,6 +24,7 @@ import {
   History,
   CopyPlus,
   Upload,
+  Presentation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -457,6 +458,22 @@ export function CanvasHeader({
             ))}
           </div>
         )}
+
+        {/* Presentation Mode Toggle */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('zcanvas:toggle-presentation'));
+            }
+          }}
+          className="h-8 text-xs gap-1.5 rounded-lg px-2 sm:px-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+          title="Full-Screen Presentation Mode (F5)"
+        >
+          <Presentation className="w-3.5 h-3.5 text-rose-500" />
+          <span className="hidden xl:inline">Present</span>
+        </Button>
 
         {/* Auto Layout / Beautify Architecture */}
         {onBeautifyLayout && (

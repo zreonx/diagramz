@@ -986,6 +986,14 @@ export function resizeBoxFromHandle(
 export interface AlignmentGuide {
   type: 'horizontal' | 'vertical';
   coordinate: number;
+  start?: number;
+  end?: number;
+  spacingBadge?: {
+    x: number;
+    y: number;
+    distance: number;
+    orientation: 'horizontal' | 'vertical';
+  };
 }
 
 export function calculateAlignmentGuides(
@@ -1008,32 +1016,225 @@ export function calculateAlignmentGuides(
     const boxCenterX = box.x + box.width / 2;
     const boxCenterY = box.y + box.height / 2;
 
+    const spanYStart = Math.min(targetBox.y, box.y) - 10;
+    const spanYEnd = Math.max(targetBox.y + targetBox.height, box.y + box.height) + 10;
+    const spanXStart = Math.min(targetBox.x, box.x) - 10;
+    const spanXEnd = Math.max(targetBox.x + targetBox.width, box.x + box.width) + 10;
+
     // Vertical alignment (X axis)
     if (Math.abs(targetBox.x - box.x) < tolerance) {
       snappedX = box.x;
-      guides.push({ type: 'vertical', coordinate: box.x });
+      guides.push({ type: 'vertical', coordinate: box.x, start: spanYStart, end: spanYEnd });
     } else if (Math.abs(targetCenterX - boxCenterX) < tolerance) {
       snappedX = boxCenterX - targetBox.width / 2;
-      guides.push({ type: 'vertical', coordinate: boxCenterX });
+      guides.push({ type: 'vertical', coordinate: boxCenterX, start: spanYStart, end: spanYEnd });
     } else if (Math.abs(targetBox.x + targetBox.width - (box.x + box.width)) < tolerance) {
       snappedX = box.x + box.width - targetBox.width;
-      guides.push({ type: 'vertical', coordinate: box.x + box.width });
+      guides.push({ type: 'vertical', coordinate: box.x + box.width, start: spanYStart, end: spanYEnd });
+    } else if (Math.abs(targetBox.x - (box.x + box.width)) < tolerance) {
+      snappedX = box.x + box.width;
+      guides.push({ type: 'vertical', coordinate: box.x + box.width, start: spanYStart, end: spanYEnd });
+    } else if (Math.abs(targetBox.x + targetBox.width - box.x) < tolerance) {
+      snappedX = box.x - targetBox.width;
+      guides.push({ type: 'vertical', coordinate: box.x, start: spanYStart, end: spanYEnd });
     }
 
     // Horizontal alignment (Y axis)
     if (Math.abs(targetBox.y - box.y) < tolerance) {
       snappedY = box.y;
-      guides.push({ type: 'horizontal', coordinate: box.y });
+      guides.push({ type: 'horizontal', coordinate: box.y, start: spanXStart, end: spanXEnd });
     } else if (Math.abs(targetCenterY - boxCenterY) < tolerance) {
       snappedY = boxCenterY - targetBox.height / 2;
-      guides.push({ type: 'horizontal', coordinate: boxCenterY });
+      guides.push({ type: 'horizontal', coordinate: boxCenterY, start: spanXStart, end: spanXEnd });
     } else if (Math.abs(targetBox.y + targetBox.height - (box.y + box.height)) < tolerance) {
       snappedY = box.y + box.height - targetBox.height;
-      guides.push({ type: 'horizontal', coordinate: box.y + box.height });
+      guides.push({ type: 'horizontal', coordinate: box.y + box.height, start: spanXStart, end: spanXEnd });
+    } else if (Math.abs(targetBox.y - (box.y + box.height)) < tolerance) {
+      snappedY = box.y + box.height;
+      guides.push({ type: 'horizontal', coordinate: box.y + box.height, start: spanXStart, end: spanXEnd });
+    } else if (Math.abs(targetBox.y + targetBox.height - box.y) < tolerance) {
+      snappedY = box.y - targetBox.height;
+      guides.push({ type: 'horizontal', coordinate: box.y, start: spanXStart, end: spanXEnd });
+    }
+  }
+
+  // Equal Horizontal / Vertical Spacing Detection
+  if (otherBoxes.length >= 2) {
+    // Horizontal Spacing Check (target between boxL and boxR)
+    for (let i = 0; i < otherBoxes.length; i++) {
+      for (let j = i + 1; j < otherBoxes.length; j++) {
+        const b1 = otherBoxes[i];
+        const b2 = otherBoxes[j];
+        const boxL = b1.x < b2.x ? b1 : b2;
+        const boxR = b1.x < b2.x ? b2 : b1;
+
+        if (targetBox.x > boxL.x + boxL.width && targetBox.x + targetBox.width < boxR.x) {
+          const gapL = targetBox.x - (boxL.x + boxL.width);
+          const gapR = boxR.x - (targetBox.x + targetBox.width);
+          if (Math.abs(gapL - gapR) < tolerance * 1.5 && gapL > 8) {
+            const avgGap = Math.round((gapL + gapR) / 2);
+            snappedX = boxL.x + boxL.width + avgGap;
+            const midY = (targetBox.y + targetBox.height / 2 + boxL.y + boxL.height / 2) / 2;
+            guides.push({
+              type: 'horizontal',
+              coordinate: midY,
+              spacingBadge: {
+                x: boxL.x + boxL.width + avgGap / 2,
+                y: midY,
+                distance: avgGap,
+                orientation: 'horizontal',
+              },
+            });
+            guides.push({
+              type: 'horizontal',
+              coordinate: midY,
+              spacingBadge: {
+                x: snappedX + targetBox.width + avgGap / 2,
+                y: midY,
+                distance: avgGap,
+                orientation: 'horizontal',
+              },
+            });
+          }
+        }
+
+        // Vertical Spacing Check (target between boxT and boxB)
+        const boxT = b1.y < b2.y ? b1 : b2;
+        const boxB = b1.y < b2.y ? b2 : b1;
+        if (targetBox.y > boxT.y + boxT.height && targetBox.y + targetBox.height < boxB.y) {
+          const gapT = targetBox.y - (boxT.y + boxT.height);
+          const gapB = boxB.y - (targetBox.y + targetBox.height);
+          if (Math.abs(gapT - gapB) < tolerance * 1.5 && gapT > 8) {
+            const avgGap = Math.round((gapT + gapB) / 2);
+            snappedY = boxT.y + boxT.height + avgGap;
+            const midX = (targetBox.x + targetBox.width / 2 + boxT.x + boxT.width / 2) / 2;
+            guides.push({
+              type: 'vertical',
+              coordinate: midX,
+              spacingBadge: {
+                x: midX,
+                y: boxT.y + boxT.height + avgGap / 2,
+                distance: avgGap,
+                orientation: 'vertical',
+              },
+            });
+            guides.push({
+              type: 'vertical',
+              coordinate: midX,
+              spacingBadge: {
+                x: midX,
+                y: snappedY + targetBox.height + avgGap / 2,
+                distance: avgGap,
+                orientation: 'vertical',
+              },
+            });
+          }
+        }
+      }
     }
   }
 
   return { snappedX, snappedY, guides };
+}
+
+/**
+ * Calculates line-segment intersection point between (p1, p2) and (p3, p4).
+ * Returns null if segments are parallel or intersection lies outside interior bounds.
+ */
+export function findSegmentIntersection(
+  p1: ZCanvasPoint,
+  p2: ZCanvasPoint,
+  p3: ZCanvasPoint,
+  p4: ZCanvasPoint
+): ZCanvasPoint | null {
+  const d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+  if (Math.abs(d) < 1e-9) return null;
+
+  const u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
+  const v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
+
+  // Strict interior check: avoid jumps directly on endpoints/ports
+  if (u > 0.04 && u < 0.96 && v > 0.04 && v < 0.96) {
+    return {
+      x: Math.round((p1.x + u * (p2.x - p1.x)) * 100) / 100,
+      y: Math.round((p1.y + u * (p2.y - p1.y)) * 100) / 100,
+    };
+  }
+  return null;
+}
+
+/**
+ * Injects Draw.io line jumps / bridges (semi-circular arcs or gaps) where this edge
+ * crosses segments of other connectors on the canvas.
+ */
+export function injectLineJumps(
+  vertices: ZCanvasPoint[],
+  otherVerticesList: ZCanvasPoint[][],
+  style: 'arc' | 'gap' = 'arc',
+  radius = 6
+): string {
+  if (vertices.length < 2) return '';
+  if (otherVerticesList.length === 0 || style === 'none' as any) {
+    return vertices.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  }
+
+  const parts: string[] = [`M ${vertices[0].x} ${vertices[0].y}`];
+
+  for (let i = 0; i < vertices.length - 1; i++) {
+    const p1 = vertices[i];
+    const p2 = vertices[i + 1];
+    const segLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    if (segLen < radius * 3) {
+      parts.push(`L ${p2.x} ${p2.y}`);
+      continue;
+    }
+
+    const intersections: Array<{ pt: ZCanvasPoint; dist: number }> = [];
+
+    for (const otherVertices of otherVerticesList) {
+      if (otherVertices.length < 2) continue;
+      for (let j = 0; j < otherVertices.length - 1; j++) {
+        const o1 = otherVertices[j];
+        const o2 = otherVertices[j + 1];
+        const hit = findSegmentIntersection(p1, p2, o1, o2);
+        if (hit) {
+          const dist = Math.hypot(hit.x - p1.x, hit.y - p1.y);
+          if (dist > radius * 1.5 && dist < segLen - radius * 1.5) {
+            intersections.push({ pt: hit, dist });
+          }
+        }
+      }
+    }
+
+    if (intersections.length === 0) {
+      parts.push(`L ${p2.x} ${p2.y}`);
+      continue;
+    }
+
+    intersections.sort((a, b) => a.dist - b.dist);
+    const ux = (p2.x - p1.x) / segLen;
+    const uy = (p2.y - p1.y) / segLen;
+
+    for (const hit of intersections) {
+      const startX = Math.round((hit.pt.x - ux * radius) * 10) / 10;
+      const startY = Math.round((hit.pt.y - uy * radius) * 10) / 10;
+      const endX = Math.round((hit.pt.x + ux * radius) * 10) / 10;
+      const endY = Math.round((hit.pt.y + uy * radius) * 10) / 10;
+
+      parts.push(`L ${startX} ${startY}`);
+
+      if (style === 'gap') {
+        parts.push(`M ${endX} ${endY}`);
+      } else {
+        // Semi-circle arc bridge
+        parts.push(`A ${radius} ${radius} 0 0 1 ${endX} ${endY}`);
+      }
+    }
+
+    parts.push(`L ${p2.x} ${p2.y}`);
+  }
+
+  return parts.join(' ');
 }
 
 /**

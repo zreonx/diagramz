@@ -406,10 +406,14 @@ export function ComponentLibraryPanel({
 }: ComponentLibraryPanelProps) {
   const { isDark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'essential' | 'aws' | 'drawio' | 'patterns'>('essential');
+  const [activeTab, setActiveTab] = useState<'essential' | 'cloud' | 'drawio' | 'patterns'>('essential');
+  const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'k8s' | 'gcp' | 'azure'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'AWS (Amazon Web Services)': true,
+    'Kubernetes': true,
+    'Google Cloud (GCP)': true,
+    'Microsoft Azure': true,
     'Compute & Containers': true,
     'Cloud & Infrastructure': true,
     'Databases & Storage': true,
@@ -636,16 +640,16 @@ export function ComponentLibraryPanel({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('aws')}
+            onClick={() => setActiveTab('cloud')}
             className={cn(
               'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
-              activeTab === 'aws'
-                ? 'bg-background text-[#FF9900] font-semibold shadow-xs'
+              activeTab === 'cloud'
+                ? 'bg-background text-[#326CE5] dark:text-[#38BDF8] font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="AWS Cloud Architecture Icons (EC2, Lambda, S3, RDS, VPC, SQS...)"
+            title="Cloud & Kubernetes Architecture Icons (AWS, K8s, GCP, Azure)"
           >
-            AWS
+            Cloud / K8s
           </button>
           <button
             type="button"
@@ -963,27 +967,57 @@ export function ComponentLibraryPanel({
           </>
         )}
 
-        {/* ─── TAB 1.5: DEDICATED AWS ARCHITECTURE STENCILS ─── */}
-        {activeTab === 'aws' && (
+        {/* ─── TAB 1.5: CLOUD & KUBERNETES STENCILS (AWS, K8S, GCP, AZURE) ─── */}
+        {activeTab === 'cloud' && (
           <div className="space-y-3">
-            <div className="px-1 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-foreground">
-                AWS Cloud Services
-              </span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FF9900]/15 text-[#FF9900] font-mono">
-                {(techIconCategories['AWS (Amazon Web Services)']?.length ?? 0) +
-                  (TECH_ICON_STENCILS.some((s) => s.id === 'tech-aws') ? 1 : 0)}{' '}
-                icons
-              </span>
+            {/* Cloud Filter Chips */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+              {[
+                { id: 'all', label: 'All Cloud' },
+                { id: 'aws', label: 'AWS', color: 'text-[#FF9900]' },
+                { id: 'k8s', label: 'K8s', color: 'text-[#326CE5]' },
+                { id: 'gcp', label: 'GCP', color: 'text-[#4285F4]' },
+                { id: 'azure', label: 'Azure', color: 'text-[#0089D6]' },
+              ].map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setCloudFilter(chip.id as any)}
+                  className={cn(
+                    'px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0 transition-all cursor-pointer',
+                    cloudFilter === chip.id
+                      ? 'bg-primary text-primary-foreground border-primary font-semibold shadow-xs'
+                      : 'border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span className={cloudFilter === chip.id ? '' : chip.color}>{chip.label}</span>
+                </button>
+              ))}
             </div>
+
             <div className="grid grid-cols-2 gap-2">
-              {TECH_ICON_STENCILS.filter(
-                (item) =>
-                  (item.category === 'AWS (Amazon Web Services)' || item.id === 'tech-aws') &&
-                  (!searchQuery.trim() ||
-                    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.id.toLowerCase().includes(searchQuery.toLowerCase()))
-              ).map((item) => (
+              {TECH_ICON_STENCILS.filter((item) => {
+                const isAws = item.category === 'AWS (Amazon Web Services)' || item.id === 'tech-aws';
+                const isK8s = item.category === 'Kubernetes';
+                const isGcp = item.category === 'Google Cloud (GCP)' || item.id === 'tech-gcp';
+                const isAzure = item.category === 'Microsoft Azure' || item.id === 'tech-azure';
+
+                const matchesFilter =
+                  cloudFilter === 'all'
+                    ? isAws || isK8s || isGcp || isAzure
+                    : cloudFilter === 'aws'
+                    ? isAws
+                    : cloudFilter === 'k8s'
+                    ? isK8s
+                    : cloudFilter === 'gcp'
+                    ? isGcp
+                    : isAzure;
+
+                if (!matchesFilter) return false;
+                if (!searchQuery.trim()) return true;
+                const q = searchQuery.toLowerCase();
+                return item.title.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+              }).map((item) => (
                 <div
                   key={item.id}
                   draggable
@@ -1000,7 +1034,7 @@ export function ComponentLibraryPanel({
                   }
                   className={cn(
                     'group flex flex-col items-center justify-center p-2.5 rounded-xl border border-border/70 bg-background/60',
-                    'hover:bg-accent/40 hover:border-[#FF9900]/60 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-center'
+                    'hover:bg-accent/40 hover:border-primary/60 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-center'
                   )}
                   title={`Click or drag "${item.title}" onto canvas`}
                 >

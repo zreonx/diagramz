@@ -201,6 +201,10 @@ export const ZCanvasEdgeSchema = z.object({
   /** Custom intermediate Draw.io-style waypoints / bend coordinates along the connector. */
   waypoints: z.array(ZCanvasPointSchema).optional(),
   label: z.string().optional(),
+  /** Source-side connector label (e.g. UML '1', or client annotation). */
+  sourceLabel: z.string().optional(),
+  /** Target-side connector label (e.g. UML '0..*', or server annotation). */
+  targetLabel: z.string().optional(),
   /** Custom offset for the line label relative to its default midpoint along the line. */
   labelOffset: z.object({ x: z.number(), y: z.number() }).optional(),
   /** Custom background colour for the line text label. */
@@ -208,6 +212,8 @@ export const ZCanvasEdgeSchema = z.object({
   /** Custom text colour for the line text label. */
   labelColor: z.string().optional(),
   style: ZCanvasEdgeRoutingSchema.optional().default('bezier'),
+  /** Line jumps / bridges (Draw.io style) when crossing other connectors. */
+  lineJumps: z.enum(['none', 'arc', 'gap']).optional(),
   animated: z.boolean().optional(),
   color: z.string().optional(),
   strokeWidth: z.number().optional(),
@@ -256,18 +262,32 @@ export const ZCanvasViewportSchema = z.object({
 });
 export type ZCanvasViewport = z.infer<typeof ZCanvasViewportSchema>;
 
+export const ZCanvasPageSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  nodes: z.array(ZCanvasNodeSchema).default([]),
+  edges: z.array(ZCanvasEdgeSchema).default([]),
+  strokes: z.array(ZCanvasDrawingStrokeSchema).default([]),
+  viewport: ZCanvasViewportSchema.optional(),
+});
+export type ZCanvasPage = z.infer<typeof ZCanvasPageSchema>;
+
 export const ZCanvasDocumentSchema = z.object({
   version: z.literal(1).default(1),
   nodes: z.array(ZCanvasNodeSchema).default([]),
   edges: z.array(ZCanvasEdgeSchema).default([]),
   strokes: z.array(ZCanvasDrawingStrokeSchema).default([]),
   viewport: ZCanvasViewportSchema.default({ zoom: 1, panX: 40, panY: 40 }),
+  /** Multi-page / multi-sheet workbook support (Draw.io sheets model) */
+  pages: z.array(ZCanvasPageSchema).optional(),
+  activePageId: z.string().optional(),
 });
 export type ZCanvasDocument = z.infer<typeof ZCanvasDocumentSchema>;
 
 export type ZCanvasTool =
   | 'select'
   | 'hand'
+  | 'laser'
   | 'frame'
   | 'rectangle'
   | 'circle'

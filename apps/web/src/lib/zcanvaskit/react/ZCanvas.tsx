@@ -8,6 +8,7 @@ import {
   ZCanvasEdgeRouting,
   ZCanvasDrawingStroke,
   ZCanvasDocument,
+  ZCanvasPage,
   ZCanvasHandlePosition,
   ZCanvasPoint,
   ZCanvasBox,
@@ -35,6 +36,7 @@ import {
   snapToGrid,
   doBoxesIntersect,
   calculateAlignmentGuides,
+  injectLineJumps,
   AlignmentGuide,
   findStrokeAt,
   getStrokeBounds,
@@ -140,6 +142,9 @@ import {
   ZCanvasEdgeStylePatch,
   ZCanvasPenStylePatch,
 } from './ZCanvasStylePanel';
+import { QuickConnectPicker, type QuickConnectOption } from './QuickConnectPicker';
+import { ZCanvasSheetTabs } from './ZCanvasSheetTabs';
+import { ZCanvasPresentationDock } from './ZCanvasPresentationDock';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
 import { exportDocumentToPng } from '../export/png';
 import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, ChevronUp, ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react';
@@ -538,6 +543,37 @@ export function ZCanvas({
   const [strokes, setStrokes] = useState<ZCanvasDrawingStroke[]>(initialDocument.strokes || []);
   const [viewport, setViewport] = useState(initialDocument.viewport || { zoom: 1, panX: 40, panY: 40 });
 
+  // Multi-Page Workbook model (Draw.io style)
+  const [pages, setPages] = useState<ZCanvasPage[]>(() => {
+    if (initialDocument.pages && initialDocument.pages.length > 0) {
+      return initialDocument.pages;
+    }
+    return [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        nodes: initialDocument.nodes || [],
+        edges: initialDocument.edges || [],
+        strokes: initialDocument.strokes || [],
+        viewport: initialDocument.viewport,
+      },
+    ];
+  });
+  const [activePageId, setActivePageId] = useState<string>(() => {
+    if (initialDocument.activePageId && initialDocument.pages?.some((p) => p.id === initialDocument.activePageId)) {
+      return initialDocument.activePageId;
+    }
+    return initialDocument.pages?.[0]?.id || 'page-1';
+  });
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  const activePageIdRef = useRef(activePageId);
+  activePageIdRef.current = activePageId;
+
+  // Presentation Mode & Glowing Neon Laser Pointer
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [laserTrail, setLaserTrail] = useState<Array<{ x: number; y: number; time: number }>>([]);
+
   const [activeTool, setActiveTool] = useState<ZCanvasTool>(readOnly ? 'hand' : 'select');
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
@@ -806,6 +842,12 @@ export function ZCanvas({
   const [connectingHandlePos, setConnectingHandlePos] = useState<ZCanvasHandlePosition>('right');
   const [connectingSourceOffset, setConnectingSourceOffset] = useState<number>(0);
   const [connectLinePos, setConnectLinePos] = useState<ZCanvasPoint | null>(null);
+  const [quickConnectState, setQuickConnectState] = useState<{
+    sourceId: string;
+    sourceHandle: ZCanvasHandlePosition;
+    sourceOffset?: number;
+    pt: ZCanvasPoint;
+  } | null>(null);
 
   // Freehand Drawing (Catmull-Rom ink)
   const [currentStroke, setCurrentStroke] = useState<ZCanvasDrawingStroke | null>(null);
@@ -1044,6 +1086,8 @@ export function ZCanvas({
         edges,
         strokes,
         viewport,
+        pages: pagesRef.current,
+        activePageId: activePageIdRef.current,
       };
 
       if (recordHistory) {
@@ -1056,6 +1100,13 @@ export function ZCanvas({
       setEdges(newEdges);
       setStrokes(newStrokes);
 
+      const updatedPages = pagesRef.current.map((p) =>
+        p.id === activePageIdRef.current
+          ? { ...p, nodes: newNodes, edges: newEdges, strokes: newStrokes, viewport }
+          : p
+      );
+      setPages(updatedPages);
+
       if (onChange) {
         onChange({
           version: 1,
@@ -1063,6 +1114,8 @@ export function ZCanvas({
           edges: newEdges,
           strokes: newStrokes,
           viewport,
+          pages: updatedPages,
+          activePageId: activePageIdRef.current,
         });
       }
     },
@@ -1077,6 +1130,8 @@ export function ZCanvas({
       edges,
       strokes,
       viewport,
+      pages: pagesRef.current,
+      activePageId: activePageIdRef.current,
     };
     const prev = historyRef.current.undo(currentDoc);
     if (prev) {
@@ -1085,10 +1140,20 @@ export function ZCanvas({
       setStrokes(prev.strokes || []);
       setCanUndo(historyRef.current.canUndo());
       setCanRedo(historyRef.current.canRedo());
-      // Undo restores content only. Publishing the snapshot's own viewport
-      // would drag the camera back to wherever it sat when that step was
-      // recorded, so the live viewport is carried forward instead.
-      if (onChange) onChange({ ...prev, viewport });
+      const updatedPages = pagesRef.current.map((p) =>
+        p.id === activePageIdRef.current
+          ? { ...p, nodes: prev.nodes, edges: prev.edges, strokes: prev.strokes || [], viewport }
+          : p
+      );
+      setPages(updatedPages);
+      if (onChange) {
+        onChange({
+          ...prev,
+          viewport,
+          pages: updatedPages,
+          activePageId: activePageIdRef.current,
+        });
+      }
     }
   }, [nodes, edges, strokes, viewport, onChange]);
 
@@ -1099,6 +1164,8 @@ export function ZCanvas({
       edges,
       strokes,
       viewport,
+      pages: pagesRef.current,
+      activePageId: activePageIdRef.current,
     };
     const next = historyRef.current.redo(currentDoc);
     if (next) {
@@ -1107,9 +1174,249 @@ export function ZCanvas({
       setStrokes(next.strokes || []);
       setCanUndo(historyRef.current.canUndo());
       setCanRedo(historyRef.current.canRedo());
-      if (onChange) onChange({ ...next, viewport });
+      const updatedPages = pagesRef.current.map((p) =>
+        p.id === activePageIdRef.current
+          ? { ...p, nodes: next.nodes, edges: next.edges, strokes: next.strokes || [], viewport }
+          : p
+      );
+      setPages(updatedPages);
+      if (onChange) {
+        onChange({
+          ...next,
+          viewport,
+          pages: updatedPages,
+          activePageId: activePageIdRef.current,
+        });
+      }
     }
   }, [nodes, edges, strokes, viewport, onChange]);
+
+  // Multi-Page Workbook Handlers
+  const handleSelectPage = useCallback(
+    (pageId: string) => {
+      if (pageId === activePageIdRef.current) return;
+      const savedPages = pagesRef.current.map((p) =>
+        p.id === activePageIdRef.current
+          ? { ...p, nodes, edges, strokes, viewport }
+          : p
+      );
+      const targetPage = savedPages.find((p) => p.id === pageId);
+      if (!targetPage) return;
+
+      setSelectedNodeIds([]);
+      setSelectedEdgeIds([]);
+      setSelectedStrokeIds([]);
+      setPrimarySelectedNodeId(null);
+      historyRef.current = new ZCanvasHistory(100);
+      setCanUndo(false);
+      setCanRedo(false);
+
+      const newNodes = targetPage.nodes || [];
+      const newEdges = targetPage.edges || [];
+      const newStrokes = targetPage.strokes || [];
+      const newVp = targetPage.viewport || { zoom: 1, panX: 40, panY: 40 };
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setStrokes(newStrokes);
+      setViewport(newVp);
+      setActivePageId(pageId);
+      setPages(savedPages);
+
+      if (onChange) {
+        onChange({
+          version: 1,
+          nodes: newNodes,
+          edges: newEdges,
+          strokes: newStrokes,
+          viewport: newVp,
+          pages: savedPages,
+          activePageId: pageId,
+        });
+      }
+    },
+    [nodes, edges, strokes, viewport, onChange]
+  );
+
+  const handleAddPage = useCallback(() => {
+    const savedPages = pagesRef.current.map((p) =>
+      p.id === activePageIdRef.current
+        ? { ...p, nodes, edges, strokes, viewport }
+        : p
+    );
+    const newPageId = `page-${Date.now()}`;
+    const newPageName = `Page ${savedPages.length + 1}`;
+    const newVp = { zoom: 1, panX: 40, panY: 40 };
+    const newPage: ZCanvasPage = {
+      id: newPageId,
+      name: newPageName,
+      nodes: [],
+      edges: [],
+      strokes: [],
+      viewport: newVp,
+    };
+    const nextPages = [...savedPages, newPage];
+
+    setSelectedNodeIds([]);
+    setSelectedEdgeIds([]);
+    setSelectedStrokeIds([]);
+    setPrimarySelectedNodeId(null);
+    historyRef.current = new ZCanvasHistory(100);
+    setCanUndo(false);
+    setCanRedo(false);
+
+    setNodes([]);
+    setEdges([]);
+    setStrokes([]);
+    setViewport(newVp);
+    setActivePageId(newPageId);
+    setPages(nextPages);
+
+    if (onChange) {
+      onChange({
+        version: 1,
+        nodes: [],
+        edges: [],
+        strokes: [],
+        viewport: newVp,
+        pages: nextPages,
+        activePageId: newPageId,
+      });
+    }
+  }, [nodes, edges, strokes, viewport, onChange]);
+
+  const handleRenamePage = useCallback(
+    (id: string, newName: string) => {
+      const updated = pagesRef.current.map((p) => (p.id === id ? { ...p, name: newName } : p));
+      setPages(updated);
+      if (onChange) {
+        onChange({
+          version: 1,
+          nodes,
+          edges,
+          strokes,
+          viewport,
+          pages: updated,
+          activePageId: activePageIdRef.current,
+        });
+      }
+    },
+    [nodes, edges, strokes, viewport, onChange]
+  );
+
+  const handleDuplicatePage = useCallback(
+    (id: string) => {
+      const savedPages = pagesRef.current.map((p) =>
+        p.id === activePageIdRef.current
+          ? { ...p, nodes, edges, strokes, viewport }
+          : p
+      );
+      const targetIdx = savedPages.findIndex((p) => p.id === id);
+      if (targetIdx === -1) return;
+      const target = savedPages[targetIdx];
+
+      const clonedId = `page-${Date.now()}`;
+      const clonedPage: ZCanvasPage = {
+        ...target,
+        id: clonedId,
+        name: `${target.name} (Copy)`,
+        nodes: JSON.parse(JSON.stringify(target.nodes)),
+        edges: JSON.parse(JSON.stringify(target.edges)),
+        strokes: JSON.parse(JSON.stringify(target.strokes || [])),
+        viewport: target.viewport ? { ...target.viewport } : undefined,
+      };
+
+      const nextPages = [...savedPages];
+      nextPages.splice(targetIdx + 1, 0, clonedPage);
+
+      setSelectedNodeIds([]);
+      setSelectedEdgeIds([]);
+      setSelectedStrokeIds([]);
+      setPrimarySelectedNodeId(null);
+      historyRef.current = new ZCanvasHistory(100);
+      setCanUndo(false);
+      setCanRedo(false);
+
+      const newVp = clonedPage.viewport || { zoom: 1, panX: 40, panY: 40 };
+      setNodes(clonedPage.nodes);
+      setEdges(clonedPage.edges);
+      setStrokes(clonedPage.strokes || []);
+      setViewport(newVp);
+      setActivePageId(clonedId);
+      setPages(nextPages);
+
+      if (onChange) {
+        onChange({
+          version: 1,
+          nodes: clonedPage.nodes,
+          edges: clonedPage.edges,
+          strokes: clonedPage.strokes || [],
+          viewport: newVp,
+          pages: nextPages,
+          activePageId: clonedId,
+        });
+      }
+    },
+    [nodes, edges, strokes, viewport, onChange]
+  );
+
+  const handleDeletePage = useCallback(
+    (id: string) => {
+      if (pagesRef.current.length <= 1) return;
+      const currentPages = pagesRef.current;
+      const targetIdx = currentPages.findIndex((p) => p.id === id);
+      if (targetIdx === -1) return;
+
+      const nextPages = currentPages.filter((p) => p.id !== id);
+
+      if (id === activePageIdRef.current) {
+        const newIdx = Math.min(targetIdx, nextPages.length - 1);
+        const newPage = nextPages[newIdx];
+
+        setSelectedNodeIds([]);
+        setSelectedEdgeIds([]);
+        setSelectedStrokeIds([]);
+        setPrimarySelectedNodeId(null);
+        historyRef.current = new ZCanvasHistory(100);
+        setCanUndo(false);
+        setCanRedo(false);
+
+        const newVp = newPage.viewport || { zoom: 1, panX: 40, panY: 40 };
+        setNodes(newPage.nodes);
+        setEdges(newPage.edges);
+        setStrokes(newPage.strokes || []);
+        setViewport(newVp);
+        setActivePageId(newPage.id);
+        setPages(nextPages);
+
+        if (onChange) {
+          onChange({
+            version: 1,
+            nodes: newPage.nodes,
+            edges: newPage.edges,
+            strokes: newPage.strokes || [],
+            viewport: newVp,
+            pages: nextPages,
+            activePageId: newPage.id,
+          });
+        }
+      } else {
+        setPages(nextPages);
+        if (onChange) {
+          onChange({
+            version: 1,
+            nodes,
+            edges,
+            strokes,
+            viewport,
+            pages: nextPages,
+            activePageId: activePageIdRef.current,
+          });
+        }
+      }
+    },
+    [nodes, edges, strokes, viewport, onChange]
+  );
 
   // Clipboard: Copy selected elements
   const handleCopy = useCallback(() => {
@@ -1527,6 +1834,75 @@ export function ZCanvas({
     setSelectedNodeIds([]);
     setSelectedEdgeIds([]);
   }, [nodes, edges, strokes, commitState]);
+
+  // Quick Connect Shape Picker selection
+  const handleQuickConnectSelect = useCallback(
+    (option: QuickConnectOption) => {
+      if (!quickConnectState) return;
+      const { sourceId, sourceHandle, sourceOffset, pt } = quickConnectState;
+      const sourceNode = nodes.find((n) => n.id === sourceId);
+      if (!sourceNode) {
+        setQuickConnectState(null);
+        return;
+      }
+
+      const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      let newNode: ZCanvasNode;
+
+      if (option.id === 'clone') {
+        const cloneW = sourceNode.width;
+        const cloneH = sourceNode.height;
+        newNode = {
+          ...sourceNode,
+          id: newId,
+          x: snap(pt.x - cloneW / 2),
+          y: snap(pt.y - cloneH / 2),
+          groupIds: undefined,
+          locked: undefined,
+        };
+      } else {
+        const defaults = SHAPE_DEFAULTS[option.type as ZCanvasShapeTool] ?? { width: 140, height: 70 };
+        newNode = createShapeNode(option.type as ZCanvasShapeTool, {
+          x: snap(pt.x - defaults.width / 2),
+          y: snap(pt.y - defaults.height / 2),
+          width: defaults.width,
+          height: defaults.height,
+        });
+        newNode.id = newId;
+        newNode.title = option.label;
+      }
+
+      const srcAnchor = getHandlePoint(
+        sourceNode,
+        sourceHandle,
+        rotationOf(sourceNode),
+        sourceOffset
+      );
+      const targetRes = getNearestSideAndOffset(newNode, srcAnchor);
+      const isErdRelation = sourceNode.type === 'table' && newNode.type === 'table';
+
+      const newEdge: ZCanvasEdge = {
+        id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        source: sourceId,
+        target: newId,
+        sourceHandle,
+        sourceOffset,
+        targetHandle: targetRes.side,
+        style: isErdRelation ? 'step' : edgeStyle,
+        color: isErdRelation ? '#0d9488' : activeColor,
+        ...(isErdRelation
+          ? { label: '1 : N', startArrowhead: 'er-one', endArrowhead: 'er-many' }
+          : {}),
+      };
+
+      commitState([...nodes, newNode], [...edges, newEdge], strokes);
+      setSelectedNodeIds([newId]);
+      setPrimarySelectedNodeId(newId);
+      setQuickConnectState(null);
+      startEditing(newId, 'title', newNode.title);
+    },
+    [quickConnectState, nodes, edges, strokes, commitState, snap, activeColor, edgeStyle]
+  );
 
   /**
    * Groups the selection.
@@ -1975,6 +2351,44 @@ export function ZCanvas({
         return;
       }
 
+      // F5 toggles Presentation Mode
+      if (e.key === 'F5') {
+        e.preventDefault();
+        setIsPresentationMode((prev) => !prev);
+        return;
+      }
+
+      // Presentation Mode active controls
+      if (isPresentationMode) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsPresentationMode(false);
+          setActiveTool('select');
+          return;
+        }
+        if (e.key === 'l' || e.key === 'L') {
+          e.preventDefault();
+          setActiveTool((prev) => (prev === 'laser' ? 'select' : 'laser'));
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+          e.preventDefault();
+          const currIdx = pagesRef.current.findIndex((p) => p.id === activePageIdRef.current);
+          if (currIdx < pagesRef.current.length - 1) {
+            handleSelectPage(pagesRef.current[currIdx + 1].id);
+          }
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          const currIdx = pagesRef.current.findIndex((p) => p.id === activePageIdRef.current);
+          if (currIdx > 0) {
+            handleSelectPage(pagesRef.current[currIdx - 1].id);
+          }
+          return;
+        }
+      }
+
       // Single-Key Tool Switching (when no modifier key is active)
       if (!isMod && !e.altKey && !e.shiftKey) {
         if (e.key === 'v' || e.key === '1') {
@@ -2019,6 +2433,8 @@ export function ZCanvas({
   }, [
     readOnly,
     activeTool,
+    isPresentationMode,
+    handleSelectPage,
     handleUndo,
     handleRedo,
     handleCopy,
@@ -2049,8 +2465,36 @@ export function ZCanvas({
       if (initialDocument.edges) setEdges(initialDocument.edges);
       if (initialDocument.strokes) setStrokes(initialDocument.strokes);
       if (initialDocument.viewport) setViewport(initialDocument.viewport);
+      if (initialDocument.pages && initialDocument.pages.length > 0) {
+        setPages(initialDocument.pages);
+      }
+      if (initialDocument.activePageId) {
+        setActivePageId(initialDocument.activePageId);
+      }
     }
   }, [initialDocument]);
+
+  // Listen to external toggle presentation events
+  useEffect(() => {
+    const handleToggle = () => {
+      setIsPresentationMode((prev) => !prev);
+    };
+    window.addEventListener('zcanvas:toggle-presentation', handleToggle);
+    return () => window.removeEventListener('zcanvas:toggle-presentation', handleToggle);
+  }, []);
+
+  // Fading laser pointer cleanup interval
+  useEffect(() => {
+    if (laserTrail.length === 0) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setLaserTrail((prev) => {
+        const next = prev.filter((p) => now - p.time < 1000);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 40);
+    return () => clearInterval(interval);
+  }, [laserTrail.length]);
 
   // Non-passive wheel listener to strictly prevent browser page zoom and zoom precisely into cursor point
   useEffect(() => {
@@ -2152,6 +2596,14 @@ export function ZCanvas({
   // Pointer Down on Canvas
   const handleMouseDown = (e: React.MouseEvent) => {
     lastMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+    if (activeTool === 'laser') {
+      if (e.button === 1) {
+        setIsPanning(true);
+        panStartRef.current = { x: e.clientX - viewport.panX, y: e.clientY - viewport.panY };
+      }
+      return;
+    }
 
     const isBackground =
       e.target === canvasRef.current ||
@@ -2347,6 +2799,16 @@ export function ZCanvas({
   const handleMouseMove = (e: CanvasPointer) => {
     seenPointerEventRef.current = e.nativeEvent ?? null;
     lastMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+    if (activeTool === 'laser') {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const now = Date.now();
+        setLaserTrail((prev) => [...prev.filter((p) => now - p.time < 1000), { x: sx, y: sy, time: now }]);
+      }
+    }
 
     if (isPanning) {
       setViewport((v) => ({
@@ -3361,8 +3823,8 @@ export function ZCanvas({
           };
           commitState(nodes, [...edges, newEdge], strokes);
         } else if (!targetNode) {
-          // Draw.io style: releasing a dragged connector over empty canvas space
-          // (>= 60px away from source anchor) automatically spawns a connected node at the drop point.
+          // Draw.io / Eraser style: releasing a dragged connector over empty canvas space
+          // (>= 60px away from source anchor) opens the Quick Connect Picker.
           if (sourceNode) {
             const srcAnchor = getHandlePoint(
               sourceNode,
@@ -3372,37 +3834,12 @@ export function ZCanvas({
             );
             const dragDist = Math.hypot(pt.x - srcAnchor.x, pt.y - srcAnchor.y);
             if (dragDist >= 60) {
-              const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-              const cloneW = sourceNode.width;
-              const cloneH = sourceNode.height;
-              const newX = snap(pt.x - cloneW / 2);
-              const newY = snap(pt.y - cloneH / 2);
-              const spawnedNode: ZCanvasNode = {
-                ...sourceNode,
-                id: newId,
-                x: newX,
-                y: newY,
-                groupIds: undefined,
-                locked: undefined,
-              };
-              const targetRes = getNearestSideAndOffset(spawnedNode, srcAnchor);
-              const isErdRelation = sourceNode.type === 'table';
-              const newEdge: ZCanvasEdge = {
-                id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-                source: connectingSourceId,
-                target: newId,
+              setQuickConnectState({
+                sourceId: connectingSourceId,
                 sourceHandle: connectingHandlePos,
                 sourceOffset: connectingSourceOffset !== 0 ? connectingSourceOffset : undefined,
-                targetHandle: targetRes.side,
-                style: isErdRelation ? 'step' : edgeStyle,
-                color: isErdRelation ? '#0d9488' : activeColor,
-                ...(isErdRelation
-                  ? { label: '1 : N', startArrowhead: 'er-one', endArrowhead: 'er-many' }
-                  : {}),
-              };
-              commitState([...nodes, spawnedNode], [...edges, newEdge], strokes);
-              setSelectedNodeIds([newId]);
-              setPrimarySelectedNodeId(newId);
+                pt,
+              });
             }
           }
         }
@@ -4958,7 +5395,12 @@ export function ZCanvas({
       // any browser that refuses an SVG cursor outright. Panning wins the
       // cursor back: the hand is what the gesture means while it lasts.
       style={{
-        cursor: activeTool === 'pen' && !isPanning ? PEN_CURSOR : undefined,
+        cursor:
+          activeTool === 'pen' && !isPanning
+            ? PEN_CURSOR
+            : activeTool === 'laser' && !isPanning
+            ? 'crosshair'
+            : undefined,
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -5008,7 +5450,7 @@ export function ZCanvas({
       }}
     >
       {/* Floating Toolbar */}
-      {!readOnly && (
+      {!readOnly && !isPresentationMode && (
         <ZCanvasToolbar
           activeTool={activeTool}
           onSelectTool={selectTool}
@@ -5039,62 +5481,64 @@ export function ZCanvas({
       )}
 
       {/* Floating Viewport Navigation Dock (Zoom controls & Fit to content) */}
-      <div
-        className={cn(
-          'absolute z-20 flex items-center bg-card/90 backdrop-blur-md border border-border shadow-md rounded-xl p-1 gap-0.5 text-xs select-none transition-all',
-          settings.showMinimap ? 'bottom-4 right-52' : 'bottom-4 right-4'
-        )}
-      >
-        {readOnly && (
-          <div
-            className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-muted-foreground border-r border-border mr-0.5"
-            title="Viewing mode: Drag anywhere to move around, scroll to zoom"
+      {!isPresentationMode && (
+        <div
+          className={cn(
+            'absolute z-20 flex items-center bg-card/90 backdrop-blur-md border border-border shadow-md rounded-xl p-1 gap-0.5 text-xs select-none transition-all',
+            settings.showMinimap ? 'bottom-4 right-52' : 'bottom-4 right-4'
+          )}
+        >
+          {readOnly && (
+            <div
+              className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-muted-foreground border-r border-border mr-0.5"
+              title="Viewing mode: Drag anywhere to move around, scroll to zoom"
+            >
+              <Hand className="w-3.5 h-3.5 text-primary" />
+              <span className="hidden sm:inline">View Mode</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => zoomByCenter(-ZOOM_STEP)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            title="Zoom Out (Ctrl+-)"
+            aria-label="Zoom Out"
           >
-            <Hand className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden sm:inline">View Mode</span>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => zoomByCenter(-ZOOM_STEP)}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Zoom Out (Ctrl+-)"
-          aria-label="Zoom Out"
-        >
-          <Minus className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewport({ zoom: 1, panX: 40, panY: 40 })}
-          className="px-1.5 h-7 flex items-center justify-center font-mono text-[11px] rounded-lg hover:bg-muted text-foreground transition-colors cursor-pointer min-w-[42px]"
-          title="Reset Zoom to 100% (Ctrl+0)"
-          aria-label="Reset Zoom"
-        >
-          {Math.round(viewport.zoom * 100)}%
-        </button>
-        <button
-          type="button"
-          onClick={() => zoomByCenter(ZOOM_STEP)}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Zoom In (Ctrl++)"
-          aria-label="Zoom In"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-        <div className="w-px h-4 bg-border mx-0.5" />
-        <button
-          type="button"
-          onClick={handleZoomToFit}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Fit to Screen (Shift+1)"
-          aria-label="Fit to Screen"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+            <Minus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewport({ zoom: 1, panX: 40, panY: 40 })}
+            className="px-1.5 h-7 flex items-center justify-center font-mono text-[11px] rounded-lg hover:bg-muted text-foreground transition-colors cursor-pointer min-w-[42px]"
+            title="Reset Zoom to 100% (Ctrl+0)"
+            aria-label="Reset Zoom"
+          >
+            {Math.round(viewport.zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomByCenter(ZOOM_STEP)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            title="Zoom In (Ctrl++)"
+            aria-label="Zoom In"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <button
+            type="button"
+            onClick={handleZoomToFit}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            title="Fit to Screen (Shift+1)"
+            aria-label="Fit to Screen"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Minimap (configurable in Settings) */}
-      {settings.showMinimap && (
+      {settings.showMinimap && !isPresentationMode && (
         <ZCanvasMinimap nodes={nodes} viewport={viewport} />
       )}
 
@@ -5199,32 +5643,79 @@ export function ZCanvas({
             );
           })()}
 
-        {/* Alignment Guides */}
-        {activeGuides.map((guide, i) =>
-          guide.type === 'horizontal' ? (
-            <line
-              key={i}
-              x1="-5000"
-              y1={guide.coordinate}
-              x2="5000"
-              y2={guide.coordinate}
-              stroke="#ec4899"
-              strokeWidth={1}
-              strokeDasharray="4 4"
-            />
-          ) : (
-            <line
-              key={i}
-              x1={guide.coordinate}
-              y1="-5000"
-              x2={guide.coordinate}
-              y2="5000"
-              stroke="#ec4899"
-              strokeWidth={1}
-              strokeDasharray="4 4"
-            />
-          )
-        )}
+        {/* Smart Alignment Guides (Figma & Draw.io style with spanning caps and spacing badges) */}
+        {activeGuides.map((guide, i) => {
+          if (guide.spacingBadge) {
+            const badge = guide.spacingBadge;
+            return (
+              <g key={`badge-${i}`} transform={`translate(${badge.x}, ${badge.y})`} className="pointer-events-none select-none">
+                <rect
+                  x="-22"
+                  y="-10"
+                  width="44"
+                  height="20"
+                  rx="10"
+                  fill={isDark ? '#1e1b4b' : '#fdf2f8'}
+                  stroke="#ec4899"
+                  strokeWidth="1"
+                  className="shadow-xs"
+                />
+                <text
+                  x="0"
+                  y="3"
+                  textAnchor="middle"
+                  fill="#db2777"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  {`${badge.orientation === 'horizontal' ? '↔' : '↕'} ${badge.distance}`}
+                </text>
+              </g>
+            );
+          }
+
+          const isH = guide.type === 'horizontal';
+          const x1 = isH ? (guide.start ?? -5000) : guide.coordinate;
+          const y1 = isH ? guide.coordinate : (guide.start ?? -5000);
+          const x2 = isH ? (guide.end ?? 5000) : guide.coordinate;
+          const y2 = isH ? guide.coordinate : (guide.end ?? 5000);
+
+          return (
+            <g key={`guide-${i}`} className="pointer-events-none">
+              <line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="#ec4899"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {/* Optional endpoint caps if finite span */}
+              {guide.start !== undefined && guide.end !== undefined && (
+                <>
+                  <line
+                    x1={isH ? x1 : x1 - 4}
+                    y1={isH ? y1 - 4 : y1}
+                    x2={isH ? x1 : x1 + 4}
+                    y2={isH ? y1 + 4 : y1}
+                    stroke="#ec4899"
+                    strokeWidth={1.5}
+                  />
+                  <line
+                    x1={isH ? x2 : x2 - 4}
+                    y1={isH ? y2 - 4 : y2}
+                    x2={isH ? x2 : x2 + 4}
+                    y2={isH ? y2 + 4 : y2}
+                    stroke="#ec4899"
+                    strokeWidth={1.5}
+                  />
+                </>
+              )}
+            </g>
+          );
+        })}
 
         {/* Freehand Strokes */}
         {/* A wash of the accent colour under the picked ink, so a selection
@@ -5401,7 +5892,19 @@ export function ZCanvas({
               : draft
               ? `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`
               : geo.pathD;
-          const pathD = computedPathD;
+
+          const lineJumpsStyle = edge.lineJumps;
+          const otherEdgeVerticesList =
+            lineJumpsStyle && lineJumpsStyle !== 'none'
+              ? edges
+                  .filter((other) => other.id !== edge.id)
+                  .map((other) => edgeGeometries.get(other.id)?.vertices)
+                  .filter((v): v is ZCanvasPoint[] => Boolean(v && v.length >= 2))
+              : [];
+          const pathD =
+            lineJumpsStyle && lineJumpsStyle !== 'none' && geo.vertices && geo.vertices.length >= 2
+              ? injectLineJumps(geo.vertices, otherEdgeVerticesList, lineJumpsStyle, 6)
+              : computedPathD;
           const midPoint = draft
             ? { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
             : geo.midPoint;
@@ -5683,6 +6186,69 @@ export function ZCanvas({
                   );
                 })()
               ) : null}
+              {/* Multi-point Source Endpoint Label */}
+              {edge.sourceLabel && (
+                <g
+                  data-testid={`edge-source-label-${edge.id}`}
+                  transform={`translate(${geo.vertices.length >= 2 ? geo.vertices[0].x + (geo.vertices[1].x - geo.vertices[0].x) * 0.28 : p1.x}, ${geo.vertices.length >= 2 ? geo.vertices[0].y + (geo.vertices[1].y - geo.vertices[0].y) * 0.28 : p1.y})`}
+                  className="pointer-events-none select-none"
+                >
+                  <rect
+                    x="-16"
+                    y="-8"
+                    width="32"
+                    height="16"
+                    rx="3"
+                    fill={isDark ? '#1A1A1E' : '#FFFFFF'}
+                    fillOpacity="0.9"
+                    stroke={edge.color || (isDark ? '#475569' : '#cbd5e1')}
+                    strokeWidth="0.75"
+                  />
+                  <text
+                    x="0"
+                    y="3.5"
+                    textAnchor="middle"
+                    fill={edge.labelColor || (isDark ? '#cbd5e1' : '#334155')}
+                    fontSize="9.5"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {edge.sourceLabel}
+                  </text>
+                </g>
+              )}
+
+              {/* Multi-point Target Endpoint Label */}
+              {edge.targetLabel && (
+                <g
+                  data-testid={`edge-target-label-${edge.id}`}
+                  transform={`translate(${geo.vertices.length >= 2 ? geo.vertices[geo.vertices.length - 1].x + (geo.vertices[geo.vertices.length - 2].x - geo.vertices[geo.vertices.length - 1].x) * 0.28 : p2.x}, ${geo.vertices.length >= 2 ? geo.vertices[geo.vertices.length - 1].y + (geo.vertices[geo.vertices.length - 2].y - geo.vertices[geo.vertices.length - 1].y) * 0.28 : p2.y})`}
+                  className="pointer-events-none select-none"
+                >
+                  <rect
+                    x="-16"
+                    y="-8"
+                    width="32"
+                    height="16"
+                    rx="3"
+                    fill={isDark ? '#1A1A1E' : '#FFFFFF'}
+                    fillOpacity="0.9"
+                    stroke={edge.color || (isDark ? '#475569' : '#cbd5e1')}
+                    strokeWidth="0.75"
+                  />
+                  <text
+                    x="0"
+                    y="3.5"
+                    textAnchor="middle"
+                    fill={edge.labelColor || (isDark ? '#cbd5e1' : '#334155')}
+                    fontSize="9.5"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {edge.targetLabel}
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}
@@ -7878,7 +8444,7 @@ export function ZCanvas({
 
       {/* Appearance panel for the selected element, or the
           freehand pen's own options while that tool is in hand. */}
-      {styleTarget && (
+      {styleTarget && !isPresentationMode && (
         <ZCanvasStylePanel
           target={styleTarget}
           onPreviewNode={(patch) => {
@@ -8126,6 +8692,95 @@ export function ZCanvas({
         onExportSvg={handleExportSvg}
         onExportPng={handleExportPng}
       />
+
+      {/* Quick Connect Shape Picker (Draw.io / Eraser wire drop on blank space) */}
+      {quickConnectState && (
+        <QuickConnectPicker
+          position={quickConnectState.pt}
+          zoom={viewport.zoom}
+          onSelect={handleQuickConnectSelect}
+          onClose={() => setQuickConnectState(null)}
+        />
+      )}
+
+      {/* Multi-Page Workbook Sheet Tabs (Draw.io style) */}
+      {!isPresentationMode && (
+        <ZCanvasSheetTabs
+          pages={pages}
+          activePageId={activePageId}
+          onSelectPage={handleSelectPage}
+          onAddPage={handleAddPage}
+          onRenamePage={handleRenamePage}
+          onDuplicatePage={handleDuplicatePage}
+          onDeletePage={handleDeletePage}
+          readOnly={readOnly}
+        />
+      )}
+
+      {/* Interactive Presentation Mode Dock */}
+      {isPresentationMode && (
+        <ZCanvasPresentationDock
+          pages={pages}
+          activePageId={activePageId}
+          onSelectPage={handleSelectPage}
+          isLaserActive={activeTool === 'laser'}
+          onToggleLaser={() => setActiveTool((prev) => (prev === 'laser' ? 'select' : 'laser'))}
+          onExitPresentation={() => {
+            setIsPresentationMode(false);
+            if (activeTool === 'laser') setActiveTool('select');
+          }}
+        />
+      )}
+
+      {/* Interactive Fading Neon Laser Pointer Trail */}
+      {laserTrail.length > 0 && (
+        <svg
+          data-testid="zcanvas-laser-overlay"
+          className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible"
+        >
+          <defs>
+            <filter id="laser-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2" />
+              <feMerge>
+                <feMergeNode in="blur2" />
+                <feMergeNode in="blur1" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          {laserTrail.map((pt, i) => {
+            if (i === 0) return null;
+            const prev = laserTrail[i - 1];
+            const age = Date.now() - pt.time;
+            const opacity = Math.max(0, 1 - age / 1000);
+            return (
+              <line
+                key={i}
+                x1={prev.x}
+                y1={prev.y}
+                x2={pt.x}
+                y2={pt.y}
+                stroke="#ff2a6d"
+                strokeWidth={Math.max(2, 5 * opacity)}
+                strokeLinecap="round"
+                strokeOpacity={opacity}
+                filter="url(#laser-glow)"
+              />
+            );
+          })}
+          {laserTrail.length > 0 && (() => {
+            const head = laserTrail[laserTrail.length - 1];
+            return (
+              <g filter="url(#laser-glow)">
+                <circle cx={head.x} cy={head.y} r={7} fill="#ff124f" opacity={0.6} />
+                <circle cx={head.x} cy={head.y} r={4.5} fill="#ff2a6d" />
+                <circle cx={head.x} cy={head.y} r={2} fill="#ffffff" />
+              </g>
+            );
+          })()}
+        </svg>
+      )}
     </div>
   );
 }

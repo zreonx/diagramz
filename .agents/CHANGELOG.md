@@ -4,6 +4,40 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-24] — Quick Connect Picker, Smart Alignment Guidelines, Crossing Line Jumps, Multi-Point Labels, Cloud Stencils (K8s, GCP, Azure), Presentation Mode & Multi-Page Workbook Sheets
+
+### Added
+- **Drop-Connector "Quick Connect Picker" Popover** ([`QuickConnectPicker.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/QuickConnectPicker.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Releasing a dragged connector wire on empty canvas space opens a floating radial/popover selector right at the cursor drop point with 1-click presets: Clone Source Node (`1`), Step / Rectangle (`2`), Decision / Diamond (`3`), Service Card (`4`), Database Table (`5`), State / Circle (`6`), and Text Note (`7`).
+  - Selecting any preset immediately spawns the new node, wires the connector to it, records history, and places focus into inline label editing.
+- **Smart Alignment Guidelines & Dynamic Spacing Snapping** ([`geometry/index.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/index.ts), [`geometry.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/geometry.test.mjs), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Upgraded `calculateAlignmentGuides` to calculate magnetic snapping against all other canvas nodes during drag and resize, returning finite guideline spans (`start` to `end`) with terminal tick marks rather than infinite screen-spanning lines.
+  - Added dynamic equal-spacing detection badges (`↔ 30px`, `↕ 24px`) displayed between aligned nodes when equidistant intervals are detected.
+- **Line Jumps / Bridges on Crossing Connectors** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`geometry/index.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/index.ts), [`geometry.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/geometry.test.mjs), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx)):
+  - Added `lineJumps?: 'none' | 'arc' | 'gap'` to `ZCanvasEdgeSchema`.
+  - Implemented `findSegmentIntersection` and `injectLineJumps(vertices, otherVerticesList, style, radius)` to detect segment intersections between lines and insert Draw.io-style semi-circular arc bridges (`A 6 6 0 0 1 ...`) or gaps (`M ...`) at crossings.
+  - Exposed line jump controls (`None`, `Arc Bridge`, `Gap`) in `ZCanvasStylePanel` connector inspector.
+- **Multi-Point Connector Labels (`sourceLabel`, `label`, `targetLabel`)** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx)):
+  - Added `sourceLabel?: string` and `targetLabel?: string` to `ZCanvasEdgeSchema` alongside the existing center `label`.
+  - Rendered endpoint annotations positioned with smart offsets along the start and end tangent segments of straight, step, and curved lines.
+  - Added dedicated Source, Center, and Target text input fields in `ZCanvasStylePanel`.
+- **24 Cloud Architecture Stencils (Kubernetes, Google Cloud GCP, Microsoft Azure)** ([`tech-icons.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [`builtin.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/builtin.test.mjs), [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx)):
+  - Added 8 authentic Kubernetes stencils (`Pod`, `Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `StatefulSet`, `Namespace`).
+  - Added 8 Google Cloud Platform (GCP) stencils (`Compute Engine`, `Cloud Functions`, `Cloud Run`, `Google Kubernetes Engine`, `Cloud Storage`, `Cloud SQL`, `BigQuery`, `Pub/Sub`).
+  - Added 8 Microsoft Azure stencils (`Virtual Machines`, `Azure Functions`, `App Service`, `AKS`, `Blob Storage`, `Azure SQL`, `Cosmos DB`, `Virtual Network`).
+  - Expanded `ComponentLibraryPanel.tsx` with a unified **Cloud / K8s** tab featuring interactive filter pills (`All Cloud`, `AWS`, `K8s`, `GCP`, `Azure`).
+- **Interactive Presentation Mode & Fading Neon Laser Pointer** ([`ZCanvasPresentationDock.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx), [`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Full-screen distraction-free presentation mode triggered via `F5`, the Header `Present` button, or `zcanvas:toggle-presentation` custom event.
+  - Hides toolbars, style panels, and minimap; displays floating `<ZCanvasPresentationDock>` with slide navigation, laser pointer toggle, fullscreen toggle, and exit (`Esc`).
+  - Glowing Neon Laser Pointer (`L` key) with smooth 1000ms fading Catmull-Rom/segment trail, multi-layer SVG drop-shadow glow filter (`#ff2a6d`), and glowing hot-center head cursor.
+  - Slide keyboard navigation (`ArrowRight`, `PageDown`, `Space` for next slide; `ArrowLeft`, `PageUp` for previous slide).
+- **Multi-Page Canvas Workbook Sheets (Draw.io Workbook Model)** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`ZCanvasSheetTabs.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSheetTabs.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`workbook-pages.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/workbook-pages.test.mjs)):
+  - Added `ZCanvasPageSchema`, `pages?: ZCanvasPage[]`, and `activePageId?: string` to `ZCanvasDocumentSchema`.
+  - Added `<ZCanvasSheetTabs>` bottom dock with active tab highlighting, inline double-click tab renaming, tab duplication, deletion, and `+ Add Page`.
+  - Complete state isolation per page: switching pages preserves nodes, edges, strokes, and viewport camera positions per sheet while keeping top-level document backward-compatible.
+
+---
+
 ## [2026-10-24] — AWS Architecture Stencils, Draw.io Line Management, Entity-Relationship (ERD) & Draw.io Grouping
 
 ### Added

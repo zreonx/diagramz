@@ -159,7 +159,7 @@ test('the authored width and height do not change what a stencil draws', () => {
 });
 
 test('every tech logo is registered with its own brand colour and grid', () => {
-  assert.equal(TECH_ICON_STENCILS.length, 62);
+  assert.equal(TECH_ICON_STENCILS.length, 86);
 
   for (const stencil of TECH_ICON_STENCILS) {
     assert.match(stencil.id, /^tech-/, `${stencil.id} is not namespaced`);
@@ -198,8 +198,8 @@ test('the two stencil families share no ids', () => {
 });
 
 test('the built-in registry holds both families', () => {
-  assert.equal(BUILTIN_STENCILS.length, 114, '52 architecture stencils plus 62 tech/AWS logos');
-  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 114);
+  assert.equal(BUILTIN_STENCILS.length, 138, '52 architecture stencils plus 86 tech/cloud logos');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 138);
 });
 
 test('aws architecture stencils and aliases resolve correctly', () => {
@@ -249,6 +249,32 @@ test('stripe payment gateway and aliases resolve correctly', () => {
   // Aliases
   assert.equal(BUILTIN_STENCIL_REGISTRY.get('arch-stripe')?.id, 'arch-payment-gateway');
   assert.equal(BUILTIN_STENCIL_REGISTRY.get('stripe')?.id, 'tech-stripe');
+});
+
+test('kubernetes, gcp and azure cloud stencils resolve correctly', () => {
+  const cloudIds = [
+    'tech-k8s-pod',
+    'tech-k8s-service',
+    'tech-k8s-deployment',
+    'tech-k8s-ingress',
+    'tech-gcp-gke',
+    'tech-gcp-cloudrun',
+    'tech-gcp-compute',
+    'tech-gcp-storage',
+    'tech-gcp-bigquery',
+    'tech-azure-aks',
+    'tech-azure-vm',
+    'tech-azure-functions',
+    'tech-azure-cosmos',
+    'tech-azure-vnet',
+  ];
+
+  for (const id of cloudIds) {
+    const stencil = BUILTIN_STENCIL_REGISTRY.get(id);
+    assert.ok(stencil, `Expected stencil ${id} to resolve`);
+    assert.equal(stencil.id, id);
+    assert.ok(stencil.title.length > 0);
+  }
 });
 
 test('every built-in stencil is reachable by the id the panel uses', () => {

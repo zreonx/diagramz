@@ -10,6 +10,9 @@ import {
   bezierControlPoints,
   edgeIntersectsBox,
   resolveEdgeLabelPositions,
+  calculateAlignmentGuides,
+  findSegmentIntersection,
+  injectLineJumps,
 } from './index.ts';
 
 const boxA = { x: 0, y: 0, width: 100, height: 50 };
@@ -750,6 +753,88 @@ test('custom waypoints route multi-segment polylines and curved Catmull-Rom spli
   assert.ok(curveGeo);
   assert.ok(curveGeo.pathD.includes(' C '));
   assert.equal(curveGeo.vertices.length, 5);
+});
+
+test('findSegmentIntersection accurately detects interior intersections', () => {
+  // Horizontal line (0, 50) -> (100, 50) and Vertical line (50, 0) -> (50, 100)
+  const hit = findSegmentIntersection(
+    { x: 0, y: 50 },
+    { x: 100, y: 50 },
+    { x: 50, y: 0 },
+    { x: 50, y: 100 }
+  );
+  assert.ok(hit);
+  assert.equal(hit.x, 50);
+  assert.equal(hit.y, 50);
+
+  // Parallel lines do not intersect
+  const parallel = findSegmentIntersection(
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 0, y: 20 },
+    { x: 100, y: 20 }
+  );
+  assert.equal(parallel, null);
+
+  // Non-intersecting segments
+  const nonCrossing = findSegmentIntersection(
+    { x: 0, y: 0 },
+    { x: 20, y: 0 },
+    { x: 50, y: 10 },
+    { x: 50, y: 50 }
+  );
+  assert.equal(nonCrossing, null);
+});
+
+test('injectLineJumps adds Draw.io semi-circular arc bridges or gaps on crossing edges', () => {
+  const lineA = [
+    { x: 0, y: 50 },
+    { x: 100, y: 50 },
+  ];
+  const crossingLineB = [
+    { x: 50, y: 0 },
+    { x: 50, y: 100 },
+  ];
+
+  // Arc bridge
+  const arcPath = injectLineJumps(lineA, [crossingLineB], 'arc', 6);
+  assert.ok(arcPath.includes('A 6 6 0 0 1'));
+  assert.ok(arcPath.includes('M 0 50'));
+  assert.ok(arcPath.includes('L 100 50'));
+
+  // Gap bridge
+  const gapPath = injectLineJumps(lineA, [crossingLineB], 'gap', 6);
+  assert.ok(gapPath.includes('M 56 50'));
+  assert.ok(!gapPath.includes('A 6 6'));
+
+  // When no lines cross, path remains intact
+  const noCrossing = injectLineJumps(lineA, [], 'arc', 6);
+  assert.equal(noCrossing, 'M 0 50 L 100 50');
+});
+
+test('calculateAlignmentGuides provides bounding spans and detects equal spacing', () => {
+  const box1 = { x: 0, y: 0, width: 100, height: 100 };
+  const box2 = { x: 200, y: 0, width: 100, height: 100 };
+  const target = { x: 98, y: 102, width: 100, height: 100 };
+
+  const { snappedX, snappedY, guides } = calculateAlignmentGuides(target, [box1, box2], 6);
+  // Snapped to box2's Y (0) and aligned
+  assert.equal(snappedY, 100); // Bottom of box1/box2
+  assert.ok(guides.some((g) => g.start !== undefined && g.end !== undefined));
+
+  // Equal horizontal spacing test:
+  // boxL at x=0..100, boxR at x=260..360 (gap of 160).
+  // Target placed near center at x=131 with width 100 -> gapL = 31, gapR = 29.
+  // Snaps to equal gap = 30.
+  const boxL = { x: 0, y: 0, width: 100, height: 50 };
+  const boxR = { x: 260, y: 0, width: 100, height: 50 };
+  const midTarget = { x: 131, y: 0, width: 100, height: 50 };
+
+  const spacingRes = calculateAlignmentGuides(midTarget, [boxL, boxR], 6);
+  assert.equal(spacingRes.snappedX, 130);
+  assert.ok(spacingRes.guides.some((g) => g.spacingBadge !== undefined));
+  const badge = spacingRes.guides.find((g) => g.spacingBadge)?.spacingBadge;
+  assert.equal(badge?.distance, 30);
 });
 
 
