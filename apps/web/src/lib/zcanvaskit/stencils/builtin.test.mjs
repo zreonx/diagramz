@@ -159,7 +159,7 @@ test('the authored width and height do not change what a stencil draws', () => {
 });
 
 test('every tech logo is registered with its own brand colour and grid', () => {
-  assert.equal(TECH_ICON_STENCILS.length, 36);
+  assert.equal(TECH_ICON_STENCILS.length, 62);
 
   for (const stencil of TECH_ICON_STENCILS) {
     assert.match(stencil.id, /^tech-/, `${stencil.id} is not namespaced`);
@@ -198,8 +198,47 @@ test('the two stencil families share no ids', () => {
 });
 
 test('the built-in registry holds both families', () => {
-  assert.equal(BUILTIN_STENCILS.length, 88, '52 architecture stencils plus 36 tech logos');
-  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 88);
+  assert.equal(BUILTIN_STENCILS.length, 114, '52 architecture stencils plus 62 tech/AWS logos');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 114);
+});
+
+test('aws architecture stencils and aliases resolve correctly', () => {
+  const awsIds = [
+    'tech-aws-ec2',
+    'tech-aws-lambda',
+    'tech-aws-ecs',
+    'tech-aws-eks',
+    'tech-aws-fargate',
+    'tech-aws-s3',
+    'tech-aws-ebs',
+    'tech-aws-efs',
+    'tech-aws-rds',
+    'tech-aws-dynamodb',
+    'tech-aws-aurora',
+    'tech-aws-elasticache',
+    'tech-aws-vpc',
+    'tech-aws-cloudfront',
+    'tech-aws-route53',
+    'tech-aws-apigateway',
+    'tech-aws-elb',
+    'tech-aws-sqs',
+    'tech-aws-sns',
+    'tech-aws-eventbridge',
+    'tech-aws-stepfunctions',
+    'tech-aws-iam',
+    'tech-aws-cognito',
+    'tech-aws-cloudwatch',
+    'tech-aws-kms',
+    'tech-aws-waf',
+  ];
+  for (const id of awsIds) {
+    assert.equal(BUILTIN_STENCIL_REGISTRY.get(id)?.id, id, `${id} should resolve`);
+  }
+  assert.equal(BUILTIN_STENCIL_REGISTRY.get('aws-ec2')?.id, 'tech-aws-ec2');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.get('aws-lambda')?.id, 'tech-aws-lambda');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.get('aws-s3')?.id, 'tech-aws-s3');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.get('aws-rds')?.id, 'tech-aws-rds');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.get('aws-dynamodb')?.id, 'tech-aws-dynamodb');
 });
 
 test('stripe payment gateway and aliases resolve correctly', () => {

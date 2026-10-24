@@ -138,7 +138,7 @@ import {
 } from './ZCanvasStylePanel';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
 import { exportDocumentToPng } from '../export/png';
-import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand } from 'lucide-react';
+import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, ChevronUp, ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -1816,13 +1816,13 @@ export function ZCanvas({
         return;
       }
 
-      // Arrow Keys : Nudge Selection
+      // Arrow Keys : Nudge Selection (Alt+Arrow = 1px fine nudge, Arrow = 10px, Shift+Arrow = 20px)
       if (
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) &&
         (selectedNodeIds.length > 0 || selectedEdgeIds.length > 0 || selectedStrokeIds.length > 0)
       ) {
         e.preventDefault();
-        const step = e.shiftKey ? 50 : 10;
+        const step = e.altKey ? 1 : e.shiftKey ? 20 : settings.snapToGrid ? 10 : 1;
         if (e.key === 'ArrowUp') handleNudge(0, -step);
         if (e.key === 'ArrowDown') handleNudge(0, step);
         if (e.key === 'ArrowLeft') handleNudge(-step, 0);
@@ -3127,6 +3127,48 @@ export function ZCanvas({
             style: edgeStyle,
           };
           commitState(nodes, [...edges, newEdge], strokes);
+        } else if (!targetNode) {
+          // Draw.io style: releasing a dragged connector over empty canvas space
+          // (>= 60px away from source anchor) automatically spawns a connected node at the drop point.
+          const sourceNode = nodes.find((n) => n.id === connectingSourceId);
+          if (sourceNode) {
+            const srcAnchor = getHandlePoint(
+              sourceNode,
+              connectingHandlePos,
+              rotationOf(sourceNode),
+              connectingSourceOffset
+            );
+            const dragDist = Math.hypot(pt.x - srcAnchor.x, pt.y - srcAnchor.y);
+            if (dragDist >= 60) {
+              const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+              const cloneW = sourceNode.width;
+              const cloneH = sourceNode.height;
+              const newX = snap(pt.x - cloneW / 2);
+              const newY = snap(pt.y - cloneH / 2);
+              const spawnedNode: ZCanvasNode = {
+                ...sourceNode,
+                id: newId,
+                x: newX,
+                y: newY,
+                groupIds: undefined,
+                locked: undefined,
+              };
+              const targetRes = getNearestSideAndOffset(spawnedNode, srcAnchor);
+              const newEdge: ZCanvasEdge = {
+                id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+                source: connectingSourceId,
+                target: newId,
+                sourceHandle: connectingHandlePos,
+                sourceOffset: connectingSourceOffset !== 0 ? connectingSourceOffset : undefined,
+                targetHandle: targetRes.side,
+                style: edgeStyle,
+                color: activeColor,
+              };
+              commitState([...nodes, spawnedNode], [...edges, newEdge], strokes);
+              setSelectedNodeIds([newId]);
+              setPrimarySelectedNodeId(newId);
+            }
+          }
         }
       }
       setConnectingSourceId(null);
@@ -3725,6 +3767,63 @@ export function ZCanvas({
     setConnectLinePos(null);
     setConnectingSourceOffset(0);
   };
+
+  /**
+   * Draw.io Directional Quick-Clone & Connect:
+   * Clicking one of the 4 directional chevrons around a selected node clones
+   * the node in that direction (with a 120px gap) and connects an edge in one click.
+   */
+  const handleQuickCloneInDirection = useCallback(
+    (e: React.MouseEvent, sourceNode: ZCanvasNode, dir: ZCanvasHandlePosition) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (readOnly || isLocked(sourceNode)) return;
+
+      const gap = 120;
+      let nextX = sourceNode.x;
+      let nextY = sourceNode.y;
+      let targetHandle: ZCanvasHandlePosition = 'left';
+
+      if (dir === 'right') {
+        nextX = snap(sourceNode.x + sourceNode.width + gap);
+        targetHandle = 'left';
+      } else if (dir === 'left') {
+        nextX = snap(sourceNode.x - sourceNode.width - gap);
+        targetHandle = 'right';
+      } else if (dir === 'bottom') {
+        nextY = snap(sourceNode.y + sourceNode.height + gap);
+        targetHandle = 'top';
+      } else if (dir === 'top') {
+        nextY = snap(sourceNode.y - sourceNode.height - gap);
+        targetHandle = 'bottom';
+      }
+
+      const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const clonedNode: ZCanvasNode = {
+        ...sourceNode,
+        id: newId,
+        x: nextX,
+        y: nextY,
+        groupIds: undefined,
+        locked: undefined,
+      };
+
+      const newEdge: ZCanvasEdge = {
+        id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        source: sourceNode.id,
+        target: newId,
+        sourceHandle: dir,
+        targetHandle,
+        style: edgeStyle,
+        color: activeColor,
+      };
+
+      commitState([...nodes, clonedNode], [...edges, newEdge], strokes);
+      setSelectedNodeIds([newId]);
+      setPrimarySelectedNodeId(newId);
+    },
+    [readOnly, snap, edgeStyle, activeColor, nodes, edges, strokes, commitState]
+  );
 
   // Node Map for edge calculations (memoized to eliminate reallocation per render)
   const nodeMap = useMemo(() => new Map<string, ZCanvasNode>(nodes.map((n) => [n.id, n])), [nodes]);
@@ -4395,6 +4494,28 @@ export function ZCanvas({
       onTouchCancel={handleTouchEnd}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onDoubleClick={(e) => {
+        if (readOnly || activeTool !== 'select') return;
+        const isBackground =
+          e.target === canvasRef.current ||
+          (e.target as HTMLElement).tagName === 'svg' ||
+          (e.target as HTMLElement).id === 'zcanvas-grid';
+        if (!isBackground) return;
+        const pt = getCanvasPoint(e.clientX, e.clientY);
+        if (findNodeAt(pt) || findStrokeAt(strokes, pt)) return;
+        const defaults = SHAPE_DEFAULTS.rectangle;
+        const newNode = createShapeNode('rectangle', {
+          x: snap(pt.x - defaults.width / 2),
+          y: snap(pt.y - defaults.height / 2),
+          width: defaults.width,
+          height: defaults.height,
+        });
+        newNode.title = 'New Step';
+        commitState([...nodes, newNode], edges, strokes);
+        setSelectedNodeIds([newNode.id]);
+        setPrimarySelectedNodeId(newNode.id);
+        startEditing(newNode.id, 'title', newNode.title);
+      }}
       onContextMenu={(e) => {
         if (readOnly) return;
         e.preventDefault();
@@ -6338,6 +6459,58 @@ export function ZCanvas({
                   >
                     <RotateCw className="w-3 h-3" />
                   </div>
+
+                  {/* DRAW.IO DIRECTIONAL QUICK-CLONE & CONNECT ARROWS (N, E, S, W) */}
+                  {selectedNodeIds.length === 1 &&
+                    !isLocked(node) &&
+                    !isBoundaryNode(node) &&
+                    !draggingNodeId &&
+                    !resizingNodeId &&
+                    !rotatingNodeId &&
+                    connectingSourceId === null && (
+                      <>
+                        <button
+                          type="button"
+                          data-testid="quick-clone-right"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleQuickCloneInDirection(e, node, 'right')}
+                          className="absolute top-1/2 -right-9 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
+                          title="Click to clone & connect right (Draw.io Quick Connect)"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="quick-clone-bottom"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleQuickCloneInDirection(e, node, 'bottom')}
+                          className="absolute -bottom-9 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
+                          title="Click to clone & connect down (Draw.io Quick Connect)"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="quick-clone-left"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleQuickCloneInDirection(e, node, 'left')}
+                          className="absolute top-1/2 -left-9 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
+                          title="Click to clone & connect left (Draw.io Quick Connect)"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="quick-clone-top"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleQuickCloneInDirection(e, node, 'top')}
+                          className="absolute -top-14 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
+                          title="Click to clone & connect up (Draw.io Quick Connect)"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                 </>
               )}
             </div>

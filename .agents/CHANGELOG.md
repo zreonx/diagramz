@@ -4,6 +4,22 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-24] — AWS Architecture Stencils & Draw.io-Grade Canvas Interactions
+
+### Added
+- **26 AWS Architecture Service Stencils** ([`tech-icons.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [`registry.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/registry.ts), [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx)):
+  - Added 26 vector AWS service icons across Compute (`EC2`, `Lambda`, `ECS`, `EKS`, `Fargate`), Storage (`S3`, `EBS`, `EFS`), Databases (`RDS`, `DynamoDB`, `Aurora`, `ElastiCache`), Networking (`VPC`, `CloudFront`, `Route 53`, `API Gateway`, `ELB`), Integration (`SQS`, `SNS`, `EventBridge`, `Step Functions`), and Security/Observability (`IAM`, `Cognito`, `CloudWatch`, `KMS`, `WAF & Shield`) with authentic AWS brand colors.
+  - Added a dedicated **AWS** tab in [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx) and exposed `AWS (Amazon Web Services)` inside the main Architecture tab and Command Palette (`Ctrl+K`).
+- **Draw.io Directional Quick-Clone & Connect Chevrons (`N`, `E`, `S`, `W`)** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Selecting a single node displays 4 directional arrows (`↑`, `→`, `↓`, `←`) outside its bounding box; clicking any arrow clones the node in that direction with a 120px gap and connects an edge in one click.
+- **Draw.io Drop-Connector-on-Empty-Space Node Spawn** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Dragging a connector wire from an anchor handle and releasing over empty canvas space (`>= 60px` away) automatically spawns and connects a target node at the drop point.
+- **Double-Click Empty Canvas Quick-Create & Precision Keyboard Nudging** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Double-clicking empty canvas background spawns a shape at the cursor and immediately opens inline label editing.
+  - Added `Alt + Arrow` (`1px` pixel-perfect micro-nudge), `Arrow` (`10px` grid step), and `Shift + Arrow` (`20px` fast step).
+
+---
+
 ## [2026-10-24] — Version History, JSON Backups, Duplication, Live Previews & Agent Harness
 
 ### Added

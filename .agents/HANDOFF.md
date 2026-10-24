@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-24
 > **Branch**: `main`
-> **Test Suite Status**: 565 passing (`0` failing)
+> **Test Suite Status**: 566 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -33,6 +33,9 @@
    - Added `.diagramz.json` export & file import to `CanvasHeader.tsx`.
    - Added 1-click Diagram Duplication in `CanvasHeader.tsx` and `dashboard/page.tsx`.
    - Updated `diagram.store.ts` `saveDiagram()` to auto-generate vector SVG thumbnails (`thumbnailKey`) and rendered live previews on Dashboard cards.
+4. **AWS Architecture Stencils & Draw.io-Grade Canvas Interactions**:
+   - Added 26 official-style AWS service stencils (`tech-aws-ec2`, `tech-aws-lambda`, `tech-aws-s3`, `tech-aws-rds`, `tech-aws-dynamodb`, `tech-aws-vpc`, `tech-aws-cloudfront`, `tech-aws-route53`, `tech-aws-apigateway`, `tech-aws-elb`, `tech-aws-sqs`, `tech-aws-sns`, `tech-aws-eventbridge`, `tech-aws-stepfunctions`, `tech-aws-iam`, `tech-aws-cognito`, `tech-aws-cloudwatch`, `tech-aws-kms`, `tech-aws-waf`, etc.) in `tech-icons.ts` and exposed a dedicated **AWS** tab in `ComponentLibraryPanel.tsx`.
+   - Implemented Draw.io-style 1-click directional Quick-Clone & Connect chevrons (`N`, `E`, `S`, `W`), drop-connector-on-empty-space node spawning, double-click empty canvas node creation, and `1px` (`Alt+Arrow`) / `10px` (`Arrow`) / `20px` (`Shift+Arrow`) precision nudging in `ZCanvas.tsx`.
 
 ---
 

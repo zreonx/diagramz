@@ -236,9 +236,10 @@ export function ComponentLibraryPanel({
 }: ComponentLibraryPanelProps) {
   const { isDark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'essential' | 'drawio' | 'patterns'>('essential');
+  const [activeTab, setActiveTab] = useState<'essential' | 'aws' | 'drawio' | 'patterns'>('essential');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    'AWS (Amazon Web Services)': true,
     'Compute & Containers': true,
     'Cloud & Infrastructure': true,
     'Databases & Storage': true,
@@ -447,7 +448,7 @@ export function ComponentLibraryPanel({
         )}
       </div>
 
-      {/* Tabs Selector: Architecture (Clean Vector) vs Tech Logos vs Flows */}
+      {/* Tabs Selector: Architecture (Clean Vector) vs AWS vs Tech Logos vs Flows */}
       <div className="p-2 border-b border-border bg-muted/20">
         <div className="flex p-0.5 rounded-lg bg-muted/50 border border-border/50 text-xs">
           <button
@@ -462,6 +463,19 @@ export function ComponentLibraryPanel({
             title="Clean Vector Software Architecture Components"
           >
             Architecture
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('aws')}
+            className={cn(
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
+              activeTab === 'aws'
+                ? 'bg-background text-[#FF9900] font-semibold shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="AWS Cloud Architecture Icons (EC2, Lambda, S3, RDS, VPC, SQS...)"
+          >
+            AWS
           </button>
           <button
             type="button"
@@ -577,6 +591,72 @@ export function ComponentLibraryPanel({
 
 
 
+            {/* AWS (Amazon Web Services) Stencils inside Architecture tab as well */}
+            {techIconCategories['AWS (Amazon Web Services)'] &&
+              techIconCategories['AWS (Amazon Web Services)'].length > 0 && (
+                <div className="space-y-1.5 pt-1 border-t border-border/40">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('AWS (Amazon Web Services)')}
+                    className="w-full flex items-center justify-between px-1.5 py-1 text-[11px] font-semibold text-foreground hover:text-primary transition-colors group"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">AWS (Amazon Web Services)</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#FF9900]/15 text-[#FF9900] font-mono shrink-0">
+                        {techIconCategories['AWS (Amazon Web Services)'].length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-muted-foreground shrink-0">
+                      {openSections['AWS (Amazon Web Services)'] !== false ? (
+                        <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ChevronRight className="w-3 h-3" />
+                      )}
+                    </div>
+                  </button>
+
+                  {openSections['AWS (Amazon Web Services)'] !== false && (
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      {techIconCategories['AWS (Amazon Web Services)'].map((item) => (
+                        <div
+                          key={item.id}
+                          draggable
+                          onDragStart={(e) => handleDragTechIcon(e, item)}
+                          onClick={() =>
+                            onInsertItem?.({
+                              kind: 'stencil',
+                              stencilId: item.id,
+                              category: item.category,
+                              accentColor: item.accentColor,
+                              width: item.defaultWidth,
+                              height: item.defaultHeight,
+                            })
+                          }
+                          className={cn(
+                            'group flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-background/60',
+                            'hover:bg-accent/40 hover:border-primary/50 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-center'
+                          )}
+                          title={`Click or drag "${item.title}" onto canvas`}
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center mb-1.5 pointer-events-none group-hover:scale-105 transition-transform">
+                            <ZCanvasStencilGraphic
+                              id={item.id}
+                              width={26}
+                              height={26}
+                              isDark={isDark}
+                              className="w-6.5 h-6.5 drop-shadow-xs"
+                            />
+                          </div>
+                          <span className="text-[11px] font-medium text-foreground truncate w-full block group-hover:text-primary transition-colors pointer-events-none">
+                            {item.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
             {/* Standard Draw.io Primitives and Components (Cylinder, Cloud,
                 Server Box, Database Table, VPC Container) */}
             {filteredStandardShapes.length > 0 && (
@@ -668,6 +748,65 @@ export function ComponentLibraryPanel({
               </div>
             )}
           </>
+        )}
+
+        {/* ─── TAB 1.5: DEDICATED AWS ARCHITECTURE STENCILS ─── */}
+        {activeTab === 'aws' && (
+          <div className="space-y-3">
+            <div className="px-1 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-foreground">
+                AWS Cloud Services
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FF9900]/15 text-[#FF9900] font-mono">
+                {(techIconCategories['AWS (Amazon Web Services)']?.length ?? 0) +
+                  (TECH_ICON_STENCILS.some((s) => s.id === 'tech-aws') ? 1 : 0)}{' '}
+                icons
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {TECH_ICON_STENCILS.filter(
+                (item) =>
+                  (item.category === 'AWS (Amazon Web Services)' || item.id === 'tech-aws') &&
+                  (!searchQuery.trim() ||
+                    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.id.toLowerCase().includes(searchQuery.toLowerCase()))
+              ).map((item) => (
+                <div
+                  key={item.id}
+                  draggable
+                  onDragStart={(e) => handleDragTechIcon(e, item)}
+                  onClick={() =>
+                    onInsertItem?.({
+                      kind: 'stencil',
+                      stencilId: item.id,
+                      category: item.category,
+                      accentColor: item.accentColor,
+                      width: item.defaultWidth,
+                      height: item.defaultHeight,
+                    })
+                  }
+                  className={cn(
+                    'group flex flex-col items-center justify-center p-2.5 rounded-xl border border-border/70 bg-background/60',
+                    'hover:bg-accent/40 hover:border-[#FF9900]/60 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-center'
+                  )}
+                  title={`Click or drag "${item.title}" onto canvas`}
+                >
+                  <div className="w-8 h-8 flex items-center justify-center mb-1.5 pointer-events-none group-hover:scale-105 transition-transform">
+                    <ZCanvasStencilGraphic
+                      id={item.id}
+                      width={26}
+                      height={26}
+                      isDark={isDark}
+                      className="w-6.5 h-6.5 drop-shadow-xs"
+                    />
+                  </div>
+                  <span className="text-[11px] font-medium text-foreground truncate w-full block group-hover:text-primary transition-colors pointer-events-none">
+                    {item.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* ─── TAB 2: DRAW.IO CRISP TECH LOGOS ─── */}
