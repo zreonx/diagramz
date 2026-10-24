@@ -66,7 +66,7 @@ export const SHAPE_TOOLS = [
 export type ZCanvasShapeTool = (typeof SHAPE_TOOLS)[number];
 
 /** The non-geometric tools, each of which lands a fresh component of its kind. */
-export const COMPONENT_TOOLS = ['text', 'service', 'table', 'container', 'frame'] as const;
+export const COMPONENT_TOOLS = ['text', 'service', 'table', 'container', 'frame', 'sticky-note'] as const;
 
 export type ZCanvasComponentTool = (typeof COMPONENT_TOOLS)[number];
 

@@ -42,6 +42,15 @@ const CATEGORY = 'Standard Shapes';
 
 export const STANDARD_DRAWIO_SHAPES: StandardDrawioShapeDef[] = [
   {
+    id: 'shape-sticky-note',
+    type: 'sticky-note',
+    title: 'Sticky Note',
+    category: CATEGORY,
+    description: 'Post-it note with pastel themes and instant click-to-type editing',
+    width: 160,
+    height: 160,
+  },
+  {
     id: 'shape-cylinder',
     type: 'cylinder',
     title: 'Database Drum',

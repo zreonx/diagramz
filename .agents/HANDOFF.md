@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-25
 > **Branch**: `main`
-> **Test Suite Status**: 581 passing (`0` failing)
+> **Test Suite Status**: 588 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -20,7 +20,21 @@
 
 ## 2. Recently Completed Work
 
-1. **Full Real-time Multiplayer Collaboration Stack**:
+1. **Quick-Connect Directional Hover Arrows (Draw.io / Lucidchart Style)**:
+   - When any single shape or card is selected, 4 blue directional quick-connect buttons appear outside the North, East, South, and West perimeter.
+   - Clicking an arrow spawns a clone of the shape in that direction (spaced by an 80px gap), wires an auto-routed connector between them, selects the new shape, and focuses text editing.
+   - Dragging an arrow pulls out an interactive connector wire to connect to another node or canvas space.
+2. **Figma "Tidy Up" Grid & Equal-Gap Node Distribution**:
+   - Built `distributeNodes` calculating exact variable-size bounds to enforce mathematically equal spacing between items on horizontal and vertical axes.
+   - Built `tidyUpNodes` calculating optimal balanced grid layouts (columns = $\lceil\sqrt{N}\rceil$) with consistent 40px gaps.
+   - Exposed 1-click **"Tidy Up Grid"** button in `ZCanvasStylePanel` multi-selection inspector.
+3. **Miro / FigJam Sticky Notes**:
+   - Added `'sticky-note'` node type with authentic pastel post-it appearance, soft drop shadow, custom folded dog-ear corner (`borderRadius: 2px 2px 14px 2px`), and multi-line double-click editing.
+   - Added "Sticky Note" tile to Standard Shapes in Component Library with custom preview artwork.
+4. **Copy Selection as High-Res PNG to Clipboard (`Ctrl+Shift+C`)**:
+   - Added keyboard shortcut `Ctrl+Shift+C` and "Copy as PNG" action in Header More Actions menu.
+   - Renders selected nodes/edges/strokes (or full canvas if unselected) as a 2x transparent PNG Blob directly into OS clipboard via `navigator.clipboard.write([new ClipboardItem(...)])`.
+5. **Full Real-time Multiplayer Collaboration Stack**:
    - **Header Collaborator Stack & Popover** ([`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx)): Overlapped peer avatars with colored borders and online status pulse, opening a live presence popover showing active teammate status (`Editing (N items)` vs `Viewing`) and invite shortcut.
    - **Live Multiplayer SVG Cursors & Selection Highlights** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)): Peer mouse cursors rendered in canvas world coordinates as Figma-style pointers with name badges, scaled with inverse zoom (`1 / viewport.zoom`) for consistent rendering across zoom levels. Real-time dashed bounding boxes around elements currently selected by teammates.
    - **WebSocket Sync Engine** ([`collab.gateway.ts`](file:///D:/Projects/diagramz/apps/api/src/modules/collab/collab.gateway.ts), [`collab.ts`](file:///D:/Projects/diagramz/packages/shared/src/types/collab.ts), [`useCollab.ts`](file:///D:/Projects/diagramz/apps/web/src/hooks/useCollab.ts), [`DiagramCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx)): `room:users` and `diagram:change` events with 40ms cursor throttling and local echo prevention guards.

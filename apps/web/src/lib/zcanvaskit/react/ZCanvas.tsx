@@ -46,6 +46,9 @@ import {
   beginSelectionDrag,
   isDragSnapshotMovable,
   translateSelection,
+  alignNodes,
+  distributeNodes,
+  tidyUpNodes,
   type ZCanvasDragSelection,
   type ZCanvasDragSnapshot,
   type ZCanvasResizeHandle,
@@ -146,7 +149,7 @@ import { QuickConnectPicker, type QuickConnectOption } from './QuickConnectPicke
 import { ZCanvasSheetTabs } from './ZCanvasSheetTabs';
 import { ZCanvasPresentationDock } from './ZCanvasPresentationDock';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
-import { exportDocumentToPng } from '../export/png';
+import { exportDocumentToPng, exportDocumentToPngBlob } from '../export/png';
 import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, ChevronUp, ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -747,6 +750,7 @@ export function ZCanvas({
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const touchStartRef = useRef<{ x: number; y: number; dist?: number; zoom?: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const arrowDragStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Marquee Selection Box
   const [marqueeBox, setMarqueeBox] = useState<ZCanvasBox | null>(null);
@@ -1753,43 +1757,9 @@ export function ZCanvas({
   // Align Selected Nodes Utility
   const handleAlignNodes = useCallback(
     (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
-      // A locked element is not part of the gesture at all — it is not moved,
-      // and it does not set the edge the others line up against either, because
-      // a lock that still pulled its neighbours into line would be doing work.
       const targets = movable(selectedNodeIds);
       if (targets.length < 2) return;
-      const selected = nodes.filter((n) => targets.includes(n.id));
-      if (selected.length < 2) return;
-
-      let targetVal = 0;
-      if (alignment === 'left') targetVal = Math.min(...selected.map((n) => n.x));
-      else if (alignment === 'center') {
-        const minX = Math.min(...selected.map((n) => n.x));
-        const maxX = Math.max(...selected.map((n) => n.x + n.width));
-        targetVal = (minX + maxX) / 2;
-      } else if (alignment === 'right') {
-        targetVal = Math.max(...selected.map((n) => n.x + n.width));
-      } else if (alignment === 'top') {
-        targetVal = Math.min(...selected.map((n) => n.y));
-      } else if (alignment === 'middle') {
-        const minY = Math.min(...selected.map((n) => n.y));
-        const maxY = Math.max(...selected.map((n) => n.y + n.height));
-        targetVal = (minY + maxY) / 2;
-      } else if (alignment === 'bottom') {
-        targetVal = Math.max(...selected.map((n) => n.y + n.height));
-      }
-
-      const newNodes = nodes.map((n) => {
-        if (!targets.includes(n.id)) return n;
-        if (alignment === 'left') return { ...n, x: targetVal };
-        if (alignment === 'center') return { ...n, x: Math.round(targetVal - n.width / 2) };
-        if (alignment === 'right') return { ...n, x: targetVal - n.width };
-        if (alignment === 'top') return { ...n, y: targetVal };
-        if (alignment === 'middle') return { ...n, y: Math.round(targetVal - n.height / 2) };
-        if (alignment === 'bottom') return { ...n, y: targetVal - n.height };
-        return n;
-      });
-
+      const newNodes = alignNodes(nodes, targets, alignment);
       commitState(newNodes, edges, strokes);
     },
     [nodes, selectedNodeIds, edges, strokes, commitState, movable]
@@ -1798,39 +1768,86 @@ export function ZCanvas({
   // Distribute Nodes Evenly Utility
   const handleDistributeNodes = useCallback(
     (direction: 'horizontal' | 'vertical') => {
-      // Locked elements are left out for the same reason they are left out of
-      // Align: even spacing is a statement about the elements that move.
       const targets = movable(selectedNodeIds);
       if (targets.length < 2) return;
-      const selected = nodes.filter((n) => targets.includes(n.id));
-      if (direction === 'horizontal') {
-        const sorted = [...selected].sort((a, b) => a.x - b.x);
-        const minX = sorted[0].x;
-        const maxX = sorted[sorted.length - 1].x;
-        const totalSpacing = maxX - minX;
-        const step = totalSpacing / (sorted.length - 1);
-        const newMap = new Map<string, number>();
-        sorted.forEach((n, idx) => {
-          newMap.set(n.id, Math.round(minX + step * idx));
-        });
-        const newNodes = nodes.map((n) => (newMap.has(n.id) ? { ...n, x: newMap.get(n.id)! } : n));
-        commitState(newNodes, edges, strokes);
-      } else {
-        const sorted = [...selected].sort((a, b) => a.y - b.y);
-        const minY = sorted[0].y;
-        const maxY = sorted[sorted.length - 1].y;
-        const totalSpacing = maxY - minY;
-        const step = totalSpacing / (sorted.length - 1);
-        const newMap = new Map<string, number>();
-        sorted.forEach((n, idx) => {
-          newMap.set(n.id, Math.round(minY + step * idx));
-        });
-        const newNodes = nodes.map((n) => (newMap.has(n.id) ? { ...n, y: newMap.get(n.id)! } : n));
-        commitState(newNodes, edges, strokes);
-      }
+      const newNodes = distributeNodes(nodes, targets, direction);
+      commitState(newNodes, edges, strokes);
     },
     [nodes, selectedNodeIds, edges, strokes, commitState, movable]
   );
+
+  // Figma "Tidy Up" Grid Layout Utility
+  const handleTidyUpNodes = useCallback(() => {
+    const targets = movable(selectedNodeIds);
+    if (targets.length < 2) return;
+    const newNodes = tidyUpNodes(nodes, targets, 40);
+    commitState(newNodes, edges, strokes);
+  }, [nodes, selectedNodeIds, edges, strokes, commitState, movable]);
+
+  // Copy selected elements (or whole diagram) to clipboard as PNG image (Ctrl+Shift+C)
+  const handleCopySelectionAsImage = useCallback(async () => {
+    try {
+      if (typeof window === 'undefined' || !navigator.clipboard || !window.ClipboardItem) {
+        toast.error('Clipboard image copy not supported in this browser');
+        return;
+      }
+
+      const hasSelection =
+        selectedNodeIds.length > 0 || selectedEdgeIds.length > 0 || selectedStrokeIds.length > 0;
+      let targetDoc: ZCanvasDocument = { version: 1, nodes, edges, strokes, viewport };
+
+      if (hasSelection) {
+        const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
+        const selectedEdges = edges.filter(
+          (e) =>
+            selectedEdgeIds.includes(e.id) ||
+            (selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target))
+        );
+        const selectedStrokes = strokes.filter((s) => selectedStrokeIds.includes(s.id));
+
+        targetDoc = {
+          version: 1,
+          nodes: selectedNodes,
+          edges: selectedEdges,
+          strokes: selectedStrokes,
+          viewport,
+        };
+      }
+
+      if (targetDoc.nodes.length === 0 && targetDoc.strokes.length === 0) {
+        toast.info('Nothing on canvas to copy');
+        return;
+      }
+
+      toast.loading('Generating high-res image...', { id: 'copy-img' });
+      const { blob } = await exportDocumentToPngBlob(targetDoc, {
+        isDark,
+        scale: 2,
+        transparentBackground: true,
+        fitToContent: true,
+        padding: 32,
+      });
+
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+
+      toast.success(
+        hasSelection ? 'Copied selection to clipboard as PNG!' : 'Copied canvas to clipboard as PNG!',
+        { id: 'copy-img' }
+      );
+    } catch (err: any) {
+      console.error('Failed to copy image to clipboard:', err);
+      toast.error('Failed to copy image to clipboard', { id: 'copy-img' });
+    }
+  }, [
+    nodes,
+    edges,
+    strokes,
+    viewport,
+    selectedNodeIds,
+    selectedEdgeIds,
+    selectedStrokeIds,
+    isDark,
+  ]);
 
   // Match Width / Height Across Selected Nodes Utility
   const handleMatchNodeSize = useCallback(
@@ -4843,6 +4860,64 @@ export function ZCanvas({
     setEditingValue('');
   };
 
+  // Quick-Connect Directional Hover Arrow: Spawns connected node in cardinal direction (Draw.io style)
+  const handleQuickCloneAndConnect = useCallback(
+    (sourceNode: ZCanvasNode, direction: ZCanvasHandlePosition) => {
+      if (readOnly || isLocked(sourceNode)) return;
+
+      const gap = 80;
+      let newX = sourceNode.x;
+      let newY = sourceNode.y;
+      let targetHandle: ZCanvasHandlePosition = 'left';
+
+      if (direction === 'right') {
+        newX = sourceNode.x + sourceNode.width + gap;
+        newY = sourceNode.y;
+        targetHandle = 'left';
+      } else if (direction === 'bottom') {
+        newX = sourceNode.x;
+        newY = sourceNode.y + sourceNode.height + gap;
+        targetHandle = 'top';
+      } else if (direction === 'left') {
+        newX = sourceNode.x - sourceNode.width - gap;
+        newY = sourceNode.y;
+        targetHandle = 'right';
+      } else if (direction === 'top') {
+        newX = sourceNode.x;
+        newY = sourceNode.y - sourceNode.height - gap;
+        targetHandle = 'bottom';
+      }
+
+      const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const newNode: ZCanvasNode = {
+        ...sourceNode,
+        id: newId,
+        x: snap(newX),
+        y: snap(newY),
+        title: '',
+        parentId: sourceNode.parentId,
+      };
+
+      const newEdgeId = `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const newEdge: ZCanvasEdge = {
+        id: newEdgeId,
+        source: sourceNode.id,
+        target: newId,
+        sourceHandle: direction,
+        targetHandle,
+        style: edgeStyle,
+        color: activeColor,
+      };
+
+      commitState([...nodes, newNode], [...edges, newEdge], strokes);
+      setSelectedNodeIds([newId]);
+      setSelectedEdgeIds([]);
+      setSelectedStrokeIds([]);
+      startEditing(newId, 'title', '');
+    },
+    [readOnly, nodes, edges, strokes, edgeStyle, activeColor, snap, commitState]
+  );
+
   const handleAddField = (nodeId: string) => {
     if (readOnly) return;
     const targetNode = nodes.find((n) => n.id === nodeId);
@@ -7358,6 +7433,63 @@ export function ZCanvas({
                 </div>
               )}
 
+              {node.type === 'sticky-note' && (
+                <div
+                  className="w-full h-full relative p-3 text-xs select-none shadow-md transition-shadow hover:shadow-lg overflow-hidden flex flex-col group/sticky"
+                  style={{
+                    backgroundColor: node.fill || (isDark ? '#713F12' : '#FEF08A'),
+                    color: node.color || (isDark ? '#FEF08A' : '#713F12'),
+                    borderRadius: '2px 2px 14px 2px',
+                    border: `1px solid ${isDark ? '#854D0E' : '#FACC15'}`,
+                  }}
+                  onDoubleClick={(e) => {
+                    if (readOnly) return;
+                    e.stopPropagation();
+                    startEditing(node.id, 'title', node.title || '');
+                  }}
+                >
+                  {/* Folded dog-ear corner */}
+                  <div
+                    className="absolute bottom-0 right-0 w-3.5 h-3.5 pointer-events-none"
+                    style={{
+                      borderStyle: 'solid',
+                      borderWidth: '0 0 14px 14px',
+                      borderColor: `transparent transparent ${isDark ? '#522e0d' : '#eab308'} transparent`,
+                      filter: 'drop-shadow(-1px -1px 1px rgba(0,0,0,0.12))',
+                    }}
+                  />
+                  {editingNodeId === node.id && editingField === 'title' ? (
+                    <textarea
+                      autoFocus
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={saveEditing}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setEditingNodeId(null);
+                      }}
+                      className="w-full h-full bg-transparent border-none outline-none resize-none font-medium leading-relaxed p-0 shadow-none ring-0 select-text"
+                      style={{
+                        fontSize: node.fontSize ? `${node.fontSize}px` : '13px',
+                        fontFamily: node.fontFamily === 'mono' ? 'var(--font-mono)' : node.fontFamily === 'serif' ? 'serif' : 'system-ui, sans-serif',
+                        color: 'inherit',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full whitespace-pre-wrap break-words font-medium leading-relaxed cursor-text overflow-y-auto"
+                      style={{
+                        fontSize: node.fontSize ? `${node.fontSize}px` : '13px',
+                        fontFamily: node.fontFamily === 'mono' ? 'var(--font-mono)' : node.fontFamily === 'serif' ? 'serif' : 'system-ui, sans-serif',
+                      }}
+                    >
+                      {node.title || (
+                        <span className="opacity-40 italic">Double-click to write note...</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {node.type === 'text' && (
                 <div
                   className={cn(
@@ -7598,6 +7730,127 @@ export function ZCanvas({
                       );
                     });
                   })}
+
+                  {/* 4 DIRECTIONAL QUICK-CONNECT & CLONE BUTTONS (Draw.io / Lucidchart Style) */}
+                  {isSelected && selectedNodeIds.length === 1 && activeTool === 'select' && connectingSourceId === null && (
+                    <>
+                      {/* Top Arrow */}
+                      <button
+                        type="button"
+                        data-quick-connect="top"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
+                        }}
+                        onMouseMove={(e) => {
+                          if (arrowDragStartRef.current) {
+                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
+                            if (dist > 4) {
+                              arrowDragStartRef.current = null;
+                              handleAnchorMouseDown(e, node.id, 'top', 0);
+                            }
+                          }
+                        }}
+                        onMouseUp={(e) => {
+                          if (arrowDragStartRef.current) {
+                            arrowDragStartRef.current = null;
+                            handleQuickCloneAndConnect(node, 'top');
+                          }
+                        }}
+                        className="absolute -top-7 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
+                        title="Click to add step above, or drag to connect"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Right Arrow */}
+                      <button
+                        type="button"
+                        data-quick-connect="right"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
+                        }}
+                        onMouseMove={(e) => {
+                          if (arrowDragStartRef.current) {
+                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
+                            if (dist > 4) {
+                              arrowDragStartRef.current = null;
+                              handleAnchorMouseDown(e, node.id, 'right', 0);
+                            }
+                          }
+                        }}
+                        onMouseUp={(e) => {
+                          if (arrowDragStartRef.current) {
+                            arrowDragStartRef.current = null;
+                            handleQuickCloneAndConnect(node, 'right');
+                          }
+                        }}
+                        className="absolute top-1/2 -right-7 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
+                        title="Click to add step to the right, or drag to connect"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Bottom Arrow */}
+                      <button
+                        type="button"
+                        data-quick-connect="bottom"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
+                        }}
+                        onMouseMove={(e) => {
+                          if (arrowDragStartRef.current) {
+                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
+                            if (dist > 4) {
+                              arrowDragStartRef.current = null;
+                              handleAnchorMouseDown(e, node.id, 'bottom', 0);
+                            }
+                          }
+                        }}
+                        onMouseUp={(e) => {
+                          if (arrowDragStartRef.current) {
+                            arrowDragStartRef.current = null;
+                            handleQuickCloneAndConnect(node, 'bottom');
+                          }
+                        }}
+                        className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
+                        title="Click to add step below, or drag to connect"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Left Arrow */}
+                      <button
+                        type="button"
+                        data-quick-connect="left"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
+                        }}
+                        onMouseMove={(e) => {
+                          if (arrowDragStartRef.current) {
+                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
+                            if (dist > 4) {
+                              arrowDragStartRef.current = null;
+                              handleAnchorMouseDown(e, node.id, 'left', 0);
+                            }
+                          }
+                        }}
+                        onMouseUp={(e) => {
+                          if (arrowDragStartRef.current) {
+                            arrowDragStartRef.current = null;
+                            handleQuickCloneAndConnect(node, 'left');
+                          }
+                        }}
+                        className="absolute top-1/2 -left-7 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
+                        title="Click to add step to the left, or drag to connect"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </>
               )}
 
@@ -8634,6 +8887,7 @@ export function ZCanvas({
           onAlign={handleAlignNodes}
           onDistribute={handleDistributeNodes}
           onMatchSize={handleMatchNodeSize}
+          onTidyUp={handleTidyUpNodes}
           canGroup={canGroup(nodes, movable(selectedNodeIds))}
           canUngroup={isGrouped(nodes, movable(selectedNodeIds))}
           enteredGroupId={enteredGroupId}

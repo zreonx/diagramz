@@ -715,6 +715,20 @@ export function CanvasHeader({
                 <span className="text-[10px] text-muted-foreground">Create identical copy</span>
               </div>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, shiftKey: true }));
+                }
+              }}
+              className="gap-2.5 cursor-pointer text-xs rounded-lg py-2"
+            >
+              <Copy className="w-4 h-4 text-primary" />
+              <div className="flex items-center justify-between w-full">
+                <span className="font-medium">Copy as PNG</span>
+                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted border border-border">Ctrl+Shift+C</kbd>
+              </div>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem onClick={() => jsonFileInputRef.current?.click()} className="gap-2.5 cursor-pointer text-xs rounded-lg py-2">
               <Upload className="w-4 h-4 text-muted-foreground" />

@@ -4,6 +4,26 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-25] — Quick-Connect Directional Hover Arrows, Figma Tidy Up & Equal-Gap Distribute, Miro Sticky Notes, and Copy Selection as PNG to Clipboard
+
+### Added
+- **Quick-Connect Directional Hover Arrows (Draw.io / Lucidchart Style)** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - When a single node is selected, 4 blue directional quick-connect buttons appear outside the North, East, South, and West perimeter of the node.
+  - **Clicking an arrow** immediately duplicates/spawns a new connected node in that direction (spaced by an 80px gap) with an auto-routed connector, selects the new node, and focuses inline text editing.
+  - **Dragging an arrow** pulls out an interactive connection wire directly from that face to drop onto other elements or open canvas.
+- **Figma "Tidy Up" Grid & Equal-Gap Node Distribution** ([`distribute-align.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/distribute-align.ts), [`distribute-align.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/distribute-align.test.mjs), [`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Built `distributeNodes` calculating exact variable-size bounds to enforce mathematically equal spacing between items on both horizontal and vertical axes.
+  - Built `tidyUpNodes` calculating optimal balanced grid layouts (columns = $\lceil\sqrt{N}\rceil$) with consistent 40px gaps.
+  - Exposed 1-click **"Tidy Up Grid"** button in `ZCanvasStylePanel` multi-selection inspector.
+- **Miro / FigJam Sticky Notes** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`standard-shapes.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/standard-shapes.ts), [`placement.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/placement.ts), [`ComponentLibraryPanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Added `'sticky-note'` node type with authentic pastel post-it appearance, soft drop shadow, custom folded dog-ear corner (`borderRadius: 2px 2px 14px 2px`), and multi-line double-click editing.
+  - Added "Sticky Note" tile to Standard Shapes in Component Library with custom preview artwork.
+- **Copy Selection as High-Res PNG to Clipboard (`Ctrl+Shift+C`)** ([`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`CanvasHeader.tsx`](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx)):
+  - Added keyboard shortcut `Ctrl+Shift+C` (and "Copy as PNG" action in Header More Actions menu).
+  - Renders the selected nodes/edges/strokes (or full canvas if unselected) as a 2x transparent PNG Blob directly into OS clipboard via `navigator.clipboard.write([new ClipboardItem(...)])`.
+
+---
+
 ## [2026-10-25] — Full Real-time Multiplayer Collaboration: Header Teammates Stack, Live SVG Cursors, Remote Selection Outlines & WebSocket Sync
 
 ### Added

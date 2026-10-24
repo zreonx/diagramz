@@ -1399,4 +1399,7 @@ export * from './stroke-element';
 // Moving a whole selection — shapes, connectors and ink — as one gesture.
 export * from './selection-drag';
 
+// Aligning and distributing multiple selected elements.
+export * from './distribute-align';
+
 export { distanceToBoxPerimeter } from '../core/boundaries';

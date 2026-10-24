@@ -407,6 +407,7 @@ test('the tool vocabulary is the shapes and components', () => {
     'table',
     'container',
     'frame',
+    'sticky-note',
   ]);
 });
 

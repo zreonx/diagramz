@@ -141,6 +141,7 @@ export interface ZCanvasStylePanelProps {
   onAlign?: (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
   onDistribute?: (direction: 'horizontal' | 'vertical') => void;
   onMatchSize?: (dimension: 'width' | 'height') => void;
+  onTidyUp?: () => void;
   selectedCount?: number;
   canGroup?: boolean;
   canUngroup?: boolean;
@@ -376,6 +377,7 @@ const NODE_TYPE_LABELS: Partial<Record<ZCanvasNodeType, string>> = {
   cylinder: 'Database',
   cloud: 'Cloud',
   text: 'Text',
+  'sticky-note': 'Sticky Note',
   svg: 'Component',
 };
 
@@ -596,6 +598,7 @@ export function ZCanvasStylePanel({
   onAlign,
   onDistribute,
   onMatchSize,
+  onTidyUp,
   selectedCount,
   canGroup,
   canUngroup,
@@ -719,6 +722,7 @@ export function ZCanvasStylePanel({
           onAlign={onAlign}
           onDistribute={onDistribute}
           onMatchSize={onMatchSize}
+          onTidyUp={onTidyUp}
           selectedCount={selectedCount}
           canGroup={canGroup}
           canUngroup={canUngroup}
@@ -949,6 +953,7 @@ function NodeSections({
   onAlign,
   onDistribute,
   onMatchSize,
+  onTidyUp,
   selectedCount = 1,
   canGroup,
   canUngroup,
@@ -963,6 +968,7 @@ function NodeSections({
   onAlign?: (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
   onDistribute?: (direction: 'horizontal' | 'vertical') => void;
   onMatchSize?: (dimension: 'width' | 'height') => void;
+  onTidyUp?: () => void;
   selectedCount?: number;
   canGroup?: boolean;
   canUngroup?: boolean;
@@ -1406,6 +1412,17 @@ function NodeSections({
                 <span>Match Height</span>
               </button>
             </div>
+          )}
+          {onTidyUp && selectedCount > 1 && (
+            <button
+              type="button"
+              onClick={onTidyUp}
+              title="Figma Tidy Up: Arrange selected components into an evenly spaced balanced grid"
+              className="w-full h-7 px-2 text-[10px] rounded flex items-center justify-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors cursor-pointer"
+            >
+              <Grid3X3 className="w-3 h-3" />
+              <span>Tidy Up Grid</span>
+            </button>
           )}
         </div>
       )}

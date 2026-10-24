@@ -878,6 +878,11 @@ export function ComponentLibraryPanel({
                       >
                         <div className="flex items-start justify-between gap-1 mb-1.5 w-full pointer-events-none">
                           <div className="w-8 h-8 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-center p-1">
+                            {shape.type === 'sticky-note' && (
+                              <div className="w-5 h-5 rounded-xs bg-yellow-300/80 border border-yellow-400 relative overflow-hidden shadow-2xs">
+                                <div className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b-2 border-r-2 border-yellow-500 bg-yellow-400" />
+                              </div>
+                            )}
                             {shape.type === 'cylinder' && (
                               <svg viewBox="0 0 100 110" className="w-5 h-5 stroke-primary fill-primary/15 stroke-2">
                                 <path d="M 10 24 L 10 86 A 40 16 0 0 0 90 86 L 90 24 A 40 16 0 0 0 10 24 Z" />
@@ -1106,6 +1111,11 @@ export function ComponentLibraryPanel({
                       >
                         <div className="flex items-start justify-between gap-1 mb-1.5 w-full pointer-events-none">
                           <div className="w-8 h-8 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-center p-1">
+                            {shape.type === 'sticky-note' && (
+                              <div className="w-5 h-5 rounded-xs bg-yellow-300/80 border border-yellow-400 relative overflow-hidden shadow-2xs">
+                                <div className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b-2 border-r-2 border-yellow-500 bg-yellow-400" />
+                              </div>
+                            )}
                             {shape.type === 'cylinder' && (
                               <svg viewBox="0 0 100 110" className="w-5 h-5 stroke-primary fill-primary/15 stroke-2">
                                 <path d="M 10 24 L 10 86 A 40 16 0 0 0 90 86 L 90 24 A 40 16 0 0 0 10 24 Z" />

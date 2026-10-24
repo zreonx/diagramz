@@ -244,11 +244,27 @@ function placeStencil(
  * is why they keep their own defaults rather than sharing the shape table.
  */
 function createComponentNode(
-  tool: 'service' | 'table' | 'container' | 'frame',
+  tool: 'service' | 'table' | 'container' | 'frame' | 'sticky-note',
   context: ZCanvasPlacementContext,
   createId: ZCanvasIdFactory
 ): ZCanvasNode {
-  const id = createId(tool === 'container' ? 'vpc' : tool);
+  const id = createId(tool === 'container' ? 'vpc' : tool === 'sticky-note' ? 'sticky' : tool);
+
+  if (tool === 'sticky-note') {
+    const width = 160;
+    const height = 160;
+    return {
+      id,
+      type: 'sticky-note',
+      title: 'Sticky Note',
+      ...centred(context.x, context.y, width, height),
+      width,
+      height,
+      fill: '#FEF08A',
+      strokeWidth: 1,
+      color: '#713F12',
+    };
+  }
 
   if (tool === 'frame') {
     const width = 800;
@@ -341,12 +357,19 @@ function placeTool(
     };
   }
 
-  if (item.tool === 'service' || item.tool === 'table' || item.tool === 'container' || item.tool === 'frame') {
+  if (
+    item.tool === 'service' ||
+    item.tool === 'table' ||
+    item.tool === 'container' ||
+    item.tool === 'frame' ||
+    item.tool === 'sticky-note'
+  ) {
     const node = createComponentNode(item.tool, context, createId);
     return {
       nodes: [node],
       edges: [],
       selectedIds: [node.id],
+      startTextEditId: item.tool === 'sticky-note' ? node.id : undefined,
       // A container or frame is a boundary: it paints beneath what it encloses. Dropping
       // inside one does not parent the node — grouping is an explicit command,
       // never a side effect of where a component lands.

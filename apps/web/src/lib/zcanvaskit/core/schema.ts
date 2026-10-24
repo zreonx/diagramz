@@ -43,6 +43,8 @@ export const ZCanvasNodeTypeSchema = z.enum([
   /** Standard Draw.io cloud perimeter boundary */
   'cloud',
   'text',
+  /** Miro / FigJam style sticky note with pastel colors and quick editing. */
+  'sticky-note',
   /** Rich vector SVG stencil (e.g. Draw.io tech component or vector library item). */
   'svg',
 ]);
