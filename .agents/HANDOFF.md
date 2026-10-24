@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-24
 > **Branch**: `main`
-> **Test Suite Status**: 570 passing (`0` failing)
+> **Test Suite Status**: 573 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -20,7 +20,14 @@
 
 ## 2. Recently Completed Work
 
-1. **Canvas-First Layout & Right-Hand Inspector**:
+1. **Draw.io Group Selection, Double-Click Drill-Down & Collective Resizing**:
+   - Implemented single-click group selection: clicking any member of a group selects the whole group as a unified entity (`enteredGroupId === null`), hiding individual node resize handles to eliminate visual clutter.
+   - Double-clicking a component inside a group enters the group (`enteredGroupId`) and selects only that child component (`selectedNodeIds = [node.id]`) without opening text edit on that double-click. The child component displays its own 8 resize handles, rotation handle, and 4 quick-clone arrows. Double-clicking the child again opens inline text editing. Single-clicking sibling members inside the group selects them directly, and pressing `Escape` (or clicking the group header pill) steps back up to whole-group selection.
+   - Added a floating Draw.io Group Header Pill (`Group (N) · Double-click item to select` with a 1-click `Ungroup` button; `Inside Group · Click or Esc to select group` when drilled down).
+   - Added 8 Collective Resize Handles (`NW, N, NE, E, SE, S, SW, W`) on Group Frames and Multi-Selection Bounding Boxes, with `scaleNodesInBox` proportionally scaling and repositioning all enclosed elements.
+   - Batch visual styling in `ZCanvasStylePanel`: stroke color, fill, opacity, stroke width, sloppiness, and typography apply across all selected nodes simultaneously.
+   - Added 1-click **Group (`Ctrl+G`)**, **Ungroup (`Ctrl+Shift+G`)**, **Select Whole Group (`Esc`)**, **Match Width**, and **Match Height** buttons to `ZCanvasStylePanel`.
+2. **Canvas-First Layout & Right-Hand Inspector**:
    - Diagrams open in 100% full-screen `canvas` mode by default instead of auto-opening the left markdown split view.
    - Added a floating `Notes` button on the top-left of the canvas and a `PanelLeftClose` collapse button inside `DocumentEditor.tsx`.
    - Moved `ZCanvasStylePanel` to the right side (`top-20 right-4`) to keep the left-to-right diagramming surface unobstructed.

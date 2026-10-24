@@ -62,13 +62,17 @@ import {
   getInternalClipboard,
 } from '../core/clipboard';
 import {
+  activeGroupIdOf,
   canGroup,
   expandSelection,
+  expandSelectionInContext,
   groupFrames,
+  groupIdsOf,
   groupNodes,
   isGrouped,
   pruneEmptyGroupBoxes,
   pruneGroups,
+  scaleNodesInBox,
   ungroupNodes,
 } from '../core/grouping';
 import {
@@ -897,6 +901,22 @@ export function ZCanvas({
   // Keyboard Shortcuts Cheatsheet Modal
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // Draw.io Group Drill-Down State:
+  // Single-click on a grouped node selects the whole group; double-click enters
+  // the group (`enteredGroupId`) and selects the individual child component.
+  const [enteredGroupId, setEnteredGroupId] = useState<string | null>(null);
+  const justDrilledIntoGroupRef = useRef<string | null>(null);
+
+  // Collective Group / Multi-Selection Box Resize State
+  const groupResizeRef = useRef<{
+    handle: ZCanvasResizeHandle;
+    startPoint: ZCanvasPoint;
+    box: ZCanvasBox;
+    originNodes: Map<string, ZCanvasNode>;
+    moved: boolean;
+  } | null>(null);
+  const [resizingGroupBox, setResizingGroupBox] = useState(false);
+
   // The document as it stood when the current live-editing gesture began.
   const gestureBaselineRef = useRef<ZCanvasDocument | null>(null);
 
@@ -947,8 +967,9 @@ export function ZCanvas({
    * restyled or nudged by itself.
    */
   const selectWholeGroups = useCallback(
-    (ids: string[]) => (ids.length === 0 ? ids : expandSelection(nodes, ids)),
-    [nodes]
+    (ids: string[], activeEnteredGroup: string | null = enteredGroupId) =>
+      ids.length === 0 ? ids : expandSelectionInContext(nodes, ids, activeEnteredGroup),
+    [nodes, enteredGroupId]
   );
 
   /**
@@ -1476,6 +1497,29 @@ export function ZCanvas({
     [nodes, selectedNodeIds, edges, strokes, commitState, movable]
   );
 
+  // Match Width / Height Across Selected Nodes Utility
+  const handleMatchNodeSize = useCallback(
+    (dimension: 'width' | 'height') => {
+      const targets = movable(selectedNodeIds);
+      if (targets.length < 2) return;
+      const selected = nodes.filter((n) => targets.includes(n.id));
+      if (selected.length < 2) return;
+
+      const refNode =
+        selected.find((n) => n.id === primarySelectedNodeId) ?? selected[selected.length - 1];
+      if (!refNode) return;
+
+      const newNodes = nodes.map((n) => {
+        if (!targets.includes(n.id)) return n;
+        return dimension === 'width'
+          ? { ...n, width: refNode.width }
+          : { ...n, height: refNode.height };
+      });
+      commitState(newNodes, edges, strokes);
+    },
+    [nodes, selectedNodeIds, primarySelectedNodeId, edges, strokes, commitState, movable]
+  );
+
   // Clear Canvas Utility
   const handleClearCanvas = useCallback(() => {
     if (nodes.length === 0 && edges.length === 0 && strokes.length === 0) return;
@@ -1507,8 +1551,8 @@ export function ZCanvas({
     const next = groupNodes(nodes, targets);
     if (next === nodes) return;
 
-    // The whole group is what is now selected, so the frame appears at once
-    // rather than waiting for the next click to widen the selection.
+    // Grouping exits any entered group so the newly formed group is selected as a unit.
+    setEnteredGroupId(null);
     setSelectedNodeIds(expandSelection(next, targets));
     commitState(next, edges, strokes);
   }, [nodes, edges, strokes, selectedNodeIds, commitState, movable]);
@@ -1542,6 +1586,7 @@ export function ZCanvas({
     const next = pruneEmptyGroupBoxes(ungroupNodes(released, targets));
     if (next === nodes) return;
 
+    setEnteredGroupId(null);
     setSelectedNodeIds(selectedNodeIds.filter((id) => next.some((node) => node.id === id)));
     commitState(next, edges, strokes);
   }, [nodes, edges, strokes, selectedNodeIds, commitState, movable]);
@@ -1864,8 +1909,18 @@ export function ZCanvas({
         return;
       }
 
-      // Escape : Deselect & Abort
+      // Escape : Exit entered group (Draw.io style) or Deselect & Abort
       if (e.key === 'Escape') {
+        if (enteredGroupId) {
+          const groupMembers = nodes
+            .filter((n) => groupIdsOf(n).includes(enteredGroupId))
+            .map((n) => n.id);
+          setEnteredGroupId(null);
+          if (groupMembers.length > 0) {
+            setSelectedNodeIds(groupMembers);
+            return;
+          }
+        }
         setSelectedNodeIds([]);
         setSelectedEdgeIds([]);
         setSelectedStrokeIds([]);
@@ -2258,6 +2313,7 @@ export function ZCanvas({
       // A sweep builds its own selection, so whatever the style panel was
       // pointed at is no longer part of one.
       setPrimarySelectedNodeId(null);
+      setEnteredGroupId(null);
       // Shift and Ctrl/Cmd both mean the same thing here as everywhere else on
       // this canvas: widen, never replace. The base is taken now, because from
       // here on the selection is whatever the box has swept.
@@ -2277,6 +2333,7 @@ export function ZCanvas({
     }
 
     if (isBackground) {
+      setEnteredGroupId(null);
       setSelectedNodeIds([]);
       setSelectedEdgeIds([]);
       setSelectedStrokeIds([]);
@@ -2601,6 +2658,44 @@ export function ZCanvas({
           return origin ? resizeStroke(origin, inkResize.box, box) : stroke;
         })
       );
+      return;
+    }
+
+    // Scaling a Group Frame or Multi-Selection Bounding Box
+    const groupResize = groupResizeRef.current;
+    if (groupResize && !readOnly) {
+      const pt = getCanvasPoint(e.clientX, e.clientY);
+      const rawDx = pt.x - groupResize.startPoint.x;
+      const rawDy = pt.y - groupResize.startPoint.y;
+      const isSide =
+        groupResize.handle === 'n' ||
+        groupResize.handle === 's' ||
+        groupResize.handle === 'e' ||
+        groupResize.handle === 'w';
+
+      const newBox = resizeBoxFromHandle(
+        groupResize.box,
+        groupResize.handle,
+        rawDx,
+        rawDy,
+        {
+          minWidth: 48,
+          minHeight: 48,
+          uniform: !isSide && e.shiftKey,
+          snap,
+        }
+      );
+
+      const changed =
+        newBox.x !== groupResize.box.x ||
+        newBox.y !== groupResize.box.y ||
+        newBox.width !== groupResize.box.width ||
+        newBox.height !== groupResize.box.height;
+      if (!changed && !groupResize.moved) return;
+
+      groupResize.moved = true;
+      beginStylePreview();
+      setNodes((prev) => scaleNodesInBox(prev, groupResize.originNodes, groupResize.box, newBox));
       return;
     }
 
@@ -2949,7 +3044,8 @@ export function ZCanvas({
     // line. The selection was rewritten live during the drag, so
     // `flushStyleBaseline` is what turns the whole gesture into one undo step —
     // restoring the geometry from before the press.
-    const selectionGesture = selectionDragRef.current ?? strokeResizeRef.current;
+    const selectionGesture =
+      selectionDragRef.current ?? strokeResizeRef.current ?? groupResizeRef.current;
     if (selectionGesture) {
       const { moved } = selectionGesture;
       // The refs are only ever set by a non-read-only press, but the gesture is
@@ -2957,9 +3053,11 @@ export function ZCanvas({
       // in a dragging state.
       selectionDragRef.current = null;
       strokeResizeRef.current = null;
+      groupResizeRef.current = null;
       dragSnapshotRef.current = null;
       setDraggingSelection(false);
       setResizingInk(false);
+      setResizingGroupBox(false);
       // A press that never moved anything has nothing to record; it was a click
       // that picked an element, and history should not remember it.
       if (moved && !readOnly) flushStyleBaseline();
@@ -3438,6 +3536,43 @@ export function ZCanvas({
     setResizingInk(true);
   };
 
+  /** Collective Group / Multi-Selection Resize Handle Mouse Down */
+  const handleGroupResizeMouseDown = (
+    e: React.MouseEvent,
+    handle: ZCanvasResizeHandle,
+    targetNodeIds: string[]
+  ) => {
+    if (readOnly || activeTool !== 'select') return;
+    e.stopPropagation();
+
+    const movableIds = new Set(movable(targetNodeIds));
+    const picked = nodes.filter((n) => movableIds.has(n.id) && !isBoundaryNode(n));
+    if (picked.length < 2) return;
+
+    const minX = Math.min(...picked.map((n) => n.x));
+    const minY = Math.min(...picked.map((n) => n.y));
+    const maxX = Math.max(...picked.map((n) => n.x + n.width));
+    const maxY = Math.max(...picked.map((n) => n.y + n.height));
+    const box: ZCanvasBox = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+
+    const originNodes = new Map<string, ZCanvasNode>();
+    for (const n of picked) originNodes.set(n.id, n);
+
+    groupResizeRef.current = {
+      handle,
+      startPoint: getCanvasPoint(e.clientX, e.clientY),
+      box,
+      originNodes,
+      moved: false,
+    };
+    setResizingGroupBox(true);
+  };
+
   /**
    * Applies a press to the node selection, and reports what the selection is.
    *
@@ -3462,7 +3597,8 @@ export function ZCanvas({
    */
   const selectOnPress = (
     node: ZCanvasNode,
-    modifiers: ZCanvasPressModifiers
+    modifiers: ZCanvasPressModifiers,
+    activeEnteredGroup: string | null = enteredGroupId
   ): ZCanvasDragSelection => {
     const picked = selectedNodeIds.includes(node.id);
     const togglingOut = picked && !modifiers.altKey && togglesSelection(modifiers);
@@ -3480,16 +3616,20 @@ export function ZCanvas({
     } else if (widensSelection(modifiers)) {
       // If clicking a boundary node (container or frame), select ONLY the boundary node.
       // If clicking a regular node, expand to regular grouped peers only (never pull in the parent container).
-      const expanded = isBoundary ? [node.id] : selectWholeGroups([node.id]).filter((id) => {
-        const n = nodes.find((item) => item.id === id);
-        return !n || !isBoundaryNode(n);
-      });
+      const expanded = isBoundary
+        ? [node.id]
+        : selectWholeGroups([node.id], activeEnteredGroup).filter((id) => {
+            const n = nodes.find((item) => item.id === id);
+            return !n || !isBoundaryNode(n);
+          });
       next = unionSelections(selectedNodeIds, expanded);
     } else {
-      const expanded = isBoundary ? [node.id] : selectWholeGroups([node.id]).filter((id) => {
-        const n = nodes.find((item) => item.id === id);
-        return !n || !isBoundaryNode(n);
-      });
+      const expanded = isBoundary
+        ? [node.id]
+        : selectWholeGroups([node.id], activeEnteredGroup).filter((id) => {
+            const n = nodes.find((item) => item.id === id);
+            return !n || !isBoundaryNode(n);
+          });
       next = expanded;
     }
 
@@ -3556,13 +3696,42 @@ export function ZCanvas({
     if (activeTool !== 'select') return;
     e.stopPropagation();
 
-    // A press never opens the title editor, not even the second one of a double
-    // click: opening it here swaps the label for its input before the release,
-    // which leaves the browser's `dblclick` with a different target than the
-    // press and so with nothing to dispatch, while the press's own focus
-    // handling blurs the input the moment it appears. The editor opens from the
-    // node's `onDoubleClick`, where a whole double click has landed.
-    const selection = selectOnPress(node, pressModifiers(e));
+    // If we had entered a group previously and the user now clicks a node
+    // outside that group, exit the entered group first.
+    let activeEnteredGroup = enteredGroupId;
+    if (activeEnteredGroup && !groupIdsOf(node).includes(activeEnteredGroup)) {
+      activeEnteredGroup = null;
+      setEnteredGroupId(null);
+    }
+
+    // Draw.io Group Drill-Down:
+    // Single-click selects the whole group (`governingGroup`); double-clicking a
+    // component inside that group enters `governingGroup` and selects the child
+    // component inside the group so it can be moved, resized, or styled on its own.
+    const modifiers = pressModifiers(e);
+    if (e.detail >= 2 && !modifiers.shiftKey && !modifiers.ctrlKey && !modifiers.metaKey && !isBoundaryNode(node)) {
+      const governingGroup = activeGroupIdOf(node, activeEnteredGroup);
+      if (governingGroup) {
+        setEnteredGroupId(governingGroup);
+        const subIds = expandSelectionInContext(nodes, [node.id], governingGroup).filter((id) => {
+          const n = nodes.find((item) => item.id === id);
+          return !n || !isBoundaryNode(n);
+        });
+        setSelectedNodeIds(subIds);
+        setPrimarySelectedNodeId(node.id);
+        setSelectedEdgeIds([]);
+        setSelectedStrokeIds([]);
+        justDrilledIntoGroupRef.current = node.id;
+        beginNodeDrag(node, e.clientX, e.clientY, {
+          nodeIds: subIds,
+          edgeIds: [],
+          strokeIds: [],
+        });
+        return;
+      }
+    }
+
+    const selection = selectOnPress(node, modifiers, activeEnteredGroup);
     beginNodeDrag(node, e.clientX, e.clientY, selection);
   };
 
@@ -4085,18 +4254,62 @@ export function ZCanvas({
     return groupFrames(nodes, nonBoundarySelectedIds);
   }, [nodes, selectedNodeIds]);
 
+  /**
+   * Bounding box of multiple selected ungrouped nodes, for drawing a collective
+   * multi-selection resize frame when 2+ ungrouped nodes are selected.
+   */
+  const multiSelectionBox = useMemo(() => {
+    if (selectedNodeIds.length <= 1) return null;
+    if (selectionFrames.length > 0) return null; // Group frames already render for groups
+    const targets = nodes.filter((n) => selectedNodeIds.includes(n.id) && !isBoundaryNode(n));
+    if (targets.length <= 1) return null;
+    const minX = Math.min(...targets.map((n) => n.x));
+    const minY = Math.min(...targets.map((n) => n.y));
+    const maxX = Math.max(...targets.map((n) => n.x + n.width));
+    const maxY = Math.max(...targets.map((n) => n.y + n.height));
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }, [nodes, selectedNodeIds, selectionFrames]);
+
   // In-place text edit
   const startEditing = (
     nodeId: string,
     field: 'title' | 'subtitle' | 'badge' | 'field_name' | 'field_type',
     initialText: string,
-    fieldIndex?: number
+    fieldIndex?: number,
+    forceEdit = false
   ) => {
     if (readOnly) return;
-    // A locked element keeps its text. Editing is reached by a double-click,
-    // Enter and the context menu, all of which come through here.
+    // Draw.io Group Drill-Down:
+    // If this double-click just drilled down from a group selection to select
+    // the individual child component, consume the drill-down and do NOT open
+    // the text input yet. Double-clicking the already-selected child opens it.
+    if (!forceEdit && justDrilledIntoGroupRef.current === nodeId) {
+      justDrilledIntoGroupRef.current = null;
+      return;
+    }
+
     const target = nodes.find((n) => n.id === nodeId);
     if (target && isLocked(target)) return;
+
+    if (!forceEdit && target && !isBoundaryNode(target)) {
+      const governingGroup = activeGroupIdOf(target, enteredGroupId);
+      if (governingGroup) {
+        setEnteredGroupId(governingGroup);
+        const subIds = expandSelectionInContext(nodes, [nodeId], governingGroup).filter((id) => {
+          const n = nodes.find((item) => item.id === id);
+          return !n || !isBoundaryNode(n);
+        });
+        setSelectedNodeIds(subIds);
+        setPrimarySelectedNodeId(nodeId);
+        return;
+      }
+    }
+
     setEditingNodeId(nodeId);
     setEditingField(field);
     setEditingFieldIndex(fieldIndex !== undefined ? fieldIndex : null);
@@ -4186,7 +4399,7 @@ export function ZCanvas({
       strokes
     );
     // Start editing the new field name immediately
-    startEditing(nodeId, 'field_name', newField.name, nextFields.length - 1);
+    startEditing(nodeId, 'field_name', newField.name, nextFields.length - 1, true);
   };
 
   const handleRemoveField = (nodeId: string, fieldIndex: number) => {
@@ -4287,30 +4500,48 @@ export function ZCanvas({
     (nodeId: string, patch: ZCanvasNodeStylePatch) => {
       if (readOnly) return;
       if (isLockedNode(nodeId)) return;
+      const isBatchVisualPatch =
+        selectedNodeIds.length > 1 &&
+        selectedNodeIds.includes(nodeId) &&
+        !('fields' in patch) &&
+        !('height' in patch) &&
+        !('badge' in patch) &&
+        !('description' in patch) &&
+        !('subtitle' in patch);
+      const targetIds = new Set(isBatchVisualPatch ? movable(selectedNodeIds) : [nodeId]);
       beginStylePreview();
       commitState(
-        nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+        nodes.map((n) => (targetIds.has(n.id) ? { ...n, ...patch } : n)),
         edges,
         strokes,
         false
       );
     },
-    [readOnly, nodes, edges, strokes, commitState, beginStylePreview, isLockedNode]
+    [readOnly, nodes, edges, strokes, selectedNodeIds, movable, commitState, beginStylePreview, isLockedNode]
   );
 
   const commitNodeStyle = useCallback(
     (nodeId: string, patch: ZCanvasNodeStylePatch) => {
       if (readOnly) return;
       if (isLockedNode(nodeId)) return;
+      const isBatchVisualPatch =
+        selectedNodeIds.length > 1 &&
+        selectedNodeIds.includes(nodeId) &&
+        !('fields' in patch) &&
+        !('height' in patch) &&
+        !('badge' in patch) &&
+        !('description' in patch) &&
+        !('subtitle' in patch);
+      const targetIds = new Set(isBatchVisualPatch ? movable(selectedNodeIds) : [nodeId]);
       const hadPreview = flushStyleBaseline();
       commitState(
-        nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+        nodes.map((n) => (targetIds.has(n.id) ? { ...n, ...patch } : n)),
         edges,
         strokes,
         !hadPreview
       );
     },
-    [readOnly, nodes, edges, strokes, commitState, flushStyleBaseline, isLockedNode]
+    [readOnly, nodes, edges, strokes, selectedNodeIds, movable, commitState, flushStyleBaseline, isLockedNode]
   );
 
   /**
@@ -4375,9 +4606,14 @@ export function ZCanvas({
     (nodeId: string) => {
       if (readOnly) return;
       if (isLockedNode(nodeId)) return;
+      const targetIds = new Set(
+        selectedNodeIds.length > 1 && selectedNodeIds.includes(nodeId)
+          ? movable(selectedNodeIds)
+          : [nodeId]
+      );
       gestureBaselineRef.current = null;
       const next = nodes.map((n) => {
-        if (n.id !== nodeId) return n;
+        if (!targetIds.has(n.id)) return n;
         const cleared: ZCanvasNode = { ...n };
         delete cleared.color;
         delete cleared.fill;
@@ -4388,7 +4624,7 @@ export function ZCanvas({
       });
       commitState(next, edges, strokes);
     },
-    [readOnly, nodes, edges, strokes, commitState, isLockedNode]
+    [readOnly, nodes, edges, strokes, selectedNodeIds, movable, commitState, isLockedNode]
   );
 
   /**
@@ -6768,7 +7004,7 @@ export function ZCanvas({
               )}
 
               {/* 8-POINT RESIZE HANDLES (4 Corners + 4 Sides) */}
-              {!readOnly && isSelected && (
+              {!readOnly && isSelected && selectedNodeIds.length === 1 && (
                 <>
                   {/* NW Corner */}
                   <div
@@ -6952,20 +7188,186 @@ export function ZCanvas({
             selection moves on. It takes no pointer events — the members inside
             it are what gets pressed, dragged and styled — and it sits above the
             ordinary elements so a boundary it encloses cannot hide it. */}
-        {selectionFrames.map((frame) => (
+        {selectionFrames.map((frame) => {
+          const members = nodes.filter((n) => groupIdsOf(n).includes(frame.id));
+          const memberIds = members.map((m) => m.id);
+          const isEntered = enteredGroupId === frame.id;
+          const showResizeHandles = !readOnly && !isEntered && selectedNodeIds.length > 1;
+
+          return (
+            <div
+              key={frame.id}
+              data-group-frame={frame.id}
+              className={cn(
+                'absolute rounded-xl border transition-all pointer-events-none',
+                isEntered
+                  ? 'border-dashed border-blue-400/60 bg-blue-500/[0.02]'
+                  : 'border-dashed border-primary/80 bg-primary/[0.03]'
+              )}
+              style={{
+                left: `${frame.box.x}px`,
+                top: `${frame.box.y}px`,
+                width: `${frame.box.width}px`,
+                height: `${frame.box.height}px`,
+                zIndex: nodes.length + 1,
+              }}
+            >
+              {/* Draw.io Group Header Pill */}
+              <div
+                className="absolute -top-7 left-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-card/95 border border-border shadow-xs text-foreground/80 pointer-events-auto select-none"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {isEntered ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnteredGroupId(null);
+                      setSelectedNodeIds(memberIds);
+                    }}
+                    className="flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                    title="Click or press Esc to select whole group"
+                  >
+                    <span>Inside Group</span>
+                    <span className="text-muted-foreground">· Click or Esc to select group</span>
+                  </button>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">
+                      Group ({members.length}) · Double-click item to select
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUngroupSelection}
+                      className="ml-1 text-[10px] text-destructive hover:underline cursor-pointer"
+                      title="Ungroup (Ctrl+Shift+G)"
+                    >
+                      Ungroup
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* 8 Collective Group Resize Handles */}
+              {showResizeHandles && (
+                <>
+                  <div
+                    data-testid="group-resize-handle-nw"
+                    className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nwse-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'nw', memberIds)}
+                    title="Resize Group NW"
+                  />
+                  <div
+                    data-testid="group-resize-handle-n"
+                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ns-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'n', memberIds)}
+                    title="Resize Group Top"
+                  />
+                  <div
+                    data-testid="group-resize-handle-ne"
+                    className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nesw-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'ne', memberIds)}
+                    title="Resize Group NE"
+                  />
+                  <div
+                    data-testid="group-resize-handle-e"
+                    className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ew-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'e', memberIds)}
+                    title="Resize Group Right"
+                  />
+                  <div
+                    data-testid="group-resize-handle-se"
+                    className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nwse-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'se', memberIds)}
+                    title="Resize Group SE"
+                  />
+                  <div
+                    data-testid="group-resize-handle-s"
+                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ns-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 's', memberIds)}
+                    title="Resize Group Bottom"
+                  />
+                  <div
+                    data-testid="group-resize-handle-sw"
+                    className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nesw-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'sw', memberIds)}
+                    title="Resize Group SW"
+                  />
+                  <div
+                    data-testid="group-resize-handle-w"
+                    className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ew-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+                    onMouseDown={(e) => handleGroupResizeMouseDown(e, 'w', memberIds)}
+                    title="Resize Group Left"
+                  />
+                </>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Collective Multi-Selection Frame for multiple ungrouped nodes */}
+        {multiSelectionBox && !readOnly && (
           <div
-            key={frame.id}
-            data-group-frame={frame.id}
-            className="absolute rounded-xl border border-dashed border-primary/70 pointer-events-none"
+            data-testid="multi-selection-frame"
+            className="absolute rounded-xl border border-dashed border-primary/60 pointer-events-none"
             style={{
-              left: `${frame.box.x}px`,
-              top: `${frame.box.y}px`,
-              width: `${frame.box.width}px`,
-              height: `${frame.box.height}px`,
+              left: `${multiSelectionBox.x}px`,
+              top: `${multiSelectionBox.y}px`,
+              width: `${multiSelectionBox.width}px`,
+              height: `${multiSelectionBox.height}px`,
               zIndex: nodes.length + 1,
             }}
-          />
-        ))}
+          >
+            {/* 8 Collective Multi-Selection Resize Handles */}
+            <div
+              data-testid="multi-resize-handle-nw"
+              className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nwse-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'nw', selectedNodeIds)}
+              title="Resize Selection NW"
+            />
+            <div
+              data-testid="multi-resize-handle-n"
+              className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ns-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'n', selectedNodeIds)}
+              title="Resize Selection Top"
+            />
+            <div
+              data-testid="multi-resize-handle-ne"
+              className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nesw-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'ne', selectedNodeIds)}
+              title="Resize Selection NE"
+            />
+            <div
+              data-testid="multi-resize-handle-e"
+              className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ew-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'e', selectedNodeIds)}
+              title="Resize Selection Right"
+            />
+            <div
+              data-testid="multi-resize-handle-se"
+              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nwse-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'se', selectedNodeIds)}
+              title="Resize Selection SE"
+            />
+            <div
+              data-testid="multi-resize-handle-s"
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ns-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 's', selectedNodeIds)}
+              title="Resize Selection Bottom"
+            />
+            <div
+              data-testid="multi-resize-handle-sw"
+              className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-nesw-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'sw', selectedNodeIds)}
+              title="Resize Selection SW"
+            />
+            <div
+              data-testid="multi-resize-handle-w"
+              className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-sm cursor-ew-resize hover:scale-125 z-30 pointer-events-auto shadow-xs"
+              onMouseDown={(e) => handleGroupResizeMouseDown(e, 'w', selectedNodeIds)}
+              title="Resize Selection Left"
+            />
+          </div>
+        )}
       </div>
 
       {/* Ink Selection Frame — the box around the picked ink and the corner
@@ -7514,6 +7916,7 @@ export function ZCanvas({
               // away and hands the canvas back to the select tool.
               selectTool('select');
             } else {
+              setEnteredGroupId(null);
               setSelectedNodeIds([]);
               setSelectedEdgeIds([]);
               setSelectedStrokeIds([]);
@@ -7521,6 +7924,19 @@ export function ZCanvas({
           }}
           onAlign={handleAlignNodes}
           onDistribute={handleDistributeNodes}
+          onMatchSize={handleMatchNodeSize}
+          canGroup={canGroup(nodes, movable(selectedNodeIds))}
+          canUngroup={isGrouped(nodes, movable(selectedNodeIds))}
+          enteredGroupId={enteredGroupId}
+          onGroup={handleGroupSelection}
+          onUngroup={handleUngroupSelection}
+          onExitGroup={() => {
+            if (enteredGroupId) {
+              const members = nodes.filter((n) => groupIdsOf(n).includes(enteredGroupId)).map((n) => n.id);
+              setEnteredGroupId(null);
+              setSelectedNodeIds(members);
+            }
+          }}
           selectedCount={selectedNodeIds.length}
         />
       )}

@@ -27,6 +27,116 @@ export function groupIdsOf(node: ZCanvasNode): string[] {
 }
 
 /**
+ * Returns the active group id that governs `node` given the currently entered
+ * group (`enteredGroupId`), or `null` if `node` is ungrouped or already drilled
+ * down to its innermost level.
+ *
+ * Since `groupIds` is ordered innermost-first (`['inner', 'outer']`):
+ * - When `enteredGroupId` is `null`, the governing group is the outermost one
+ *   (`groups[groups.length - 1]`).
+ * - When `enteredGroupId` is active and `node` belongs to it at `idx`, any
+ *   group at `>= idx` has been entered, so the governing child group is
+ *   `idx > 0 ? groups[idx - 1] : null`.
+ */
+export function activeGroupIdOf(
+  node: ZCanvasNode,
+  enteredGroupId: string | null = null
+): string | null {
+  const groups = groupIdsOf(node);
+  if (groups.length === 0) return null;
+  if (!enteredGroupId) return groups[groups.length - 1] ?? null;
+
+  const idx = groups.indexOf(enteredGroupId);
+  if (idx === -1) return groups[groups.length - 1] ?? null;
+  return idx > 0 ? groups[idx - 1] ?? null : null;
+}
+
+/**
+ * Expands `ids` to whole groups while respecting the currently entered group
+ * (`enteredGroupId`).
+ *
+ * In Draw.io, single-clicking a grouped node selects the whole group, whereas
+ * double-clicking drills into that group (`enteredGroupId`). Once inside
+ * `enteredGroupId`, clicking a direct member selects only that member (or its
+ * inner sub-group if nested).
+ */
+export function expandSelectionInContext(
+  nodes: ZCanvasNode[],
+  ids: string[],
+  enteredGroupId: string | null = null
+): string[] {
+  if (!enteredGroupId) return expandSelection(nodes, ids);
+  if (ids.length === 0) return [];
+
+  const effectiveGroupsOf = (node: ZCanvasNode): string[] => {
+    const groups = groupIdsOf(node);
+    const idx = groups.indexOf(enteredGroupId);
+    if (idx === -1) return groups;
+    return groups.slice(0, idx);
+  };
+
+  const selected = new Set(ids);
+  const reached = new Set<string>();
+
+  for (let grew = true; grew; ) {
+    grew = false;
+
+    for (const node of nodes) {
+      if (selected.has(node.id)) continue;
+      if (!effectiveGroupsOf(node).some((group) => reached.has(group))) continue;
+      selected.add(node.id);
+      grew = true;
+    }
+
+    for (const node of nodes) {
+      if (!selected.has(node.id)) continue;
+      for (const group of effectiveGroupsOf(node)) {
+        if (reached.has(group)) continue;
+        reached.add(group);
+        grew = true;
+      }
+    }
+  }
+
+  return nodes.filter((node) => selected.has(node.id)).map((node) => node.id);
+}
+
+/**
+ * Scales all nodes in `originNodes` proportionally from `oldBox` into `newBox`.
+ * Used when dragging the 8 resize handles on a Group Frame or Multi-Selection box.
+ */
+export function scaleNodesInBox(
+  nodes: ZCanvasNode[],
+  originNodes: ReadonlyMap<string, ZCanvasNode>,
+  oldBox: ZCanvasBox,
+  newBox: ZCanvasBox
+): ZCanvasNode[] {
+  if (oldBox.width <= 0 || oldBox.height <= 0) return nodes;
+  const scaleX = newBox.width / oldBox.width;
+  const scaleY = newBox.height / oldBox.height;
+
+  return nodes.map((node) => {
+    const origin = originNodes.get(node.id);
+    if (!origin) return node;
+
+    const relX = origin.x - oldBox.x;
+    const relY = origin.y - oldBox.y;
+    const nextX = Math.round(newBox.x + relX * scaleX);
+    const nextY = Math.round(newBox.y + relY * scaleY);
+    const nextWidth = Math.max(24, Math.round(origin.width * scaleX));
+    const nextHeight = Math.max(24, Math.round(origin.height * scaleY));
+
+    return {
+      ...node,
+      x: nextX,
+      y: nextY,
+      width: nextWidth,
+      height: nextHeight,
+    };
+  });
+}
+
+/**
  * A name no other group in this document is using.
  *
  * `existing` is how a caller that mints several names in one gesture keeps them

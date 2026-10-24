@@ -6,15 +6,18 @@ registerTsResolver();
 
 const {
   GROUP_FRAME_PADDING,
+  activeGroupIdOf,
   canGroup,
   createGroupId,
   expandSelection,
+  expandSelectionInContext,
   groupFrames,
   groupIdsOf,
   groupNodes,
   isGrouped,
   pruneEmptyGroupBoxes,
   pruneGroups,
+  scaleNodesInBox,
   ungroupNodes,
 } = await import('./grouping.ts');
 
@@ -222,4 +225,65 @@ test('group ids survive a round trip through the document schema', async () => {
 
   assert.deepEqual(stored.nodes.map((n) => n.groupIds), [['g1'], ['g1']]);
   assert.deepEqual(groupIdsOf(stored.nodes[0]), ['g1']);
+});
+
+test('activeGroupIdOf identifies governing group based on drill-down level', () => {
+  const plain = card('a');
+  assert.equal(activeGroupIdOf(plain, null), null);
+
+  const singleGroup = card('b', 0, 0, { groupIds: ['g1'] });
+  assert.equal(activeGroupIdOf(singleGroup, null), 'g1');
+  assert.equal(activeGroupIdOf(singleGroup, 'g1'), null);
+
+  // Nested groups: innermost first -> ['inner', 'outer']
+  const nested = card('c', 0, 0, { groupIds: ['inner', 'outer'] });
+  assert.equal(activeGroupIdOf(nested, null), 'outer');
+  assert.equal(activeGroupIdOf(nested, 'outer'), 'inner');
+  assert.equal(activeGroupIdOf(nested, 'inner'), null);
+});
+
+test('expandSelectionInContext selects whole group or drills down inside entered group', () => {
+  const inner = groupNodes([card('a'), card('b')], ['a', 'b'], 'inner');
+  const nested = groupNodes([...inner, card('c')], ['a', 'c'], 'outer');
+
+  // Single-click without entered group: expands to entire outer group
+  assert.deepEqual(expandSelectionInContext(nested, ['a'], null), ['a', 'b', 'c']);
+  assert.deepEqual(expandSelectionInContext(nested, ['c'], null), ['a', 'b', 'c']);
+
+  // Double-clicked to enter 'outer' group: selecting 'c' selects only 'c'
+  assert.deepEqual(expandSelectionInContext(nested, ['c'], 'outer'), ['c']);
+  // Selecting 'a' inside 'outer' selects its inner subgroup ['a', 'b']
+  assert.deepEqual(expandSelectionInContext(nested, ['a'], 'outer'), ['a', 'b']);
+
+  // Double-clicked into 'inner' group: selecting 'a' selects only 'a'
+  assert.deepEqual(expandSelectionInContext(nested, ['a'], 'inner'), ['a']);
+  assert.deepEqual(expandSelectionInContext(nested, ['b'], 'inner'), ['b']);
+});
+
+test('scaleNodesInBox proportionally scales and repositions nodes within box', () => {
+  const a = card('a', 0, 0, { width: 100, height: 100 });
+  const b = card('b', 100, 100, { width: 100, height: 100 });
+  const nodes = [a, b];
+
+  const oldBox = { x: 0, y: 0, width: 200, height: 200 };
+  const newBox = { x: 50, y: 50, width: 400, height: 400 }; // 2x scale, offset by (50, 50)
+
+  const originMap = new Map([
+    ['a', a],
+    ['b', b],
+  ]);
+  const scaled = scaleNodesInBox(nodes, originMap, oldBox, newBox);
+
+  const scaledA = scaled.find((n) => n.id === 'a');
+  const scaledB = scaled.find((n) => n.id === 'b');
+
+  assert.equal(scaledA.x, 50);
+  assert.equal(scaledA.y, 50);
+  assert.equal(scaledA.width, 200);
+  assert.equal(scaledA.height, 200);
+
+  assert.equal(scaledB.x, 250);
+  assert.equal(scaledB.y, 250);
+  assert.equal(scaledB.width, 200);
+  assert.equal(scaledB.height, 200);
 });

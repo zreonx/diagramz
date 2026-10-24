@@ -14,6 +14,10 @@ import {
   AlignEndVertical,
   AlignHorizontalDistributeCenter,
   AlignVerticalDistributeCenter,
+  Group as GroupIcon,
+  Ungroup as UngroupIcon,
+  Scaling,
+  CornerUpLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZCanvasDrawingStroke, ZCanvasEdge, ZCanvasEdgeRouting, ZCanvasNode, ZCanvasNodeType } from '../core/schema';
@@ -124,7 +128,14 @@ export interface ZCanvasStylePanelProps {
   /** Alignment and distribution handlers for canvas elements */
   onAlign?: (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
   onDistribute?: (direction: 'horizontal' | 'vertical') => void;
+  onMatchSize?: (dimension: 'width' | 'height') => void;
   selectedCount?: number;
+  canGroup?: boolean;
+  canUngroup?: boolean;
+  enteredGroupId?: string | null;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  onExitGroup?: () => void;
 }
 
 /** Border / stroke swatches, ordered dark → light like a classic palette. */
@@ -363,7 +374,14 @@ export function ZCanvasStylePanel({
   onDeselect,
   onAlign,
   onDistribute,
+  onMatchSize,
   selectedCount,
+  canGroup,
+  canUngroup,
+  enteredGroupId,
+  onGroup,
+  onUngroup,
+  onExitGroup,
 }: ZCanvasStylePanelProps) {
   const title =
     target.kind === 'node'
@@ -430,7 +448,14 @@ export function ZCanvasStylePanel({
           onCommit={onCommitNode}
           onAlign={onAlign}
           onDistribute={onDistribute}
+          onMatchSize={onMatchSize}
           selectedCount={selectedCount}
+          canGroup={canGroup}
+          canUngroup={canUngroup}
+          enteredGroupId={enteredGroupId}
+          onGroup={onGroup}
+          onUngroup={onUngroup}
+          onExitGroup={onExitGroup}
         />
       ) : target.kind === 'edge' ? (
         <EdgeSections
@@ -653,14 +678,28 @@ function NodeSections({
   onCommit,
   onAlign,
   onDistribute,
+  onMatchSize,
   selectedCount = 1,
+  canGroup,
+  canUngroup,
+  enteredGroupId,
+  onGroup,
+  onUngroup,
+  onExitGroup,
 }: {
   node: ZCanvasNode;
   onPreview: (patch: ZCanvasNodeStylePatch) => void;
   onCommit: (patch: ZCanvasNodeStylePatch) => void;
   onAlign?: (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
   onDistribute?: (direction: 'horizontal' | 'vertical') => void;
+  onMatchSize?: (dimension: 'width' | 'height') => void;
   selectedCount?: number;
+  canGroup?: boolean;
+  canUngroup?: boolean;
+  enteredGroupId?: string | null;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  onExitGroup?: () => void;
 }) {
   const isText = node.type === 'text';
   const strokeWidth = node.strokeWidth ?? 2;
@@ -673,6 +712,56 @@ function NodeSections({
 
   return (
     <>
+      {/* Grouping & Drill-Down Status Banner */}
+      {(canGroup || canUngroup || enteredGroupId || (selectedCount && selectedCount > 1)) && (
+        <div className="p-2 mb-2 rounded-xl bg-muted/40 border border-border/60 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] font-medium">
+            <span className="text-foreground">
+              {enteredGroupId
+                ? 'Inside Group'
+                : canUngroup
+                ? 'Group Selected'
+                : `${selectedCount ?? 1} Items Selected`}
+            </span>
+            {enteredGroupId && onExitGroup && (
+              <button
+                type="button"
+                onClick={onExitGroup}
+                className="flex items-center gap-1 text-[10px] text-primary hover:underline cursor-pointer"
+                title="Select whole group (Esc)"
+              >
+                <CornerUpLeft className="w-3 h-3" />
+                <span>Exit (Esc)</span>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {canGroup && onGroup && (
+              <button
+                type="button"
+                onClick={onGroup}
+                className="flex-1 h-6 px-2 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                title="Group selected elements (Ctrl+G)"
+              >
+                <GroupIcon className="w-3 h-3" />
+                <span>Group</span>
+              </button>
+            )}
+            {canUngroup && onUngroup && (
+              <button
+                type="button"
+                onClick={onUngroup}
+                className="flex-1 h-6 px-2 rounded-md bg-destructive/10 hover:bg-destructive/20 text-destructive text-[10px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                title="Ungroup elements (Ctrl+Shift+G)"
+              >
+                <UngroupIcon className="w-3 h-3" />
+                <span>Ungroup</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <Row label={isText ? 'Text colour' : 'Stroke'}>
         <Palette
           colors={STROKE_PALETTE}
@@ -1023,6 +1112,28 @@ function NodeSections({
               >
                 <AlignVerticalDistributeCenter className="w-3 h-3" />
                 <span>Distribute V</span>
+              </button>
+            </div>
+          )}
+          {onMatchSize && selectedCount > 1 && (
+            <div className="grid grid-cols-2 gap-1 pt-0.5">
+              <button
+                type="button"
+                onClick={() => onMatchSize('width')}
+                title="Match Width across selected items"
+                className="h-7 px-2 text-[10px] rounded flex items-center justify-center gap-1.5 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Scaling className="w-3 h-3" />
+                <span>Match Width</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onMatchSize('height')}
+                title="Match Height across selected items"
+                className="h-7 px-2 text-[10px] rounded flex items-center justify-center gap-1.5 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Scaling className="w-3 h-3 rotate-90" />
+                <span>Match Height</span>
               </button>
             </div>
           )}
