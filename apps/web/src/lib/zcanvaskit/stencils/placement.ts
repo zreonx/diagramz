@@ -28,6 +28,10 @@ export const SHAPE_DEFAULTS: Record<ZCanvasShapeTool, { width: number; height: n
   triangle: { width: 120, height: 100 },
   cylinder: { width: 110, height: 120 },
   cloud: { width: 180, height: 110 },
+  document: { width: 140, height: 90 },
+  parallelogram: { width: 150, height: 80 },
+  hexagon: { width: 140, height: 80 },
+  subroutine: { width: 150, height: 80 },
 };
 
 /**

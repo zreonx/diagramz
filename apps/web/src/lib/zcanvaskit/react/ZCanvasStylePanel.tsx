@@ -90,6 +90,8 @@ export type ZCanvasEdgeStylePatch = Partial<
     | 'targetHandle'
     | 'waypoints'
     | 'animated'
+    | 'animationSpeed'
+    | 'animationDirection'
     | 'sourceLabel'
     | 'targetLabel'
     | 'lineJumps'
@@ -376,6 +378,10 @@ const NODE_TYPE_LABELS: Partial<Record<ZCanvasNodeType, string>> = {
   triangle: 'Triangle',
   cylinder: 'Database',
   cloud: 'Cloud',
+  document: 'Document',
+  parallelogram: 'Data / I/O',
+  hexagon: 'Preparation',
+  subroutine: 'Subroutine',
   text: 'Text',
   'sticky-note': 'Sticky Note',
   svg: 'Component',
@@ -1589,28 +1595,57 @@ function EdgeSections({
       </Row>
 
       <Row label="Flow animation" hint="Animate directional flow along the connector line.">
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-[11px] text-muted-foreground select-none">
-            Animated flow (marching ants)
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={Boolean(edge.animated)}
-            title="Toggle directional flow animation"
-            onClick={() => onCommit({ animated: !edge.animated })}
-            className={cn(
-              'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              edge.animated ? 'bg-primary' : 'bg-muted-foreground/25'
-            )}
-          >
-            <span
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[11px] text-muted-foreground select-none">
+              Animated flow (marching ants)
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(edge.animated)}
+              title="Toggle directional flow animation"
+              onClick={() => onCommit({ animated: !edge.animated })}
               className={cn(
-                'pointer-events-none inline-block h-3 w-3 rounded-full bg-background shadow-xs ring-0 transition-transform duration-150 mt-0.5 ml-0.5',
-                edge.animated ? 'translate-x-3 bg-primary-foreground' : 'translate-x-0'
+                'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                edge.animated ? 'bg-primary' : 'bg-muted-foreground/25'
               )}
-            />
-          </button>
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-3 w-3 rounded-full bg-background shadow-xs ring-0 transition-transform duration-150 mt-0.5 ml-0.5',
+                  edge.animated ? 'translate-x-3 bg-primary-foreground' : 'translate-x-0'
+                )}
+              />
+            </button>
+          </div>
+          {edge.animated && (
+            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-medium">Flow Speed</span>
+                <Segmented
+                  options={[
+                    { value: 'slow', label: 'Slow', title: 'Gentle flow (1.8s)' },
+                    { value: 'normal', label: 'Normal', title: 'Standard flow (0.9s)' },
+                    { value: 'fast', label: 'Fast', title: 'High-speed flow (0.45s)' },
+                  ]}
+                  value={edge.animationSpeed ?? 'normal'}
+                  onChange={(speed) => onCommit({ animationSpeed: speed as any })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-medium">Direction</span>
+                <Segmented
+                  options={[
+                    { value: 'forward', label: '➔', title: 'Source to target' },
+                    { value: 'reverse', label: '⬅', title: 'Target to source' },
+                  ]}
+                  value={edge.animationDirection ?? 'forward'}
+                  onChange={(dir) => onCommit({ animationDirection: dir as any })}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </Row>
 

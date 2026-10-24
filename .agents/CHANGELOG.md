@@ -4,6 +4,44 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-25] — Comprehensive AWS Architecture Stencils, Draw.io Flowchart Shapes, Variable Flow Animation & Collapsible Containers
+
+### Added
+- **Comprehensive AWS Architecture Stencils Suite (14 New Official Services)** ([`tech-icons.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [`registry.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/registry.ts), [`builtin.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/builtin.test.mjs)):
+  - Added 14 official AWS service vector icons with exact 24×24 viewBox coordinates, brand hex palettes, and aliases:
+    - **AWS Amplify** (`tech-aws-amplify`, `#FF9900`) — Frontend, mobile & web full-stack hosting.
+    - **Amazon OpenSearch** (`tech-aws-opensearch`, `#005571`) — Distributed search and log analytics engine.
+    - **Amazon Redshift** (`tech-aws-redshift`, `#3B48CC`) — Petabyte-scale cloud data warehouse.
+    - **Amazon Kinesis** (`tech-aws-kinesis`, `#8C4FFF`) — Real-time event and data streams ingestion.
+    - **Amazon SageMaker** (`tech-aws-sagemaker`, `#01A88D`) — Machine learning model training and inference.
+    - **Amazon Bedrock** (`tech-aws-bedrock`, `#01A88D`) — Generative AI foundation models service.
+    - **AWS Glue** (`tech-aws-glue`, `#8C4FFF`) — Serverless ETL and unified data catalog.
+    - **AWS Secrets Manager** (`tech-aws-secretsmanager`, `#DD344C`) — Credential and API key rotation vault.
+    - **Amazon Athena** (`tech-aws-athena`, `#8C4FFF`) — Serverless interactive SQL analytics.
+    - **Amazon ECR** (`tech-aws-ecr`, `#ED7100`) — Elastic Container Registry for Docker/OCI images.
+    - **AWS App Runner** (`tech-aws-apprunner`, `#ED7100`) — Fully managed container application runtime.
+    - **AWS CloudTrail** (`tech-aws-cloudtrail`, `#E7157B`) — Governance, compliance, and API auditing log.
+    - **AWS Auto Scaling** (`tech-aws-autoscaling`, `#ED7100`) — Dynamic EC2 and container fleet scaling.
+    - **AWS AppSync** (`tech-aws-appsync`, `#E7157B`) — Managed real-time GraphQL API gateway.
+  - Automatically indexed and filterable in the **Cloud / K8s** panel tab under the **AWS** chip and in architecture stencil search.
+- **Draw.io Standard Flowchart & BPMN Shapes** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`shape-paths.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/shape-paths.ts), [`ZCanvasShapeGeometry.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasShapeGeometry.tsx), [`svg.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts), [`standard-shapes.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/standard-shapes.ts)):
+  - Added four fundamental flowchart node types to `ZCanvasNodeTypeSchema` and `ZCanvasTool`:
+    - `document` — Flowchart process output / document with a smooth sinusoidal wavy bottom.
+    - `parallelogram` — Data input/output transmission vertex with 20% angular slant.
+    - `hexagon` — Preparation / loop initialization vertex with pointed lateral apexes.
+    - `subroutine` — Predefined process / procedure with double vertical interior boundary bars.
+  - Exportable to clean vector SVG with typography tspans and themed default appearances.
+  - Available as 1-click draggable tiles in the Standard Shapes section of the Component Library.
+- **Enhanced Flow Connector Animation ("Marching Ants" Speed & Direction Controls)** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [`ZCanvasStylePanel.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx)):
+  - Extended `ZCanvasEdgeSchema` with `animationSpeed?: 'slow' | 'normal' | 'fast'` and `animationDirection?: 'forward' | 'reverse'`.
+  - Added inline speed segmented pill selector (`Slow (1.8s)`, `Normal (0.9s)`, `Fast (0.45s)`) and directional toggle (`➔ Forward`, `⬅ Reverse`) in `ZCanvasStylePanel` connector inspector.
+- **Collapsible Architecture Containers (Draw.io Subsystem Fold/Unfold)** ([`schema.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [`ZCanvas.tsx`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Added `collapsed?: boolean` and `expandedHeight?: number` to `ZCanvasNodeSchema`.
+  - Added interactive `[-]` (collapse) and `[+]` (expand) toggle button on container title bars.
+  - Collapses complex VPC or namespace container boundaries to a clean 48px header pill, and expands back to original user height with a single click.
+
+---
+
 ## [2026-10-25] — Quick-Connect Directional Hover Arrows, Figma Tidy Up & Equal-Gap Distribute, Miro Sticky Notes, and Copy Selection as PNG to Clipboard
 
 ### Added

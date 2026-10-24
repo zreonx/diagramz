@@ -233,7 +233,11 @@ export function isSvgShapeType(
     type === 'diamond' ||
     type === 'triangle' ||
     type === 'cylinder' ||
-    type === 'cloud'
+    type === 'cloud' ||
+    type === 'document' ||
+    type === 'parallelogram' ||
+    type === 'hexagon' ||
+    type === 'subroutine'
   );
 }
 
@@ -4168,6 +4172,26 @@ export function ZCanvas({
     };
   };
 
+  const handleToggleContainerCollapse = (node: ZCanvasNode) => {
+    if (readOnly) return;
+    const isCollapsed = Boolean(node.collapsed);
+    const newHeight = isCollapsed
+      ? (node.expandedHeight && node.expandedHeight > 60 ? node.expandedHeight : 350)
+      : 48;
+    setNodes((prev) =>
+      prev.map((n) =>
+        n.id === node.id
+          ? {
+              ...n,
+              collapsed: !isCollapsed,
+              expandedHeight: !isCollapsed ? n.height : n.expandedHeight,
+              height: newHeight
+            }
+          : n
+      )
+    );
+  };
+
   // Node Drag Start
   const handleNodeMouseDown = (e: React.MouseEvent, node: ZCanvasNode) => {
     if (readOnly) {
@@ -6110,9 +6134,15 @@ export function ZCanvas({
                 {edge.animated && (
                   <animate
                     attributeName="stroke-dashoffset"
-                    from="28"
-                    to="0"
-                    dur="0.9s"
+                    from={edge.animationDirection === 'reverse' ? '0' : '28'}
+                    to={edge.animationDirection === 'reverse' ? '28' : '0'}
+                    dur={
+                      edge.animationSpeed === 'slow'
+                        ? '1.8s'
+                        : edge.animationSpeed === 'fast'
+                        ? '0.45s'
+                        : '0.9s'
+                    }
                     repeatCount="indefinite"
                   />
                 )}
@@ -6662,6 +6692,25 @@ export function ZCanvas({
                           + Badge
                         </button>
                       )
+                    )}
+                    {/* Collapsible toggle (Draw.io style subsystem folding) */}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleContainerCollapse(node);
+                        }}
+                        title={node.collapsed ? 'Expand container' : 'Collapse container'}
+                        className="shrink-0 ml-1.5 p-1 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                      >
+                        {node.collapsed ? (
+                          <Plus className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <Minus className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>

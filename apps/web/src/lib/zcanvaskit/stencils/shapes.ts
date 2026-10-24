@@ -1,4 +1,11 @@
-import { getCloudPath, getCylinderPaths } from '../geometry/shape-paths';
+import {
+  getCloudPath,
+  getCylinderPaths,
+  getDocumentPath,
+  getHexagonPath,
+  getParallelogramPath,
+  getSubroutinePaths,
+} from '../geometry/shape-paths';
 import { formatNumber } from './xml';
 
 /**
@@ -68,6 +75,53 @@ export function renderCloudMarkup(options: ShapeNodeOptions): string {
 
   return `
     <path d="${getCloudPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The flowchart Document shape with sinusoidal wavy bottom. */
+export function renderDocumentMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getDocumentPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 3)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Data / Input-Output parallelogram shape. */
+export function renderParallelogramMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getParallelogramPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Preparation / Loop condition Hexagon shape. */
+export function renderHexagonMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getHexagonPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Predefined Process / Subroutine shape with double vertical boundary lines. */
+export function renderSubroutineMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+  const { outerPath, leftLinePath, rightLinePath } = getSubroutinePaths(width, height);
+
+  return `
+    <path d="${outerPath}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <path d="${leftLinePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
+    <path d="${rightLinePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
     <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
   `;
 }

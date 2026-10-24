@@ -159,7 +159,7 @@ test('the authored width and height do not change what a stencil draws', () => {
 });
 
 test('every tech logo is registered with its own brand colour and grid', () => {
-  assert.equal(TECH_ICON_STENCILS.length, 86);
+  assert.equal(TECH_ICON_STENCILS.length, 100);
 
   for (const stencil of TECH_ICON_STENCILS) {
     assert.match(stencil.id, /^tech-/, `${stencil.id} is not namespaced`);
@@ -198,8 +198,8 @@ test('the two stencil families share no ids', () => {
 });
 
 test('the built-in registry holds both families', () => {
-  assert.equal(BUILTIN_STENCILS.length, 138, '52 architecture stencils plus 86 tech/cloud logos');
-  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 138);
+  assert.equal(BUILTIN_STENCILS.length, 152, '52 architecture stencils plus 100 tech/cloud logos');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 152);
 });
 
 test('aws architecture stencils and aliases resolve correctly', () => {
@@ -230,6 +230,20 @@ test('aws architecture stencils and aliases resolve correctly', () => {
     'tech-aws-cloudwatch',
     'tech-aws-kms',
     'tech-aws-waf',
+    'tech-aws-amplify',
+    'tech-aws-opensearch',
+    'tech-aws-redshift',
+    'tech-aws-kinesis',
+    'tech-aws-sagemaker',
+    'tech-aws-bedrock',
+    'tech-aws-glue',
+    'tech-aws-secretsmanager',
+    'tech-aws-athena',
+    'tech-aws-ecr',
+    'tech-aws-apprunner',
+    'tech-aws-cloudtrail',
+    'tech-aws-autoscaling',
+    'tech-aws-appsync',
   ];
   for (const id of awsIds) {
     assert.equal(BUILTIN_STENCIL_REGISTRY.get(id)?.id, id, `${id} should resolve`);

@@ -191,7 +191,7 @@ test('a payload with an unknown kind reads as nothing', () => {
 
 test('a payload naming a tool that does not exist reads as nothing', () => {
   const dt = transfer({
-    [ZCANVAS_ITEM_MIME]: JSON.stringify({ kind: 'tool', tool: 'hexagon' }),
+    [ZCANVAS_ITEM_MIME]: JSON.stringify({ kind: 'tool', tool: 'trapezoid' }),
   });
 
   assert.equal(readDragItem(dt), null);
@@ -402,6 +402,10 @@ test('the tool vocabulary is the shapes and components', () => {
     'triangle',
     'cylinder',
     'cloud',
+    'document',
+    'parallelogram',
+    'hexagon',
+    'subroutine',
     'text',
     'service',
     'table',
@@ -412,14 +416,25 @@ test('the tool vocabulary is the shapes and components', () => {
 });
 
 test('telling a shape from a component tool is exact', () => {
-  for (const tool of ['rectangle', 'circle', 'diamond', 'triangle', 'cylinder', 'cloud']) {
+  for (const tool of [
+    'rectangle',
+    'circle',
+    'diamond',
+    'triangle',
+    'cylinder',
+    'cloud',
+    'document',
+    'parallelogram',
+    'hexagon',
+    'subroutine',
+  ]) {
     assert.equal(isShapeTool(tool), true, tool);
   }
   for (const tool of ['text', 'service', 'table', 'container', 'select', 'pen', '']) {
     assert.equal(isShapeTool(tool), false, tool);
   }
   assert.equal(isToolName('table'), true);
-  assert.equal(isToolName('hexagon'), false);
+  assert.equal(isToolName('trapezoid'), false);
   assert.equal(isToolName(7), false);
 });
 

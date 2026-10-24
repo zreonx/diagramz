@@ -221,6 +221,10 @@ export type ZCanvasFillKind =
   | 'triangle'
   | 'cylinder'
   | 'cloud'
+  | 'document'
+  | 'parallelogram'
+  | 'hexagon'
+  | 'subroutine'
   | 'text'
   | 'svg';
 
@@ -299,6 +303,10 @@ export const NODE_DEFAULT_APPEARANCE: Record<
   triangle: { family: 'green', fillAlpha: 0.5 },
   cylinder: { family: 'teal', fillAlpha: 0.5 },
   cloud: { family: 'blue', fillAlpha: 0.25 },
+  document: { family: 'amber', fillAlpha: 0.5 },
+  parallelogram: { family: 'blue', fillAlpha: 0.5 },
+  hexagon: { family: 'violet', fillAlpha: 0.5 },
+  subroutine: { family: 'teal', fillAlpha: 0.5 },
   text: { family: 'neutral', fillAlpha: 1 },
   svg: { family: 'neutral', fillAlpha: 0 },
 };

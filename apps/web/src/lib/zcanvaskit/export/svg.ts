@@ -27,7 +27,14 @@ import {
   renderElementArray,
 } from '../stencils/element-array';
 import { stencilTransform } from '../stencils/registry';
-import { renderCloudMarkup, renderCylinderMarkup } from '../stencils/shapes';
+import {
+  renderCloudMarkup,
+  renderCylinderMarkup,
+  renderDocumentMarkup,
+  renderHexagonMarkup,
+  renderParallelogramMarkup,
+  renderSubroutineMarkup,
+} from '../stencils/shapes';
 import { BUILTIN_STENCIL_REGISTRY } from '../stencils/builtin';
 import { escapeAttr, escapeXml, formatNumber, normalizeStencilColor } from '../stencils/xml';
 
@@ -689,6 +696,78 @@ export function exportDocumentToSvg(
           strokeWidth: n.strokeWidth || 2,
           dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
           labelColor: nodeDefaultTokens('cloud', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'document') {
+        const geomSvg = renderDocumentMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'document', isDark),
+          stroke: strokeAttr(n, 'document', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('document', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 3),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'parallelogram') {
+        const geomSvg = renderParallelogramMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'parallelogram', isDark),
+          stroke: strokeAttr(n, 'parallelogram', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('parallelogram', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'hexagon') {
+        const geomSvg = renderHexagonMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'hexagon', isDark),
+          stroke: strokeAttr(n, 'hexagon', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('hexagon', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'subroutine') {
+        const geomSvg = renderSubroutineMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'subroutine', isDark),
+          stroke: strokeAttr(n, 'subroutine', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('subroutine', isDark).text,
           label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
         });
         return `

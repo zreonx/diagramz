@@ -45,6 +45,14 @@ export const ZCanvasNodeTypeSchema = z.enum([
   'text',
   /** Miro / FigJam style sticky note with pastel colors and quick editing. */
   'sticky-note',
+  /** Draw.io flowchart Document shape with sinusoidal wavy bottom. */
+  'document',
+  /** Draw.io Data / Input-Output parallelogram shape. */
+  'parallelogram',
+  /** Draw.io Preparation / Loop condition hexagon shape. */
+  'hexagon',
+  /** Draw.io Predefined Process / Subroutine shape with double side lines. */
+  'subroutine',
   /** Rich vector SVG stencil (e.g. Draw.io tech component or vector library item). */
   'svg',
 ]);
@@ -115,6 +123,10 @@ export const ZCanvasNodeSchema = z.object({
    * before the field existed keeps the lock it was given.
    */
   locked: z.boolean().optional(),
+  /** Container/VPC collapsed state (Draw.io style subsystem folding). */
+  collapsed: z.boolean().optional(),
+  /** Original expanded height of the container when collapsed. */
+  expandedHeight: z.number().optional(),
   data: z.record(z.any()).optional(),
 });
 export type ZCanvasNode = z.infer<typeof ZCanvasNodeSchema>;
@@ -134,7 +146,11 @@ export function isGeometricShape(type: ZCanvasNodeType | undefined): boolean {
     type === 'diamond' ||
     type === 'triangle' ||
     type === 'cylinder' ||
-    type === 'cloud'
+    type === 'cloud' ||
+    type === 'document' ||
+    type === 'parallelogram' ||
+    type === 'hexagon' ||
+    type === 'subroutine'
   );
 }
 
@@ -217,6 +233,10 @@ export const ZCanvasEdgeSchema = z.object({
   /** Line jumps / bridges (Draw.io style) when crossing other connectors. */
   lineJumps: z.enum(['none', 'arc', 'gap']).optional(),
   animated: z.boolean().optional(),
+  /** Directional flow speed ('slow' = 1.8s, 'normal' = 0.9s, 'fast' = 0.45s). */
+  animationSpeed: z.enum(['slow', 'normal', 'fast']).optional(),
+  /** Directional flow animation direction. */
+  animationDirection: z.enum(['forward', 'reverse']).optional(),
   color: z.string().optional(),
   strokeWidth: z.number().optional(),
   strokeStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
@@ -295,6 +315,13 @@ export type ZCanvasTool =
   | 'circle'
   | 'diamond'
   | 'triangle'
+  | 'cylinder'
+  | 'cloud'
+  | 'sticky-note'
+  | 'document'
+  | 'parallelogram'
+  | 'hexagon'
+  | 'subroutine'
   | 'text'
   | 'pen'
   | 'line'

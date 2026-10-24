@@ -34,7 +34,14 @@ export type { StandardDrawioShapeDef } from './standard-shapes';
 export { STANDARD_DRAWIO_SHAPES } from './standard-shapes';
 
 export type { ShapeNodeOptions, ShapeRenderContext } from './shapes';
-export { renderCloudMarkup, renderCylinderMarkup } from './shapes';
+export {
+  renderCloudMarkup,
+  renderCylinderMarkup,
+  renderDocumentMarkup,
+  renderHexagonMarkup,
+  renderParallelogramMarkup,
+  renderSubroutineMarkup,
+} from './shapes';
 
 export type { ElementArrayRender, ExcalidrawElementLike } from './element-array';
 export { isExcalidrawElementArray, renderElementArray } from './element-array';

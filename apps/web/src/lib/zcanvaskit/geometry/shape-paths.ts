@@ -80,3 +80,94 @@ export function getCloudPath(
     `C ${x + w * 0.6} ${y + h * 0.98} ${x + w * 0.4} ${y + h * 0.98} ${x + w * 0.25} ${y + h * 0.85} Z`
   );
 }
+
+/**
+ * Generates an SVG path for a standard Draw.io flowchart Document shape (wavy bottom).
+ */
+export function getDocumentPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const wave = Math.min(h * 0.15, 18);
+
+  return (
+    `M ${x} ${y} ` +
+    `L ${x + w} ${y} ` +
+    `L ${x + w} ${y + h - wave} ` +
+    `Q ${x + w * 0.75} ${y + h} ${x + w * 0.5} ${y + h - wave} ` +
+    `Q ${x + w * 0.25} ${y + h - wave * 2} ${x} ${y + h - wave} Z`
+  );
+}
+
+/**
+ * Generates an SVG path for a standard Draw.io Data / Input-Output parallelogram.
+ */
+export function getParallelogramPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const skew = Math.min(w * 0.2, 24);
+
+  return `M ${x + skew} ${y} L ${x + w} ${y} L ${x + w - skew} ${y + h} L ${x} ${y + h} Z`;
+}
+
+/**
+ * Generates an SVG path for a standard Draw.io Preparation / Loop condition Hexagon.
+ */
+export function getHexagonPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const indent = Math.min(w * 0.18, 22);
+
+  return (
+    `M ${x + indent} ${y} ` +
+    `L ${x + w - indent} ${y} ` +
+    `L ${x + w} ${y + h * 0.5} ` +
+    `L ${x + w - indent} ${y + h} ` +
+    `L ${x + indent} ${y + h} ` +
+    `L ${x} ${y + h * 0.5} Z`
+  );
+}
+
+export interface SubroutinePaths {
+  outerPath: string;
+  leftLinePath: string;
+  rightLinePath: string;
+}
+
+/**
+ * Generates SVG paths for a standard Draw.io Predefined Process / Subroutine shape.
+ */
+export function getSubroutinePaths(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): SubroutinePaths {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const offset = Math.min(w * 0.15, 16);
+
+  const outerPath = `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+  const leftLinePath = `M ${x + offset} ${y} V ${y + h}`;
+  const rightLinePath = `M ${x + w - offset} ${y} V ${y + h}`;
+
+  return { outerPath, leftLinePath, rightLinePath };
+}

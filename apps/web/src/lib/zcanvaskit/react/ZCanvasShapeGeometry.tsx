@@ -17,11 +17,27 @@ import {
   getSketchCirclePath,
   getSketchTrianglePath,
 } from '../rendering/sketch/rough-svg';
-import { getCloudPath, getCylinderPaths } from '../geometry/shape-paths';
+import {
+  getCloudPath,
+  getCylinderPaths,
+  getDocumentPath,
+  getHexagonPath,
+  getParallelogramPath,
+  getSubroutinePaths,
+} from '../geometry/shape-paths';
 import { SHAPE_INSET } from '../rendering/shapes/polygon';
 
 /** Shapes drawn purely as SVG geometry (the rectangle is an HTML card-like box). */
-export type ZCanvasSvgShapeType = 'circle' | 'diamond' | 'triangle' | 'cylinder' | 'cloud';
+export type ZCanvasSvgShapeType =
+  | 'circle'
+  | 'diamond'
+  | 'triangle'
+  | 'cylinder'
+  | 'cloud'
+  | 'document'
+  | 'parallelogram'
+  | 'hexagon'
+  | 'subroutine';
 
 /**
  * Border + fill geometry for the SVG-backed geometric shapes.
@@ -130,6 +146,57 @@ export function ZCanvasShapeGeometry({
           {...shared}
         />
       );
+
+    case 'document':
+      return (
+        <path
+          d={getDocumentPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'parallelogram':
+      return (
+        <path
+          d={getParallelogramPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'hexagon':
+      return (
+        <path
+          d={getHexagonPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'subroutine': {
+      const { outerPath, leftLinePath, rightLinePath } = getSubroutinePaths(
+        node.width,
+        node.height,
+        inset
+      );
+      return (
+        <g>
+          <path d={outerPath} {...shared} />
+          <path
+            d={leftLinePath}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+          />
+          <path
+            d={rightLinePath}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+          />
+        </g>
+      );
+    }
 
     case 'diamond':
     default:

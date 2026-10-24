@@ -119,6 +119,22 @@ test('the Database Drum is still a bare cylinder', () => {
   assert.equal(node.height, def.height);
 });
 
+test('standard flowchart process shapes drop with proper geometries', () => {
+  for (const id of [
+    'shape-document',
+    'shape-parallelogram',
+    'shape-hexagon',
+    'shape-subroutine',
+  ]) {
+    const def = tile(id);
+    assert.ok(def, `${id} should exist`);
+    const node = drop(def).nodes[0];
+    assert.equal(node.type, def.type);
+    assert.equal(node.width, def.width);
+    assert.equal(node.height, def.height);
+  }
+});
+
 test('a tile survives the drag the panel writes', () => {
   // The panel hands the canvas a payload, not a node: this is the whole path a
   // drag takes, so a tile that reads correctly can still be a tile that drops
