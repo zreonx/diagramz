@@ -58,10 +58,10 @@ interface AiAssistantProps {
 const DEFAULT_WELCOME_MESSAGE: Message = {
   role: 'assistant',
   explanation:
-    '### Welcome to Diagramz AI Architect ⚡\n\nI build **native system architectures** designed directly for your canvas — including containers (VPC, clusters), official tech logos (PostgreSQL, Redis, Kafka, Docker, Kubernetes, AWS, etc.), and architecture stencils.\n\nAsk me anything, or try one of the quick prompts below.',
+    '### Welcome to Diagramz AI ⚡\n\nI generate **precise, high-impact diagrams** directly for your canvas — including business workflows, flowcharts & decision trees, database schemas (ERDs), sequence flows, and cloud architectures.\n\nDescribe any process, system, or workflow, or choose a prompt below.'
 };
 
-function createDefaultSession(title = 'New Architecture Chat'): AiChatSession {
+function createDefaultSession(title = 'New AI Diagram'): AiChatSession {
   const id = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   return {
     id,
@@ -198,7 +198,7 @@ export function AiAssistant({
         s.id === activeSession.id
           ? {
               ...s,
-              title: 'New Architecture Chat',
+              title: 'New AI Diagram',
               updatedAt: Date.now(),
               messages: [DEFAULT_WELCOME_MESSAGE],
             }
@@ -250,7 +250,7 @@ export function AiAssistant({
           let title = session.title;
           if (
             firstUserPrompt &&
-            (session.title === 'New Architecture Chat' || session.messages.length <= 1)
+            (session.title === 'New AI Diagram' || session.title === 'New Architecture Chat' || session.messages.length <= 1)
           ) {
             title = firstUserPrompt.length > 36 ? `${firstUserPrompt.slice(0, 36)}...` : firstUserPrompt;
           }
@@ -288,7 +288,7 @@ export function AiAssistant({
       const { mermaidCode, canvasData, explanation } = res.data;
       const assistantMsg: Message = {
         role: 'assistant',
-        explanation: explanation || 'Here is your system architecture diagram:',
+        explanation: explanation || 'Here is your diagram:',
         canvasData: canvasData || null,
         mermaidCode: mermaidCode || '',
       };
@@ -321,17 +321,18 @@ export function AiAssistant({
     onApplyDiagram(mermaidCode);
     if (onInsertToCanvas) {
       onInsertToCanvas(mermaidCode);
-      toast.success('Inserted architecture components into canvas!');
+      toast.success('Inserted diagram components into canvas!');
     }
     setInsertedIndex(index);
     setTimeout(() => setInsertedIndex(null), 2500);
   };
 
   const templates = [
-    'AWS Serverless: API Gateway, Lambda, DynamoDB, S3, and CloudWatch',
-    'Event-driven Kafka pipeline: Producers, Order Workers, Redis, and PostgreSQL',
-    'Enterprise Kubernetes Cluster: Envoy Ingress, Auth, Microservices, and MySQL',
-    'Full-Stack Web App: Next.js frontend, Node.js API, Redis Cache, and MongoDB',
+    'User Onboarding & Identity Verification Flowchart',
+    'Customer Support & Refund Decision Tree',
+    'AWS Serverless: API Gateway, Lambda, DynamoDB & S3',
+    'E-Commerce ERD: Users, Orders, Products & Payments',
+    'Event-driven Kafka streaming pipeline with microservices',
   ];
 
   return (
@@ -340,7 +341,7 @@ export function AiAssistant({
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/50 bg-muted/30 shrink-0">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-          <span>Diagramz AI Architect</span>
+          <span>Diagramz AI Assistant</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -624,7 +625,7 @@ h1: ({ children }) => (
                       </ReactMarkdown>
                     </div>
 
-                    {/* Native Diagramz Architecture Card */}
+                    {/* Native Diagramz Card */}
                     {msg.canvasData && msg.canvasData.nodes?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-border/60">
                         <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 space-y-2.5">
@@ -632,7 +633,7 @@ h1: ({ children }) => (
                             <div className="flex items-center gap-1.5">
                               <Layers className="w-4 h-4 text-purple-400" />
                               <span className="text-xs font-semibold text-foreground">
-                                Native Diagramz Architecture
+                                Native Diagramz Diagram
                               </span>
                             </div>
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium">
@@ -677,12 +678,12 @@ h1: ({ children }) => (
                             {isInserted ? (
                               <>
                                 <Check className="w-3.5 h-3.5 mr-1.5 text-white" />
-                                Architecture Placed on Canvas!
+                                Diagram Placed on Canvas!
                               </>
                             ) : (
                               <>
                                 <Sparkles className="w-3.5 h-3.5 mr-1.5 text-purple-200" />
-                                Insert Architecture to Canvas
+                                Insert Diagram to Canvas
                               </>
                             )}
                           </Button>
@@ -744,7 +745,7 @@ h1: ({ children }) => (
             {isLoading && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border/50 w-fit">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
-                <span>Architecting Diagramz components & tech logos...</span>
+                <span>Generating diagram components & layout...</span>
               </div>
             )}
             <div ref={chatBottomRef} />
@@ -755,7 +756,7 @@ h1: ({ children }) => (
             <div className="px-3.5 py-2.5 border-t border-border/50 bg-muted/15 shrink-0">
               <div className="text-[10px] uppercase font-semibold text-muted-foreground/70 mb-1.5 flex items-center gap-1">
                 <Cpu className="w-3 h-3" />
-                <span>Quick Architecture Prompts:</span>
+                <span>Quick Prompts:</span>
               </div>
               <div className="space-y-1">
                 {templates.map((tpl, idx) => (
@@ -780,7 +781,7 @@ h1: ({ children }) => (
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ask AI to design system architecture..."
+              placeholder="Describe any diagram, workflow, or architecture to generate..."
               disabled={isLoading}
               className="flex-1 bg-muted/30 border border-border/60 rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:bg-background transition-colors"
             />

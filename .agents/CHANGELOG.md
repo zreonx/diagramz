@@ -4,7 +4,15 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
-## [2026-10-25] — Comprehensive AWS Architecture Stencils, Draw.io Flowchart Shapes, Variable Flow Animation & Collapsible Containers
+## [2026-10-25] — Eraser.io-Grade Multi-Domain AI Assistant, AWS Architecture Stencils Suite, Flowchart Shapes & Clean Canvas Selection
+
+### Added
+- **Eraser.io-Grade Multi-Domain AI Assistant** ([ai.service.ts](file:///D:/Projects/diagramz/apps/api/src/modules/ai/ai.service.ts), [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx), [AiAssistant.tsx](file:///D:/Projects/diagramz/apps/web/src/components/ai/AiAssistant.tsx)):
+  - Upgraded the AI system prompt to generate crystal-clear, mathematically precise, production-grade diagrams across ANY domain — not just technical cloud architectures, but business workflows, customer journeys, decision trees, ERD database schemas, and sequence flows.
+  - Implemented strict non-colliding layout positioning rules: horizontal progression spacing ($dx \ge 220\text{px}$), tier/branch spacing ($dy \ge 160\text{px}$), decision diamond branching ('Yes' straight forward, 'No' downward lateral), and meaningful relationship labels on all edges.
+  - Enhanced canvas native document ingestion in `DiagramCanvas.tsx` (`handleInsertNativeCanvasDoc`) to recognize all geometric and flowchart shapes (`document`, `parallelogram`, `hexagon`, `subroutine`, `card`, `circle`, `diamond`, `rectangle`, `sticky-note`), preserving exact node dimensions and types rather than incorrectly converting them to `arch-server` SVGs.
+  - Expanded offline/fallback generator in `ai.service.ts` to intelligently generate 5 specialized domain diagrams: Employee Hiring & Onboarding Flowchart, Customer Refund & Returns Decision Tree, E-Commerce Relational Database Schema (ERD), Event-Driven Distributed Streaming Mesh, and AWS Serverless Production Architecture.
+  - Modernized `AiAssistant.tsx` welcome screen and quick prompt template chips to showcase non-technical and technical diagram generation capabilities.
 
 ### Removed
 - **Click-to-Clone & Connect Directional Buttons** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):

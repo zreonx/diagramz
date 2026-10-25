@@ -20,6 +20,12 @@
 
 ## 2. Recently Completed Work
 
+1. **Eraser.io-Grade Multi-Domain AI Assistant & Precision Canvas Generation**:
+   - Upgraded AI system prompt in [ai.service.ts](file:///D:/Projects/diagramz/apps/api/src/modules/ai/ai.service.ts) to generate precision diagrams across any domain (business workflows, decision trees, flowcharts, ERD schemas, cloud architecture).
+   - Upgraded [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) to recognize all native shapes (`document`, `parallelogram`, `hexagon`, `subroutine`, `card`, `sticky-note`, tables) so AI-generated diagrams preserve their intended geometric shape and layout on canvas.
+   - Enhanced offline fallback generator in [ai.service.ts](file:///D:/Projects/diagramz/apps/api/src/modules/ai/ai.service.ts) with 5 production presets (Hiring Onboarding, Refund Decision Tree, E-Commerce ERD, Event Streaming, AWS Serverless).
+   - Removed cluttering directional click-to-clone & connect buttons in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) for a clean node selection experience.
+
 1. **Comprehensive AWS Architecture Stencils Suite (14 New Official Services)**:
    - Added 14 official AWS service vector icons with exact 24×24 viewBox coordinates, brand hex palettes, and aliases:
      - **AWS Amplify** (`tech-aws-amplify`, `#FF9900`) — Frontend, mobile & web full-stack hosting.

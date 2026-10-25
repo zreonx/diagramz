@@ -393,13 +393,19 @@ export function DiagramCanvas({
         const isContainer = node.type === 'container' || node.type === 'frame';
         const isTable = node.type === 'table';
         const isText = node.type === 'text';
+        const isCard = node.type === 'card';
         const isShape =
           node.type === 'rectangle' ||
           node.type === 'circle' ||
           node.type === 'diamond' ||
           node.type === 'triangle' ||
           node.type === 'cylinder' ||
-          node.type === 'cloud';
+          node.type === 'cloud' ||
+          node.type === 'document' ||
+          node.type === 'parallelogram' ||
+          node.type === 'hexagon' ||
+          node.type === 'subroutine' ||
+          node.type === 'sticky-note';
 
         let type = node.type || (stencilId ? 'svg' : 'card');
         let width = node.width ?? 90;
@@ -419,8 +425,12 @@ export function DiagramCanvas({
           height = node.height ?? 40;
         } else if (isShape) {
           type = node.type;
-          width = node.width ?? 140;
-          height = node.height ?? 80;
+          width = node.width ?? (node.type === 'circle' ? 120 : node.type === 'document' ? 140 : 150);
+          height = node.height ?? (node.type === 'circle' ? 120 : 80);
+        } else if (isCard) {
+          type = 'card';
+          width = node.width ?? 210;
+          height = node.height ?? 76;
         } else {
           // Built-in architecture vector stencils or tech logos
           type = 'svg';
