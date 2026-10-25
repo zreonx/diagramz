@@ -150,7 +150,7 @@ import { ZCanvasSheetTabs } from './ZCanvasSheetTabs';
 import { ZCanvasPresentationDock } from './ZCanvasPresentationDock';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
 import { exportDocumentToPng, exportDocumentToPngBlob } from '../export/png';
-import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, ChevronUp, ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react';
+import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -754,7 +754,6 @@ export function ZCanvas({
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const touchStartRef = useRef<{ x: number; y: number; dist?: number; zoom?: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const arrowDragStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Marquee Selection Box
   const [marqueeBox, setMarqueeBox] = useState<ZCanvasBox | null>(null);
@@ -4666,62 +4665,6 @@ export function ZCanvas({
     setConnectingSourceOffset(0);
   };
 
-  /**
-   * Draw.io Directional Quick-Clone & Connect:
-   * Clicking one of the 4 directional chevrons around a selected node clones
-   * the node in that direction (with a 120px gap) and connects an edge in one click.
-   */
-  const handleQuickCloneInDirection = useCallback(
-    (e: React.MouseEvent, sourceNode: ZCanvasNode, dir: ZCanvasHandlePosition) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (readOnly || isLocked(sourceNode)) return;
-
-      const gap = 120;
-      let nextX = sourceNode.x;
-      let nextY = sourceNode.y;
-      let targetHandle: ZCanvasHandlePosition = 'left';
-
-      if (dir === 'right') {
-        nextX = snap(sourceNode.x + sourceNode.width + gap);
-        targetHandle = 'left';
-      } else if (dir === 'left') {
-        nextX = snap(sourceNode.x - sourceNode.width - gap);
-        targetHandle = 'right';
-      } else if (dir === 'bottom') {
-        nextY = snap(sourceNode.y + sourceNode.height + gap);
-        targetHandle = 'top';
-      } else if (dir === 'top') {
-        nextY = snap(sourceNode.y - sourceNode.height - gap);
-        targetHandle = 'bottom';
-      }
-
-      const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      const clonedNode: ZCanvasNode = {
-        ...sourceNode,
-        id: newId,
-        x: nextX,
-        y: nextY,
-        groupIds: undefined,
-        locked: undefined,
-      };
-
-      const newEdge: ZCanvasEdge = {
-        id: `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        source: sourceNode.id,
-        target: newId,
-        sourceHandle: dir,
-        targetHandle,
-        style: edgeStyle,
-        color: activeColor,
-      };
-
-      commitState([...nodes, clonedNode], [...edges, newEdge], strokes);
-      setSelectedNodeIds([newId]);
-      setPrimarySelectedNodeId(newId);
-    },
-    [readOnly, snap, edgeStyle, activeColor, nodes, edges, strokes, commitState]
-  );
 
   // Node Map for edge calculations (memoized to eliminate reallocation per render)
   const nodeMap = useMemo(() => new Map<string, ZCanvasNode>(nodes.map((n) => [n.id, n])), [nodes]);
@@ -4884,63 +4827,6 @@ export function ZCanvas({
     setEditingValue('');
   };
 
-  // Quick-Connect Directional Hover Arrow: Spawns connected node in cardinal direction (Draw.io style)
-  const handleQuickCloneAndConnect = useCallback(
-    (sourceNode: ZCanvasNode, direction: ZCanvasHandlePosition) => {
-      if (readOnly || isLocked(sourceNode)) return;
-
-      const gap = 80;
-      let newX = sourceNode.x;
-      let newY = sourceNode.y;
-      let targetHandle: ZCanvasHandlePosition = 'left';
-
-      if (direction === 'right') {
-        newX = sourceNode.x + sourceNode.width + gap;
-        newY = sourceNode.y;
-        targetHandle = 'left';
-      } else if (direction === 'bottom') {
-        newX = sourceNode.x;
-        newY = sourceNode.y + sourceNode.height + gap;
-        targetHandle = 'top';
-      } else if (direction === 'left') {
-        newX = sourceNode.x - sourceNode.width - gap;
-        newY = sourceNode.y;
-        targetHandle = 'right';
-      } else if (direction === 'top') {
-        newX = sourceNode.x;
-        newY = sourceNode.y - sourceNode.height - gap;
-        targetHandle = 'bottom';
-      }
-
-      const newId = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      const newNode: ZCanvasNode = {
-        ...sourceNode,
-        id: newId,
-        x: snap(newX),
-        y: snap(newY),
-        title: '',
-        parentId: sourceNode.parentId,
-      };
-
-      const newEdgeId = `edge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      const newEdge: ZCanvasEdge = {
-        id: newEdgeId,
-        source: sourceNode.id,
-        target: newId,
-        sourceHandle: direction,
-        targetHandle,
-        style: edgeStyle,
-        color: activeColor,
-      };
-
-      commitState([...nodes, newNode], [...edges, newEdge], strokes);
-      setSelectedNodeIds([newId]);
-      setSelectedEdgeIds([]);
-      setSelectedStrokeIds([]);
-      startEditing(newId, 'title', '');
-    },
-    [readOnly, nodes, edges, strokes, edgeStyle, activeColor, snap, commitState]
-  );
 
   const handleAddField = (nodeId: string) => {
     if (readOnly) return;
@@ -7780,126 +7666,7 @@ export function ZCanvas({
                     });
                   })}
 
-                  {/* 4 DIRECTIONAL QUICK-CONNECT & CLONE BUTTONS (Draw.io / Lucidchart Style) */}
-                  {isSelected && selectedNodeIds.length === 1 && activeTool === 'select' && connectingSourceId === null && (
-                    <>
-                      {/* Top Arrow */}
-                      <button
-                        type="button"
-                        data-quick-connect="top"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
-                        }}
-                        onMouseMove={(e) => {
-                          if (arrowDragStartRef.current) {
-                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
-                            if (dist > 4) {
-                              arrowDragStartRef.current = null;
-                              handleAnchorMouseDown(e, node.id, 'top', 0);
-                            }
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          if (arrowDragStartRef.current) {
-                            arrowDragStartRef.current = null;
-                            handleQuickCloneAndConnect(node, 'top');
-                          }
-                        }}
-                        className="absolute -top-7 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
-                        title="Click to add step above, or drag to connect"
-                      >
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      </button>
 
-                      {/* Right Arrow */}
-                      <button
-                        type="button"
-                        data-quick-connect="right"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
-                        }}
-                        onMouseMove={(e) => {
-                          if (arrowDragStartRef.current) {
-                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
-                            if (dist > 4) {
-                              arrowDragStartRef.current = null;
-                              handleAnchorMouseDown(e, node.id, 'right', 0);
-                            }
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          if (arrowDragStartRef.current) {
-                            arrowDragStartRef.current = null;
-                            handleQuickCloneAndConnect(node, 'right');
-                          }
-                        }}
-                        className="absolute top-1/2 -right-7 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
-                        title="Click to add step to the right, or drag to connect"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Bottom Arrow */}
-                      <button
-                        type="button"
-                        data-quick-connect="bottom"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
-                        }}
-                        onMouseMove={(e) => {
-                          if (arrowDragStartRef.current) {
-                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
-                            if (dist > 4) {
-                              arrowDragStartRef.current = null;
-                              handleAnchorMouseDown(e, node.id, 'bottom', 0);
-                            }
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          if (arrowDragStartRef.current) {
-                            arrowDragStartRef.current = null;
-                            handleQuickCloneAndConnect(node, 'bottom');
-                          }
-                        }}
-                        className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
-                        title="Click to add step below, or drag to connect"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Left Arrow */}
-                      <button
-                        type="button"
-                        data-quick-connect="left"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          arrowDragStartRef.current = { x: e.clientX, y: e.clientY };
-                        }}
-                        onMouseMove={(e) => {
-                          if (arrowDragStartRef.current) {
-                            const dist = Math.hypot(e.clientX - arrowDragStartRef.current.x, e.clientY - arrowDragStartRef.current.y);
-                            if (dist > 4) {
-                              arrowDragStartRef.current = null;
-                              handleAnchorMouseDown(e, node.id, 'left', 0);
-                            }
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          if (arrowDragStartRef.current) {
-                            arrowDragStartRef.current = null;
-                            handleQuickCloneAndConnect(node, 'left');
-                          }
-                        }}
-                        className="absolute top-1/2 -left-7 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md flex items-center justify-center cursor-pointer hover:scale-125 transition-all z-35 pointer-events-auto"
-                        title="Click to add step to the left, or drag to connect"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
                 </>
               )}
 
@@ -7984,57 +7751,7 @@ export function ZCanvas({
                     <RotateCw className="w-3 h-3" />
                   </div>
 
-                  {/* DRAW.IO DIRECTIONAL QUICK-CLONE & CONNECT ARROWS (N, E, S, W) */}
-                  {selectedNodeIds.length === 1 &&
-                    !isLocked(node) &&
-                    !isBoundaryNode(node) &&
-                    !draggingNodeId &&
-                    !resizingNodeId &&
-                    !rotatingNodeId &&
-                    connectingSourceId === null && (
-                      <>
-                        <button
-                          type="button"
-                          data-testid="quick-clone-right"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => handleQuickCloneInDirection(e, node, 'right')}
-                          className="absolute top-1/2 -right-9 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
-                          title="Click to clone & connect right (Draw.io Quick Connect)"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="quick-clone-bottom"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => handleQuickCloneInDirection(e, node, 'bottom')}
-                          className="absolute -bottom-9 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
-                          title="Click to clone & connect down (Draw.io Quick Connect)"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="quick-clone-left"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => handleQuickCloneInDirection(e, node, 'left')}
-                          className="absolute top-1/2 -left-9 -translate-y-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
-                          title="Click to clone & connect left (Draw.io Quick Connect)"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="quick-clone-top"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => handleQuickCloneInDirection(e, node, 'top')}
-                          className="absolute -top-14 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-blue-500/15 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/40 flex items-center justify-center transition-all hover:scale-115 shadow-xs z-25 pointer-events-auto cursor-pointer"
-                          title="Click to clone & connect up (Draw.io Quick Connect)"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
+
                 </>
               )}
             </div>

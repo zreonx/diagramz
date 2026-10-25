@@ -6,6 +6,11 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ## [2026-10-25] — Comprehensive AWS Architecture Stencils, Draw.io Flowchart Shapes, Variable Flow Animation & Collapsible Containers
 
+### Removed
+- **Click-to-Clone & Connect Directional Buttons** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Removed the cluttering directional quick-clone chevron buttons that appeared around single-selected nodes.
+  - Keeps the node selection bounding box, 8-point resize grasps, rotation handle, and standard anchor ports clean, uncluttered, and responsive.
+
 ### Added
 - **Comprehensive AWS Architecture Stencils Suite (14 New Official Services)** ([`tech-icons.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [`registry.ts`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/registry.ts), [`builtin.test.mjs`](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/builtin.test.mjs)):
   - Added 14 official AWS service vector icons with exact 24×24 viewBox coordinates, brand hex palettes, and aliases:

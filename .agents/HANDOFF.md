@@ -52,10 +52,7 @@
    - Added `collapsed?: boolean` and `expandedHeight?: number` to `ZCanvasNodeSchema`.
    - Added interactive `[-]` (collapse) and `[+]` (expand) toggle button on container title bars.
    - Collapses complex VPC or namespace container boundaries to a clean 48px header pill, and expands back to original user height with a single click.
-5. **Quick-Connect Directional Hover Arrows (Draw.io / Lucidchart Style)**:
-   - When any single shape or card is selected, 4 blue directional quick-connect buttons appear outside the North, East, South, and West perimeter.
-   - Clicking an arrow spawns a clone of the shape in that direction (spaced by an 80px gap), wires an auto-routed connector between them, selects the new shape, and focuses text editing.
-   - Dragging an arrow pulls out an interactive connector wire to connect to another node or canvas space.
+5. **Clean Minimalist Node Selection**: Removed directional quick-clone chevron hover buttons around selected nodes to keep the canvas neat, uncluttered, and responsive, prioritizing the standard anchor handles and 8-point resize box.
 2. **Figma "Tidy Up" Grid & Equal-Gap Node Distribution**:
    - Built `distributeNodes` calculating exact variable-size bounds to enforce mathematically equal spacing between items on horizontal and vertical axes.
    - Built `tidyUpNodes` calculating optimal balanced grid layouts (columns = $\lceil\sqrt{N}\rceil$) with consistent 40px gaps.
