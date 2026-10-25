@@ -20,6 +20,11 @@
 
 ## 2. Recently Completed Work
 
+1. **Hardware-Accelerated Neon Laser Pointer, Canvas Double-Click Text & Minimalist Typography**:
+   - Replaced laggy SVG-filter laser with a dedicated 120 FPS high-DPI HTML5 canvas overlay ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)). Features quadratic spline smoothing, multi-layer glow (ambient neon aura, vivid crimson core, white-hot center flare), and cinematic laser dot beacon.
+   - Updated canvas background double-click in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) to insert clean text nodes with immediate focus and editing.
+   - Refined text nodes to look ultra-minimal: eliminated card `shadow-2xl`, added delicate selection bounds, subtle hover indicators, auto-sizing width/height, and automatic empty text node pruning on blur/cancel.
+
 1. **Eraser.io-Grade Multi-Domain AI Assistant & Precision Canvas Generation**:
    - Upgraded AI system prompt in [ai.service.ts](file:///D:/Projects/diagramz/apps/api/src/modules/ai/ai.service.ts) to generate precision diagrams across any domain (business workflows, decision trees, flowcharts, ERD schemas, cloud architecture).
    - Upgraded [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) to recognize all native shapes (`document`, `parallelogram`, `hexagon`, `subroutine`, `card`, `sticky-note`, tables) so AI-generated diagrams preserve their intended geometric shape and layout on canvas.

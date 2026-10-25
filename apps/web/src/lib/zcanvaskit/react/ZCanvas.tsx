@@ -60,6 +60,7 @@ import { ZCanvasMinimap } from './ZCanvasMinimap';
 import { ZCanvasShortcutsDialog } from './ZCanvasShortcutsDialog';
 import { ZCanvasSettingsDialog } from './ZCanvasSettingsDialog';
 import { ZCanvasContextMenu } from './ZCanvasContextMenu';
+import { ZCanvasLaserOverlay } from './ZCanvasLaserOverlay';
 import {
   copySelection,
   pasteClipboard,
@@ -2531,19 +2532,7 @@ export function ZCanvas({
     return () => window.removeEventListener('zcanvas:toggle-presentation', handleToggle);
   }, []);
 
-  // Fading laser pointer cleanup interval
-  useEffect(() => {
-    if (laserTrail.length === 0) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setLaserTrail((prev) => {
-        const next = prev.filter((p) => now - p.time < 1000);
-        return next.length === prev.length ? prev : next;
-      });
-    }, 40);
-    return () => clearInterval(interval);
-  }, [laserTrail.length]);
-
+  
   // Non-passive wheel listener to strictly prevent browser page zoom and zoom precisely into cursor point
   useEffect(() => {
     const el = canvasRef.current;
@@ -2850,16 +2839,6 @@ export function ZCanvas({
 
     const canvasPt = getCanvasPoint(e.clientX, e.clientY);
     onCursorMoveRef.current?.(canvasPt);
-
-    if (activeTool === 'laser') {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (rect) {
-        const sx = e.clientX - rect.left;
-        const sy = e.clientY - rect.top;
-        const now = Date.now();
-        setLaserTrail((prev) => [...prev.filter((p) => now - p.time < 1000), { x: sx, y: sy, time: now }]);
-      }
-    }
 
     if (isPanning) {
       setViewport((v) => ({
@@ -4793,29 +4772,37 @@ export function ZCanvas({
       );
     } else {
       commitState(
-        nodes.map((n) => {
-          if (n.id !== editingNodeId) return n;
-          if (editingField === 'badge') {
-            const trimmed = editingValue.trim();
-            return {
-              ...n,
-              badge: trimmed.length > 0 ? trimmed : undefined,
-            };
-          }
-          const textVal = editingValue.trimEnd();
-          const updated: ZCanvasNode = {
-            ...n,
-            [editingField]: textVal,
-          };
-          if (n.type === 'text' && editingField === 'title') {
-            const lineCount = (textVal || '').split('\n').length;
-            const approxHeight = Math.max(40, lineCount * ((n.fontSize || 15) * 1.35) + 16);
-            if (approxHeight > n.height) {
-              updated.height = Math.round(approxHeight);
+        nodes
+          .map((n) => {
+            if (n.id !== editingNodeId) return n;
+            if (editingField === 'badge') {
+              const trimmed = editingValue.trim();
+              return {
+                ...n,
+                badge: trimmed.length > 0 ? trimmed : undefined,
+              };
             }
-          }
-          return updated;
-        }),
+            const textVal = editingValue.trimEnd();
+            // Discard empty text node if it was blank when created
+            if (n.type === 'text' && editingField === 'title' && (!textVal || textVal.trim().length === 0) && !n.title) {
+              return null;
+            }
+            const updated: ZCanvasNode = {
+              ...n,
+              [editingField]: textVal,
+            };
+            if (n.type === 'text' && editingField === 'title') {
+              const lines = (textVal || '').split('\n');
+              const lineCount = lines.length;
+              const approxHeight = Math.max(36, lineCount * ((n.fontSize || 16) * 1.4) + 16);
+              const maxLineLen = Math.max(...lines.map((l) => l.length), 0);
+              const approxWidth = Math.max(n.width, Math.min(640, Math.max(140, maxLineLen * ((n.fontSize || 16) * 0.62) + 24)));
+              updated.height = Math.round(approxHeight);
+              updated.width = Math.round(approxWidth);
+            }
+            return updated;
+          })
+          .filter((n): n is ZCanvasNode => n !== null),
         edges,
         strokes
       );
@@ -5429,7 +5416,7 @@ export function ZCanvas({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDoubleClick={(e) => {
-        if (readOnly || activeTool !== 'select') return;
+        if (readOnly || (activeTool !== 'select' && activeTool !== 'text')) return;
         const isBackground =
           e.target === canvasRef.current ||
           (e.target as HTMLElement).tagName === 'svg' ||
@@ -5437,18 +5424,23 @@ export function ZCanvas({
         if (!isBackground) return;
         const pt = getCanvasPoint(e.clientX, e.clientY);
         if (findNodeAt(pt) || findStrokeAt(strokes, pt)) return;
-        const defaults = SHAPE_DEFAULTS.rectangle;
-        const newNode = createShapeNode('rectangle', {
-          x: snap(pt.x - defaults.width / 2),
-          y: snap(pt.y - defaults.height / 2),
-          width: defaults.width,
-          height: defaults.height,
-        });
-        newNode.title = 'New Step';
+        const newNode: ZCanvasNode = {
+          id: `text-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          type: 'text',
+          x: snap(pt.x) - 10,
+          y: snap(pt.y) - 14,
+          width: 180,
+          height: 38,
+          title: '',
+          fontFamily: settings.fontFamily ?? 'sans',
+          fontSize: settings.fontSize ?? 16,
+          textAlign: 'left',
+          textVerticalAlign: 'top',
+        };
         commitState([...nodes, newNode], edges, strokes);
         setSelectedNodeIds([newNode.id]);
         setPrimarySelectedNodeId(newNode.id);
-        startEditing(newNode.id, 'title', newNode.title);
+        startEditing(newNode.id, 'title', '');
       }}
       onContextMenu={(e) => {
         if (readOnly) return;
@@ -6369,7 +6361,8 @@ export function ZCanvas({
               key={node.id}
               data-node-id={node.id}
               className={cn(
-                'absolute rounded-xl transition-shadow select-none group/node',
+                'absolute transition-all select-none group/node',
+                node.type === 'text' ? 'rounded-md' : 'rounded-xl',
                 // A boundary is a frame, not a plate. Its interior lets presses
                 // through to whatever is painted behind it — connectors, ink,
                 // marquee selection — and only its title bar and frame bands
@@ -6382,7 +6375,14 @@ export function ZCanvas({
                   : activeTool === 'select'
                   ? 'cursor-pointer'
                   : undefined,
-                isSelected && (isDark ? 'ring-2 ring-[#A5A0FF] shadow-2xl' : 'ring-2 ring-[#635BFF] shadow-2xl'),
+                isSelected && (
+                  node.type === 'text'
+                    ? 'ring-1.5 ring-blue-500/80 rounded-md bg-blue-500/[0.02]'
+                    : isDark
+                    ? 'ring-2 ring-[#A5A0FF] shadow-2xl'
+                    : 'ring-2 ring-[#635BFF] shadow-2xl'
+                ),
+                !isSelected && node.type === 'text' && !readOnly && 'hover:ring-1 hover:ring-muted-foreground/30 hover:rounded-md',
                 // Highlight the component an edge endpoint would snap onto
                 (edgeDraft?.attachNodeId === node.id || lineSnapNodeId === node.id) &&
                   'ring-2 ring-emerald-400 shadow-2xl'
@@ -7428,12 +7428,12 @@ export function ZCanvas({
               {node.type === 'text' && (
                 <div
                   className={cn(
-                    'w-full h-full flex p-1 cursor-text select-text rounded-md transition-colors',
+                    'w-full h-full flex p-1.5 cursor-text select-text rounded-md transition-colors',
                     node.textVerticalAlign === 'bottom'
                       ? 'items-end'
-                      : node.textVerticalAlign === 'top'
-                      ? 'items-start'
-                      : 'items-center',
+                      : node.textVerticalAlign === 'middle'
+                      ? 'items-center'
+                      : 'items-start',
                     node.textAlign === 'center'
                       ? 'justify-center text-center'
                       : node.textAlign === 'right'
@@ -7452,9 +7452,17 @@ export function ZCanvas({
                       node.fill && node.fill !== 'transparent'
                         ? resolveNodeFill('rectangle', isDark, node.fill, node.fillOpacity)
                         : undefined,
-                    color: node.color || undefined,
-                    fontSize: node.fontSize ? `${node.fontSize}px` : '15px',
-                    fontWeight: node.fontWeight || 500,
+                    color: node.color || (isDark ? '#f8fafc' : '#0f172a'),
+                    fontSize: node.fontSize ? `${node.fontSize}px` : '16px',
+                    fontWeight: node.fontWeight || 450,
+                    letterSpacing: '-0.01em',
+                  }}
+                  onClick={(e) => {
+                    if (readOnly) return;
+                    if (isSelected && editingNodeId !== node.id) {
+                      e.stopPropagation();
+                      startEditing(node.id, 'title', node.title || '');
+                    }
                   }}
                   onDoubleClick={(e) => {
                     if (readOnly) return;
@@ -7468,8 +7476,19 @@ export function ZCanvas({
                       value={editingValue}
                       onChange={setEditingValue}
                       onSave={saveEditing}
-                      onCancel={() => setEditingNodeId(null)}
+                      onCancel={() => {
+                        if (!node.title) {
+                          commitState(
+                            nodes.filter((item) => item.id !== node.id),
+                            edges,
+                            strokes
+                          );
+                          setSelectedNodeIds([]);
+                        }
+                        setEditingNodeId(null);
+                      }}
                       className={cn(
+                        'w-full bg-transparent border-none outline-none resize-none p-0 shadow-none ring-0 leading-relaxed tracking-tight',
                         node.textAlign === 'center'
                           ? 'text-center'
                           : node.textAlign === 'right'
@@ -7477,15 +7496,15 @@ export function ZCanvas({
                           : 'text-left'
                       )}
                       style={{
-                        color: node.color || undefined,
-                        fontSize: node.fontSize ? `${node.fontSize}px` : '15px',
-                        fontWeight: node.fontWeight || 500,
+                        color: node.color || (isDark ? '#f8fafc' : '#0f172a'),
+                        fontSize: node.fontSize ? `${node.fontSize}px` : '16px',
+                        fontWeight: node.fontWeight || 450,
                       }}
                     />
                   ) : (
                     <div
                       className={cn(
-                        'select-text max-w-full w-full whitespace-pre-wrap break-words leading-snug',
+                        'select-text max-w-full w-full whitespace-pre-wrap break-words leading-relaxed tracking-tight',
                         node.textAlign === 'center'
                           ? 'text-center'
                           : node.textAlign === 'right'
@@ -7493,7 +7512,11 @@ export function ZCanvas({
                           : 'text-left'
                       )}
                     >
-                      {node.title || <span className="opacity-40 italic">Empty text</span>}
+                      {node.title || (
+                        <span className="text-muted-foreground/35 italic font-normal text-[14px]">
+                          Type something...
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -8955,54 +8978,9 @@ export function ZCanvas({
         />
       )}
 
-      {/* Interactive Fading Neon Laser Pointer Trail */}
-      {laserTrail.length > 0 && (
-        <svg
-          data-testid="zcanvas-laser-overlay"
-          className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible"
-        >
-          <defs>
-            <filter id="laser-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
-              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2" />
-              <feMerge>
-                <feMergeNode in="blur2" />
-                <feMergeNode in="blur1" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          {laserTrail.map((pt, i) => {
-            if (i === 0) return null;
-            const prev = laserTrail[i - 1];
-            const age = Date.now() - pt.time;
-            const opacity = Math.max(0, 1 - age / 1000);
-            return (
-              <line
-                key={i}
-                x1={prev.x}
-                y1={prev.y}
-                x2={pt.x}
-                y2={pt.y}
-                stroke="#ff2a6d"
-                strokeWidth={Math.max(2, 5 * opacity)}
-                strokeLinecap="round"
-                strokeOpacity={opacity}
-                filter="url(#laser-glow)"
-              />
-            );
-          })}
-          {laserTrail.length > 0 && (() => {
-            const head = laserTrail[laserTrail.length - 1];
-            return (
-              <g filter="url(#laser-glow)">
-                <circle cx={head.x} cy={head.y} r={7} fill="#ff124f" opacity={0.6} />
-                <circle cx={head.x} cy={head.y} r={4.5} fill="#ff2a6d" />
-                <circle cx={head.x} cy={head.y} r={2} fill="#ffffff" />
-              </g>
-            );
-          })()}
-        </svg>
+      {/* High-Performance Hardware-Accelerated Neon Laser Pointer Overlay */}
+      {activeTool === 'laser' && (
+        <ZCanvasLaserOverlay containerRef={canvasRef} />
       )}
     </div>
   );

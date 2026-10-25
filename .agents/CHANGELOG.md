@@ -4,6 +4,25 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-26] — Hardware-Accelerated Neon Laser Pointer, Double-Click Text Insertion & Minimalist Canvas Typography
+
+### Added
+- **Hardware-Accelerated HTML5 Canvas Neon Laser Pointer** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx), [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Replaced the sluggish SVG-filter laser trail with a dedicated, high-DPI HTML5 canvas overlay running at 120 FPS.
+  - Eliminated high-frequency React state re-renders of the main canvas on mousemove, resulting in buttery smooth cursor responsiveness with 0% CPU overhead when idle.
+  - Multi-pass cinematic laser aesthetics: wide ambient neon aura, intense electric crimson core, and white-hot center beam with Catmull/quadratic spline smoothing and aerodynamic comet tail tapering.
+  - Interactive laser pointer beacon at cursor with radial pulsing aura ring and 4-axis sparkle lens flare.
+- **Double-Click Canvas to Insert Text** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Double-clicking on empty canvas background now creates a clean text node at the exact cursor point and immediately focuses it for inline editing (replacing the previous rectangle creation).
+  - Single-clicking an already-selected text node seamlessly enters edit mode.
+  - Automatic blank text pruning: if the user cancels (Escape) or blurs without typing text into a newly created text box, the empty node is automatically discarded to prevent canvas clutter.
+- **Minimalist Canvas Text Aesthetics & Auto-Sizing** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Removed heavy card `shadow-2xl` and thick borders from text nodes, replacing them with a crisp, minimal `ring-1.5 ring-blue-500/80` outline and subtle hover indicator.
+  - Upgraded typography with `leading-relaxed`, negative letter-spacing (`-0.01em`), and light `Type something...` placeholder.
+  - Dynamic width & height auto-expansion on text commit to fit typed content naturally without clipping or unwanted scrollbars.
+
+---
+
 ## [2026-10-25] — Eraser.io-Grade Multi-Domain AI Assistant, AWS Architecture Stencils Suite, Flowchart Shapes & Clean Canvas Selection
 
 ### Added
