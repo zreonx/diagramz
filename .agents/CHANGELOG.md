@@ -6,6 +6,13 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ## [2026-10-26] — Hardware-Accelerated Neon Laser Pointer, Double-Click Text Insertion & Minimalist Canvas Typography
 
+### Fixed
+- **Buttery-Smooth Component Dragging & Zero-Latency Motion** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Fixed sluggish dragging caused by an accidental CSS `transition-all` class on canvas node wrappers and group frames that animated `left` and `top` with a 150ms delay.
+  - Enforced `transition: 'none'` and GPU layer promotion (`willChange: 'left, top'`) during dragging for immediate, zero-latency cursor tracking.
+  - Added `lastDragDeltaRef` frame deduplication in `handleMouseMove` to skip redundant state dispatches when moving within the same grid/guide snap boundary.
+  - Synchronously initialized `gestureLiveRef.current = true` upon press down across node dragging, resizing, and rotation to prevent dropping initial movement frames.
+
 ### Added
 - **Hardware-Accelerated HTML5 Canvas Neon Laser Pointer** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx), [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
   - Replaced the sluggish SVG-filter laser trail with a dedicated, high-DPI HTML5 canvas overlay running at 120 FPS.

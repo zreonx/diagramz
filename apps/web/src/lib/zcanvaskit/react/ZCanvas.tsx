@@ -781,6 +781,7 @@ export function ZCanvas({
   // Dragging Node(s)
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastDragDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
 
   /**
    * What the move in flight is measured from.
@@ -3298,6 +3299,15 @@ export function ZCanvas({
             otherBoxes
           )
         : { snappedX: candidateX, snappedY: candidateY, guides: [] };
+
+      const dx = snappedX - primaryOrigin.x;
+      const dy = snappedY - primaryOrigin.y;
+
+      if (lastDragDeltaRef.current.dx === dx && lastDragDeltaRef.current.dy === dy) {
+        return;
+      }
+      lastDragDeltaRef.current = { dx, dy };
+
       setActiveGuides(guides);
 
       // The pressed element decides where the whole selection lands: it is the
@@ -3309,8 +3319,8 @@ export function ZCanvas({
       const next = translateSelection(
         snapshot,
         doc,
-        snappedX - primaryOrigin.x,
-        snappedY - primaryOrigin.y
+        dx,
+        dy
       );
 
       beginStylePreview();
@@ -3809,6 +3819,8 @@ export function ZCanvas({
       flushStyleBaseline();
       setDraggingNodeId(null);
       dragSnapshotRef.current = null;
+      lastDragDeltaRef.current = { dx: 0, dy: 0 };
+      gestureLiveRef.current = false;
     }
 
     if (resizingNodeId && !readOnly) {
@@ -4140,6 +4152,8 @@ export function ZCanvas({
     // shape with one rule, so they cannot come apart on it.
     if (isLocked(node)) return;
 
+    gestureLiveRef.current = true;
+    lastDragDeltaRef.current = { dx: 0, dy: 0 };
     setDraggingNodeId(node.id);
     dragSnapshotRef.current = beginSelectionDrag({ nodes, edges, strokes }, selection);
 
@@ -4233,6 +4247,7 @@ export function ZCanvas({
     if (readOnly || activeTool !== 'select') return;
     e.stopPropagation();
     if (isLocked(node)) return;
+    gestureLiveRef.current = true;
     setResizingNodeId(node.id);
     setResizeHandle(handle);
     const pt = getCanvasPoint(e.clientX, e.clientY);
@@ -6361,7 +6376,7 @@ export function ZCanvas({
               key={node.id}
               data-node-id={node.id}
               className={cn(
-                'absolute transition-all select-none group/node',
+                'absolute transition-none select-none group/node',
                 node.type === 'text' ? 'rounded-md' : 'rounded-xl',
                 // A boundary is a frame, not a plate. Its interior lets presses
                 // through to whatever is painted behind it — connectors, ink,
@@ -6406,6 +6421,8 @@ export function ZCanvas({
                 zIndex:
                   nodeStackKey(node, paintOrder, index) +
                   (editingNodeId === node.id ? nodes.length + 1 : 0),
+                transition: 'none',
+                willChange: draggingNodeId === node.id ? 'left, top' : undefined,
               }}
               onMouseDown={(e) => handleNodeMouseDown(e, node)}
               onDoubleClick={(e) => {
@@ -7839,7 +7856,7 @@ export function ZCanvas({
               key={frame.id}
               data-group-frame={frame.id}
               className={cn(
-                'absolute rounded-xl border transition-all pointer-events-none',
+                'absolute rounded-xl border transition-none pointer-events-none',
                 isEntered
                   ? 'border-dashed border-blue-400/60 bg-blue-500/[0.02]'
                   : 'border-dashed border-primary/80 bg-primary/[0.03]'
@@ -7850,6 +7867,7 @@ export function ZCanvas({
                 width: `${frame.box.width}px`,
                 height: `${frame.box.height}px`,
                 zIndex: nodes.length + 1,
+                transition: 'none',
               }}
             >
               {/* Draw.io Group Header Pill */}

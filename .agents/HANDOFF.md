@@ -20,7 +20,12 @@
 
 ## 2. Recently Completed Work
 
-1. **Hardware-Accelerated Neon Laser Pointer, Canvas Double-Click Text & Minimalist Typography**:
+1. **Zero-Latency Component Motion & Smooth Dragging**:
+   - Fixed sluggish dragging caused by an accidental CSS `transition-all` class that animated component `left` and `top` with a 150ms delay.
+   - Enforced `transition: 'none'` and GPU layer promotion (`willChange: 'left, top'`) for instantaneous 120 FPS movement.
+   - Added `lastDragDeltaRef` frame deduplication and synchronous gesture tracking to eliminate dropped frames and redundant render passes.
+
+2. **Hardware-Accelerated Neon Laser Pointer, Canvas Double-Click Text & Minimalist Typography**:
    - Replaced laggy SVG-filter laser with a dedicated 120 FPS high-DPI HTML5 canvas overlay ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)). Features quadratic spline smoothing, multi-layer glow (ambient neon aura, vivid crimson core, white-hot center flare), and cinematic laser dot beacon.
    - Updated canvas background double-click in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) to insert clean text nodes with immediate focus and editing.
    - Refined text nodes to look ultra-minimal: eliminated card `shadow-2xl`, added delicate selection bounds, subtle hover indicators, auto-sizing width/height, and automatic empty text node pruning on blur/cancel.
