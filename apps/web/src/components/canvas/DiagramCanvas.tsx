@@ -652,6 +652,7 @@ export function DiagramCanvas({
               onChange={handleCanvasChange}
               edgeRouting={edgeRouting}
               onEdgeRoutingChange={setEdgeRouting}
+              rightOffset={panelMode === 'mermaid' || panelMode === 'ai' ? 384 : 0}
               collaborators={collaborators}
               currentUserId={currentUser?.id}
               onCursorMove={handleCursorMove}

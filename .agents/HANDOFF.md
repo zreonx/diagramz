@@ -20,9 +20,6 @@
 
 ## 2. Recently Completed Work
 
-3. **Inspector Style Panel Alignment with AI Assistant / Drawers**:
-   - Fixed redundant `rightOffset` in [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) that pushed the inspector panel into the center of the canvas whenever the AI Assistant drawer opened.
-
 1. **Custom User Assets, Icons & Images Engine**:
    - Added native node type `'image'` in [schema.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts) with aspect-ratio preservation (`holdsAspect`), SVG export in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts), and inline label double-click editing.
    - Built `custom-assets.ts` with localStorage persistence, automatic downscaling via offscreen canvas, and SVG vector parsing.
