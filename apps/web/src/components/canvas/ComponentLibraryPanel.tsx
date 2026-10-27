@@ -400,13 +400,144 @@ export interface ComponentLibraryPanelProps {
   onClose?: () => void;
 }
 
+function StandardShapePreview({ type }: { type: string }) {
+  switch (type) {
+    case 'sticky-note':
+      return (
+        <div className="w-5 h-5 rounded-xs bg-yellow-300/80 border border-yellow-400 relative overflow-hidden shadow-2xs">
+          <div className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b-2 border-r-2 border-yellow-500 bg-yellow-400" />
+        </div>
+      );
+    case 'rectangle':
+      return <div className="w-5 h-4 rounded-sm border-2 border-primary bg-primary/15" />;
+    case 'rounded-rectangle':
+      return <div className="w-5 h-4 rounded-md border-2 border-primary bg-primary/15" />;
+    case 'circle':
+      return <div className="w-5 h-5 rounded-full border-2 border-primary bg-primary/15" />;
+    case 'diamond':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-amber-500 fill-amber-500/15 stroke-2">
+          <polygon points="12,2 22,12 12,22 2,12" />
+        </svg>
+      );
+    case 'triangle':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-emerald-500 fill-emerald-500/15 stroke-2">
+          <polygon points="12,3 22,21 2,21" />
+        </svg>
+      );
+    case 'cylinder':
+      return (
+        <svg viewBox="0 0 100 110" className="w-5 h-5 stroke-teal-500 fill-teal-500/15 stroke-2">
+          <path d="M 10 24 L 10 86 A 40 16 0 0 0 90 86 L 90 24 A 40 16 0 0 0 10 24 Z" />
+          <ellipse cx="50" cy="24" rx="40" ry="16" fill="none" />
+        </svg>
+      );
+    case 'cloud':
+      return (
+        <svg viewBox="0 0 120 80" className="w-6 h-5 stroke-sky-500 fill-sky-500/15 stroke-2">
+          <path d="M 28 66 C 10 66 2 52 8 36 C 4 20 18 6 34 12 C 44 2 64 2 72 14 C 88 8 100 24 95 40 C 102 54 90 68 76 66 C 62 76 42 76 28 66 Z" />
+        </svg>
+      );
+    case 'actor':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-primary fill-none stroke-2 stroke-linecap-round stroke-linejoin-round">
+          <circle cx="12" cy="5" r="3" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="6" y1="11" x2="18" y2="11" />
+          <line x1="12" y1="16" x2="7" y2="22" />
+          <line x1="12" y1="16" x2="17" y2="22" />
+        </svg>
+      );
+    case 'cube':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-indigo-500 fill-indigo-500/15 stroke-1.75 stroke-linejoin-round">
+          <path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z" />
+          <path d="M12 12 L12 22 M12 12 L21 7 M12 12 L3 7" fill="none" />
+        </svg>
+      );
+    case 'callout':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-amber-500 fill-amber-500/15 stroke-1.75 stroke-linejoin-round">
+          <path d="M3 4 h18 a2 2 0 0 1 2 2 v9 a2 2 0 0 1-2 2 h-9 l-5 4 v-4 h-4 a2 2 0 0 1-2-2 v-9 a2 2 0 0 1 2-2 z" />
+        </svg>
+      );
+    case 'star':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-amber-500 fill-amber-500/20 stroke-1.75 stroke-linejoin-round">
+          <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+        </svg>
+      );
+    case 'document':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-amber-500 fill-amber-500/15 stroke-1.75 stroke-linejoin-round">
+          <path d="M3 3 h18 v14 q-4.5 3 -9 0 q-4.5 -3 -9 0 z" />
+        </svg>
+      );
+    case 'parallelogram':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-sky-500 fill-sky-500/15 stroke-2">
+          <polygon points="6,4 22,4 18,20 2,20" />
+        </svg>
+      );
+    case 'hexagon':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-violet-500 fill-violet-500/15 stroke-2">
+          <polygon points="6,4 18,4 22,12 18,20 6,20 2,12" />
+        </svg>
+      );
+    case 'subroutine':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-teal-500 fill-teal-500/15 stroke-1.75">
+          <rect x="2" y="4" width="20" height="16" rx="1" />
+          <line x1="6" y1="4" x2="6" y2="20" />
+          <line x1="18" y1="4" x2="18" y2="20" />
+        </svg>
+      );
+    case 'step':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-emerald-500 fill-emerald-500/15 stroke-2 stroke-linejoin-round">
+          <polygon points="2,4 18,4 22,12 18,20 2,20 6,12" />
+        </svg>
+      );
+    case 'trapezoid':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-violet-500 fill-violet-500/15 stroke-2">
+          <polygon points="6,5 18,5 22,19 2,19" />
+        </svg>
+      );
+    case 'internal-storage':
+      return (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-teal-500 fill-teal-500/15 stroke-1.75">
+          <rect x="2" y="4" width="20" height="16" />
+          <line x1="2" y1="9" x2="22" y2="9" />
+          <line x1="7" y1="4" x2="7" y2="20" />
+        </svg>
+      );
+    case 'table':
+      return (
+        <div className="w-6 h-5 rounded-sm border border-teal-500 overflow-hidden bg-teal-500/10 flex flex-col">
+          <div className="h-1.5 bg-teal-500/35 border-b border-teal-500 shrink-0" />
+        </div>
+      );
+    case 'container':
+      return (
+        <div className="w-6 h-5 rounded-sm border border-dashed border-primary/70 bg-primary/5 flex flex-col overflow-hidden">
+          <div className="h-1.5 bg-primary/25 border-b border-primary/50 shrink-0" />
+        </div>
+      );
+    default:
+      return <div className="w-5 h-4 rounded-sm border-2 border-primary bg-primary/15" />;
+  }
+}
+
 export function ComponentLibraryPanel({
   onInsertItem,
   onClose,
 }: ComponentLibraryPanelProps) {
   const { isDark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'essential' | 'cloud' | 'drawio' | 'patterns'>('essential');
+  const [activeTab, setActiveTab] = useState<'shapes' | 'cloud' | 'essential' | 'drawio' | 'patterns'>('shapes');
   const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'k8s' | 'gcp' | 'azure'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -424,6 +555,9 @@ export function ComponentLibraryPanel({
     'Cloud Providers & Infra Logos': true,
     'Databases & Storage Logos': true,
     'Standard Shapes': true,
+    'General Shapes': true,
+    'Flowchart Shapes': true,
+    'Containers & Tables': true,
     'Networking & Ingress': true,
     'Security & Specs': true,
     'Cloud & Edge Services': true,
@@ -493,9 +627,19 @@ export function ComponentLibraryPanel({
       (s) =>
         s.title.toLowerCase().includes(q) ||
         s.type.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q)
+        s.description.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q)
     );
   }, [searchQuery]);
+
+  const standardShapeCategories = useMemo(() => {
+    const groups: Record<string, StandardDrawioShapeDef[]> = {};
+    for (const item of filteredStandardShapes) {
+      if (!groups[item.category]) groups[item.category] = [];
+      groups[item.category].push(item);
+    }
+    return groups;
+  }, [filteredStandardShapes]);
 
   const filteredPatterns = useMemo(() => {
     if (!searchQuery.trim()) return BUILTIN_ARCHITECTURE_PATTERNS;
@@ -547,6 +691,7 @@ export function ComponentLibraryPanel({
     writeDragItem(e.dataTransfer, {
       kind: 'stencil',
       stencilId: item.id,
+      title: item.title,
       category: item.category,
       accentColor: item.accentColor,
       width: item.width,
@@ -558,6 +703,7 @@ export function ComponentLibraryPanel({
     writeDragItem(e.dataTransfer, {
       kind: 'stencil',
       stencilId: item.id,
+      title: item.title,
       category: item.category,
       accentColor: item.accentColor,
       width: item.defaultWidth,
@@ -622,58 +768,71 @@ export function ComponentLibraryPanel({
         )}
       </div>
 
-      {/* Tabs Selector: Architecture (Clean Vector) vs AWS vs Tech Logos vs Flows */}
+      {/* Tabs Selector: Shapes (Draw.io) vs Cloud / AWS vs Architecture vs Tech Logos vs Flows */}
       <div className="p-2 border-b border-border bg-muted/20">
-        <div className="flex p-0.5 rounded-lg bg-muted/50 border border-border/50 text-xs">
+        <div className="flex p-0.5 rounded-lg bg-muted/50 border border-border/50 text-xs gap-0.5">
           <button
             type="button"
-            onClick={() => setActiveTab('essential')}
+            onClick={() => setActiveTab('shapes')}
             className={cn(
-              'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
-              activeTab === 'essential'
-                ? 'bg-background text-foreground shadow-xs'
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
+              activeTab === 'shapes'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Clean Vector Software Architecture Components"
+            title="Standard Draw.io Shapes & Flowchart Primitives"
           >
-            Architecture
+            Shapes
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('cloud')}
             className={cn(
-              'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
               activeTab === 'cloud'
-                ? 'bg-background text-[#326CE5] dark:text-[#38BDF8] font-semibold shadow-xs'
+                ? 'bg-background text-[#FF9900] dark:text-[#FFA500] font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Cloud & Kubernetes Architecture Icons (AWS, K8s, GCP, Azure)"
+            title="Official Cloud Architecture Icons (AWS, K8s, GCP, Azure)"
           >
-            Cloud / K8s
+            Cloud/AWS
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('essential')}
+            className={cn(
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
+              activeTab === 'essential'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="Clean Vector Architecture Stencils"
+          >
+            Architecture
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('drawio')}
             className={cn(
-              'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
               activeTab === 'drawio'
-                ? 'bg-background text-foreground shadow-xs'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Clean Draw.io Tech Logos"
+            title="Tech Brands, Databases & Framework Logos"
           >
-            Tech Logos
+            Logos
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('patterns')}
             className={cn(
-              'flex-1 py-1 px-1 rounded-md font-medium text-[10.5px] transition-all text-center truncate',
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
               activeTab === 'patterns'
-                ? 'bg-background text-foreground shadow-xs'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Pre-built Architecture Flow Templates"
+            title="Pre-built Architecture Patterns"
           >
             Flows
           </button>
@@ -695,6 +854,74 @@ export function ComponentLibraryPanel({
 
       {/* List Categories */}
       <div className="flex-1 eraser-doc-scroll overflow-y-auto p-2.5 space-y-4">
+        {/* ─── TAB 0: DRAW.IO STANDARD SHAPES & FLOWCHART PRIMITIVES ─── */}
+        {activeTab === 'shapes' && (
+          <div className="space-y-4">
+            {Object.entries(standardShapeCategories).map(([category, items]) => {
+              const isOpen = openSections[category] !== false;
+
+              return (
+                <div key={category} className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(category)}
+                    className="w-full flex items-center justify-between px-1.5 py-1 text-[11px] font-semibold text-foreground hover:text-primary transition-colors group"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{category}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-primary/10 text-primary font-mono shrink-0">
+                        {items.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-muted-foreground shrink-0">
+                      {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      {items.map((shape) => (
+                        <div
+                          key={shape.id}
+                          draggable
+                          onDragStart={(e) => handleDragStandardShape(e, shape)}
+                          onClick={() =>
+                            onInsertItem?.({
+                              kind: 'tool',
+                              tool: shape.type,
+                              width: shape.width,
+                              height: shape.height,
+                            })
+                          }
+                          className={cn(
+                            'group flex flex-col justify-between p-2 rounded-xl border border-border/70 bg-background/60',
+                            'hover:bg-accent/40 hover:border-primary/50 cursor-grab active:cursor-grabbing hover:shadow-xs transition-all text-left'
+                          )}
+                          title={`Click or drag "${shape.title}" onto canvas`}
+                        >
+                          <div className="flex items-start justify-between gap-1 mb-1.5 w-full pointer-events-none">
+                            <div className="w-8 h-8 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-center p-1">
+                              <StandardShapePreview type={shape.type} />
+                            </div>
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-muted/80 text-muted-foreground font-mono">
+                              {shape.category === 'Containers & Tables' ? 'Frame' : 'Shape'}
+                            </span>
+                          </div>
+                          <div className="min-w-0 w-full">
+                            <span className="text-[11px] font-semibold text-foreground truncate block group-hover:text-primary transition-colors">
+                              {shape.title}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ─── TAB 1: ESSENTIAL SOFTWARE ARCHITECTURE (CLEAN VECTOR) ─── */}
         {activeTab === 'essential' && (
           <>
@@ -731,6 +958,7 @@ export function ComponentLibraryPanel({
                             onInsertItem?.({
                               kind: 'stencil',
                               stencilId: item.id,
+                              title: item.title,
                               category: item.category,
                               accentColor: item.accentColor,
                               width: item.width,
@@ -800,6 +1028,7 @@ export function ComponentLibraryPanel({
                             onInsertItem?.({
                               kind: 'stencil',
                               stencilId: item.id,
+                              title: item.title,
                               category: item.category,
                               accentColor: item.accentColor,
                               width: item.defaultWidth,
@@ -1031,6 +1260,7 @@ export function ComponentLibraryPanel({
                     onInsertItem?.({
                       kind: 'stencil',
                       stencilId: item.id,
+                      title: item.title,
                       category: item.category,
                       accentColor: item.accentColor,
                       width: item.defaultWidth,
@@ -1193,6 +1423,7 @@ export function ComponentLibraryPanel({
                             onInsertItem?.({
                               kind: 'stencil',
                               stencilId: item.id,
+                              title: item.title,
                               category: item.category,
                               accentColor: item.accentColor,
                               width: item.defaultWidth,

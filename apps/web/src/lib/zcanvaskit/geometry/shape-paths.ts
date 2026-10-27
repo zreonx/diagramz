@@ -171,3 +171,214 @@ export function getSubroutinePaths(
 
   return { outerPath, leftLinePath, rightLinePath };
 }
+
+/**
+ * Generates an SVG path for a Draw.io Rounded Rectangle shape.
+ */
+export function getRoundedRectPath(
+  width: number,
+  height: number,
+  radius = 12,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(10, width - inset * 2);
+  const h = Math.max(10, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const r = Math.min(radius, w / 2, h / 2);
+
+  return (
+    `M ${x + r} ${y} ` +
+    `H ${x + w - r} ` +
+    `A ${r} ${r} 0 0 1 ${x + w} ${y + r} ` +
+    `V ${y + h - r} ` +
+    `A ${r} ${r} 0 0 1 ${x + w - r} ${y + h} ` +
+    `H ${x + r} ` +
+    `A ${r} ${r} 0 0 1 ${x} ${y + h - r} ` +
+    `V ${y + r} ` +
+    `A ${r} ${r} 0 0 1 ${x + r} ${y} Z`
+  );
+}
+
+export interface ActorPaths {
+  head: { cx: number; cy: number; r: number };
+  bodyPath: string;
+}
+
+/**
+ * Generates SVG paths for a standard Draw.io / UML Actor stick figure.
+ */
+export function getActorPaths(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): ActorPaths {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const cx = x + w / 2;
+  const headR = Math.min(w * 0.22, h * 0.16, 18);
+  const headCy = y + headR;
+  const neckY = headCy + headR;
+  const crotchY = y + h * 0.62;
+  const feetY = y + h;
+  const leftX = x + w * 0.2;
+  const rightX = x + w * 0.8;
+  const armY = y + h * 0.36;
+
+  const bodyPath = `M ${cx} ${neckY} V ${crotchY} L ${leftX} ${feetY} M ${cx} ${crotchY} L ${rightX} ${feetY} M ${leftX} ${armY} H ${rightX}`;
+
+  return { head: { cx, cy: headCy, r: headR }, bodyPath };
+}
+
+export interface CubePaths {
+  outerPath: string;
+  innerPaths: string;
+}
+
+/**
+ * Generates SVG paths for a Draw.io 3D Isometric Cube shape.
+ */
+export function getCubePaths(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): CubePaths {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const cx = x + w / 2;
+  const dy = h * 0.25;
+  const midY = y + h * 0.5;
+
+  const outerPath = `M ${cx} ${y} L ${x + w} ${y + dy} L ${x + w} ${y + h - dy} L ${cx} ${y + h} L ${x} ${y + h - dy} L ${x} ${y + dy} Z`;
+  const innerPaths = `M ${cx} ${midY} L ${cx} ${y + h} M ${cx} ${midY} L ${x + w} ${y + dy} M ${cx} ${midY} L ${x} ${y + dy}`;
+
+  return { outerPath, innerPaths };
+}
+
+/**
+ * Generates an SVG path for a Draw.io Step / Chevron Process Arrow box shape.
+ */
+export function getStepPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const indent = Math.min(w * 0.18, 24);
+
+  return `M ${x} ${y} H ${x + w - indent} L ${x + w} ${y + h / 2} L ${x + w - indent} ${y + h} H ${x} L ${x + indent} ${y + h / 2} Z`;
+}
+
+/**
+ * Generates an SVG path for a Draw.io Callout / Speech bubble annotation shape.
+ */
+export function getCalloutPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const r = Math.min(10, w * 0.08, h * 0.08);
+  const tailH = Math.min(h * 0.22, 20);
+  const boxH = h - tailH;
+
+  return (
+    `M ${x + r} ${y} ` +
+    `H ${x + w - r} ` +
+    `A ${r} ${r} 0 0 1 ${x + w} ${y + r} ` +
+    `V ${y + boxH - r} ` +
+    `A ${r} ${r} 0 0 1 ${x + w - r} ${y + boxH} ` +
+    `H ${x + w * 0.4} ` +
+    `L ${x + w * 0.18} ${y + h} ` +
+    `L ${x + w * 0.24} ${y + boxH} ` +
+    `H ${x + r} ` +
+    `A ${r} ${r} 0 0 1 ${x} ${y + boxH - r} ` +
+    `V ${y + r} ` +
+    `A ${r} ${r} 0 0 1 ${x + r} ${y} Z`
+  );
+}
+
+/**
+ * Generates an SVG path for a Draw.io Flowchart manual operation trapezoid.
+ */
+export function getTrapezoidPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const slant = Math.min(w * 0.18, 24);
+
+  return `M ${x + slant} ${y} H ${x + w - slant} L ${x + w} ${y + h} H ${x} Z`;
+}
+
+export interface InternalStoragePaths {
+  outerPath: string;
+  headerLine: string;
+  sideLine: string;
+}
+
+/**
+ * Generates SVG paths for a Draw.io Flowchart Internal Storage shape.
+ */
+export function getInternalStoragePaths(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): InternalStoragePaths {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const offsetY = Math.min(h * 0.25, 20);
+  const offsetX = Math.min(w * 0.2, 22);
+
+  const outerPath = `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+  const headerLine = `M ${x} ${y + offsetY} H ${x + w}`;
+  const sideLine = `M ${x + offsetX} ${y} V ${y + h}`;
+
+  return { outerPath, headerLine, sideLine };
+}
+
+/**
+ * Generates an SVG path for a standard Draw.io 5-point Star shape.
+ */
+export function getStarPath(
+  width: number,
+  height: number,
+  inset = SHAPE_INSET
+): string {
+  const w = Math.max(20, width - inset * 2);
+  const h = Math.max(20, height - inset * 2);
+  const x = inset;
+  const y = inset;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const outerR = Math.min(w, h) / 2;
+  const innerR = outerR * 0.42;
+
+  const points: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    const r = i % 2 === 0 ? outerR : innerR;
+    points.push({
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+    });
+  }
+
+  return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ') + ' Z';
+}

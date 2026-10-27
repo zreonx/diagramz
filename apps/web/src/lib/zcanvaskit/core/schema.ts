@@ -53,6 +53,22 @@ export const ZCanvasNodeTypeSchema = z.enum([
   'hexagon',
   /** Draw.io Predefined Process / Subroutine shape with double side lines. */
   'subroutine',
+  /** Draw.io Rounded Rectangle shape with smooth corners. */
+  'rounded-rectangle',
+  /** Draw.io UML Actor / Person stick figure shape. */
+  'actor',
+  /** Draw.io 3D Isometric Cube / Box shape. */
+  'cube',
+  /** Draw.io Step / Chevron process arrow box shape. */
+  'step',
+  /** Draw.io Callout / Speech bubble annotation shape. */
+  'callout',
+  /** Draw.io Flowchart manual operation trapezoid shape. */
+  'trapezoid',
+  /** Draw.io Flowchart internal storage shape with top and left divider lines. */
+  'internal-storage',
+  /** Draw.io 5-point Star badge / milestone shape. */
+  'star',
   /** Rich vector SVG stencil (e.g. Draw.io tech component or vector library item). */
   'svg',
 ]);

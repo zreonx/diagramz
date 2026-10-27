@@ -159,7 +159,7 @@ test('the authored width and height do not change what a stencil draws', () => {
 });
 
 test('every tech logo is registered with its own brand colour and grid', () => {
-  assert.equal(TECH_ICON_STENCILS.length, 100);
+  assert.equal(TECH_ICON_STENCILS.length, 125);
 
   for (const stencil of TECH_ICON_STENCILS) {
     assert.match(stencil.id, /^tech-/, `${stencil.id} is not namespaced`);
@@ -198,8 +198,8 @@ test('the two stencil families share no ids', () => {
 });
 
 test('the built-in registry holds both families', () => {
-  assert.equal(BUILTIN_STENCILS.length, 152, '52 architecture stencils plus 100 tech/cloud logos');
-  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 152);
+  assert.equal(BUILTIN_STENCILS.length, 177, '52 architecture stencils plus 125 tech/cloud logos');
+  assert.equal(BUILTIN_STENCIL_REGISTRY.list().length, 177);
 });
 
 test('aws architecture stencils and aliases resolve correctly', () => {

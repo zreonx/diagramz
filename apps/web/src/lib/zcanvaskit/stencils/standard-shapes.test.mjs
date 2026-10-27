@@ -125,6 +125,16 @@ test('standard flowchart process shapes drop with proper geometries', () => {
     'shape-parallelogram',
     'shape-hexagon',
     'shape-subroutine',
+    'shape-rounded-rect',
+    'shape-diamond',
+    'shape-triangle',
+    'shape-actor',
+    'shape-cube',
+    'shape-step',
+    'shape-callout',
+    'shape-trapezoid',
+    'shape-internal-storage',
+    'shape-star',
   ]) {
     const def = tile(id);
     assert.ok(def, `${id} should exist`);

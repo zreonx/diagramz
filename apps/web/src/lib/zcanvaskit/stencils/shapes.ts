@@ -1,19 +1,27 @@
 import {
+  getActorPaths,
+  getCalloutPath,
   getCloudPath,
+  getCubePaths,
   getCylinderPaths,
   getDocumentPath,
   getHexagonPath,
+  getInternalStoragePaths,
   getParallelogramPath,
+  getRoundedRectPath,
+  getStarPath,
+  getStepPath,
   getSubroutinePaths,
+  getTrapezoidPath,
 } from '../geometry/shape-paths';
 import { formatNumber } from './xml';
 
 /**
- * Node markup for the two shapes the engine draws parametrically rather than as
- * fixed artwork: the storage cylinder and the cloud.
+ * Node markup for the shapes the engine draws parametrically rather than as
+ * fixed artwork: cylinder, cloud, and standard draw.io shapes.
  *
  * These deliberately are *not* registry stencils. A stencil is artwork authored
- * in a fixed coordinate space and scaled into a node box; these two are
+ * in a fixed coordinate space and scaled into a node box; these are
  * generated from the box itself — a wider cylinder is a different shape, not a
  * stretched one — so a single `viewBox` on a definition would be a lie. What
  * they share with the stencils is the reason they exist: one piece of code that
@@ -51,10 +59,6 @@ const ROUND_JOIN = 'stroke-linejoin="round" stroke-linecap="round"';
 
 /**
  * The drum, drawn as a body plus a separate full ellipse for the rim.
- *
- * The rim is a complete ellipse rather than an arc so the opening reads as a
- * cross-section of a solid — which is the whole point of using a cylinder for
- * storage in the first place.
  */
 export function renderCylinderMarkup(options: ShapeNodeOptions): string {
   const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
@@ -122,6 +126,101 @@ export function renderSubroutineMarkup(options: ShapeNodeOptions): string {
     <path d="${outerPath}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
     <path d="${leftLinePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
     <path d="${rightLinePath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io Rounded Rectangle shape. */
+export function renderRoundedRectMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getRoundedRectPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io / UML Actor stick figure shape. */
+export function renderActorMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+  const { head, bodyPath } = getActorPaths(width, height);
+
+  return `
+    <circle cx="${formatNumber(head.cx)}" cy="${formatNumber(head.cy)}" r="${formatNumber(head.r)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
+    <path d="${bodyPath}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height - 4)}" fill="${labelColor}" font-size="11" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io 3D Isometric Cube shape. */
+export function renderCubeMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+  const { outerPath, innerPaths } = getCubePaths(width, height);
+
+  return `
+    <path d="${outerPath}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <path d="${innerPaths}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} stroke-linejoin="round" />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io Step / Chevron Process Arrow box shape. */
+export function renderStepMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getStepPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io Callout / Speech bubble annotation shape. */
+export function renderCalloutMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getCalloutPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height * 0.42)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io Flowchart manual operation trapezoid shape. */
+export function renderTrapezoidMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getTrapezoidPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io Flowchart internal storage shape. */
+export function renderInternalStorageMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+  const { outerPath, headerLine, sideLine } = getInternalStoragePaths(width, height);
+
+  return `
+    <path d="${outerPath}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
+    <path d="${headerLine}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
+    <path d="${sideLine}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} />
+    <text x="${formatNumber(width / 2 + 10)}" y="${formatNumber(height / 2 + 8)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
+  `;
+}
+
+/** The Draw.io 5-point Star shape. */
+export function renderStarMarkup(options: ShapeNodeOptions): string {
+  const { width, height, fillAttr, stroke, strokeWidth, dashAttr, labelColor, label } =
+    options;
+
+  return `
+    <path d="${getStarPath(width, height)}" ${fillAttr} stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr} ${ROUND_JOIN} />
     <text x="${formatNumber(width / 2)}" y="${formatNumber(height / 2 + 5)}" fill="${labelColor}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${label}</text>
   `;
 }

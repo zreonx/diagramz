@@ -4,6 +4,29 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-27] — Draw.io Standard Shapes Suite & Expanded Official Cloud / AWS Stencils
+
+### Added
+- **Draw.io Standard Shapes & Flowchart Suite** ([schema.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [standard-shapes.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/standard-shapes.ts), [shape-paths.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/geometry/shape-paths.ts), [shapes.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/shapes.ts), [ZCanvasShapeGeometry.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasShapeGeometry.tsx), [ComponentLibraryPanel.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx)):
+  - Added full native canvas support for Draw.io standard shapes across general and flowchart diagrams:
+    - **General Draw.io Shapes**: Sticky Note, Server Box (Rectangle), Rounded Rectangle (`rounded-rectangle`), Process Ellipse / Circle (`circle`), Decision Diamond (`diamond`), Triangle (`triangle`), Database Drum (`cylinder`), Cloud Perimeter (`cloud`), UML Actor / User stick figure (`actor`), 3D Isometric Cube (`cube`), Speech Callout bubble (`callout`), 5-Point Star badge (`star`).
+    - **Flowchart Shapes**: Process Document wavy bottom (`document`), Data I/O parallelogram (`parallelogram`), Preparation hexagon (`hexagon`), Predefined Subroutine (`subroutine`), Step / Chevron pipeline arrow (`step`), Manual Operation trapezoid (`trapezoid`), Internal Storage divider (`internal-storage`).
+    - **Containers & Tables**: Database Table with editable schema columns (`table`), VPC Container boundary (`container`).
+  - Implemented exact parametric SVG path math in `shape-paths.ts` and presentation markup generators in `shapes.ts`.
+  - Added dedicated interactive vector icon preview tiles in `ComponentLibraryPanel.tsx` for every single shape.
+  - Full SVG/PNG/PDF vector export parity in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts) with multi-line `<tspan>` formatting and theme token resolving.
+- **Expanded Official Cloud & AWS Stencils Suite (25 New Stencils, 125 Total)** ([tech-icons.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/tech-icons.ts), [builtin.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/builtin.ts)):
+  - **AWS (Amazon Web Services)**: Added 14 new official AWS service icons with exact 24×24 paths and brand hex colors (total 55 AWS stencils):
+    - Amazon S3 Glacier (`tech-aws-glacier`), AWS Direct Connect (`tech-aws-directconnect`), AWS Transit Gateway (`tech-aws-transitgateway`), AWS PrivateLink (`tech-aws-privatelink`), AWS CloudFormation (`tech-aws-cloudformation`), AWS Security Hub (`tech-aws-securityhub`), Amazon GuardDuty (`tech-aws-guardduty`), Amazon DocumentDB (`tech-aws-documentdb`), Amazon Neptune (`tech-aws-neptune`), Amazon Timestream (`tech-aws-timestream`), Amazon QuickSight (`tech-aws-quicksight`), Amazon EMR (`tech-aws-emr`), AWS Batch (`tech-aws-batch`), AWS Certificate Manager ACM (`tech-aws-acm`).
+  - **Kubernetes (K8s)**: Added K8s StatefulSet (`tech-k8s-statefulset`), K8s DaemonSet (`tech-k8s-daemonset`), and K8s Persistent Volume Claim (`tech-k8s-pvc`) (total 12 K8s stencils).
+  - **Google Cloud (GCP)**: Added Cloud SQL (`tech-gcp-cloudsql`), Cloud Firestore (`tech-gcp-firestore`), Cloud Load Balancing (`tech-gcp-loadbalancing`), and Cloud IAM (`tech-gcp-iam`) (total 13 GCP stencils).
+  - **Microsoft Azure**: Added Azure SQL Database (`tech-azure-sqldatabase`), Azure App Service (`tech-azure-appservice`), Azure Application Gateway (`tech-azure-appgateway`), and Azure Service Bus (`tech-azure-servicebus`) (total 13 Azure stencils).
+- **Dedicated Shapes & Cloud / AWS Library Tabs** ([ComponentLibraryPanel.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx)):
+  - Re-architected tab hierarchy with dedicated **Shapes** tab for Draw.io general & flowchart shapes, and a **Cloud / AWS** tab with instant filter chips (`All Cloud`, `AWS`, `K8s`, `GCP`, `Azure`).
+  - Added official service titles to drag payloads and click-to-insert actions so placed cloud stencils immediately land with their recognizable names beneath the icons, editable via inline double-click.
+
+---
+
 ## [2026-10-26] — Hardware-Accelerated Aesthetic Presentation Laser Pointer, Double-Click Text Insertion & Minimalist Canvas Typography
 
 ### Fixed

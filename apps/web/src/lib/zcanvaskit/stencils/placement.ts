@@ -32,6 +32,14 @@ export const SHAPE_DEFAULTS: Record<ZCanvasShapeTool, { width: number; height: n
   parallelogram: { width: 150, height: 80 },
   hexagon: { width: 140, height: 80 },
   subroutine: { width: 150, height: 80 },
+  'rounded-rectangle': { width: 160, height: 80 },
+  actor: { width: 90, height: 130 },
+  cube: { width: 120, height: 120 },
+  step: { width: 160, height: 80 },
+  callout: { width: 160, height: 100 },
+  trapezoid: { width: 150, height: 80 },
+  'internal-storage': { width: 150, height: 80 },
+  star: { width: 110, height: 110 },
 };
 
 /**

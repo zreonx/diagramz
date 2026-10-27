@@ -238,7 +238,15 @@ export function isSvgShapeType(
     type === 'document' ||
     type === 'parallelogram' ||
     type === 'hexagon' ||
-    type === 'subroutine'
+    type === 'subroutine' ||
+    type === 'rounded-rectangle' ||
+    type === 'actor' ||
+    type === 'cube' ||
+    type === 'step' ||
+    type === 'callout' ||
+    type === 'trapezoid' ||
+    type === 'internal-storage' ||
+    type === 'star'
   );
 }
 

@@ -34,6 +34,14 @@ import {
   renderHexagonMarkup,
   renderParallelogramMarkup,
   renderSubroutineMarkup,
+  renderRoundedRectMarkup,
+  renderActorMarkup,
+  renderCubeMarkup,
+  renderStepMarkup,
+  renderCalloutMarkup,
+  renderTrapezoidMarkup,
+  renderInternalStorageMarkup,
+  renderStarMarkup,
 } from '../stencils/shapes';
 import { BUILTIN_STENCIL_REGISTRY } from '../stencils/builtin';
 import { escapeAttr, escapeXml, formatNumber, normalizeStencilColor } from '../stencils/xml';
@@ -768,6 +776,150 @@ export function exportDocumentToSvg(
           strokeWidth: n.strokeWidth || 2,
           dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
           labelColor: nodeDefaultTokens('subroutine', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'rounded-rectangle') {
+        const geomSvg = renderRoundedRectMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'rounded-rectangle', isDark),
+          stroke: strokeAttr(n, 'rounded-rectangle', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('rounded-rectangle', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'actor') {
+        const geomSvg = renderActorMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'actor', isDark),
+          stroke: strokeAttr(n, 'actor', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('actor', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height - 4),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'cube') {
+        const geomSvg = renderCubeMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'cube', isDark),
+          stroke: strokeAttr(n, 'cube', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('cube', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'step') {
+        const geomSvg = renderStepMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'step', isDark),
+          stroke: strokeAttr(n, 'step', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('step', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'callout') {
+        const geomSvg = renderCalloutMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'callout', isDark),
+          stroke: strokeAttr(n, 'callout', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('callout', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height * 0.42),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'trapezoid') {
+        const geomSvg = renderTrapezoidMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'trapezoid', isDark),
+          stroke: strokeAttr(n, 'trapezoid', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('trapezoid', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'internal-storage') {
+        const geomSvg = renderInternalStorageMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'internal-storage', isDark),
+          stroke: strokeAttr(n, 'internal-storage', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('internal-storage', isDark).text,
+          label: renderSvgTspans(n.title, n.width / 2 + 10, n.height / 2 + 8),
+        });
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            ${geomSvg}
+          </g>
+        `;
+      }
+      if (n.type === 'star') {
+        const geomSvg = renderStarMarkup({
+          width: n.width,
+          height: n.height,
+          isDark,
+          fillAttr: fillAttr(n, 'star', isDark),
+          stroke: strokeAttr(n, 'star', isDark),
+          strokeWidth: n.strokeWidth || 2,
+          dashAttr: dashAttr(n.strokeStyle, n.strokeWidth),
+          labelColor: nodeDefaultTokens('star', isDark).text,
           label: renderSvgTspans(n.title, n.width / 2, n.height / 2 + 5),
         });
         return `

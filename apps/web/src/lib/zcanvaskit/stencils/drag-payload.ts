@@ -65,6 +65,14 @@ export const SHAPE_TOOLS = [
   'parallelogram',
   'hexagon',
   'subroutine',
+  'rounded-rectangle',
+  'actor',
+  'cube',
+  'step',
+  'callout',
+  'trapezoid',
+  'internal-storage',
+  'star',
 ] as const;
 
 export type ZCanvasShapeTool = (typeof SHAPE_TOOLS)[number];

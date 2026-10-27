@@ -18,12 +18,20 @@ import {
   getSketchTrianglePath,
 } from '../rendering/sketch/rough-svg';
 import {
+  getActorPaths,
+  getCalloutPath,
   getCloudPath,
+  getCubePaths,
   getCylinderPaths,
   getDocumentPath,
   getHexagonPath,
+  getInternalStoragePaths,
   getParallelogramPath,
+  getRoundedRectPath,
+  getStarPath,
+  getStepPath,
   getSubroutinePaths,
+  getTrapezoidPath,
 } from '../geometry/shape-paths';
 import { SHAPE_INSET } from '../rendering/shapes/polygon';
 
@@ -37,7 +45,15 @@ export type ZCanvasSvgShapeType =
   | 'document'
   | 'parallelogram'
   | 'hexagon'
-  | 'subroutine';
+  | 'subroutine'
+  | 'rounded-rectangle'
+  | 'actor'
+  | 'cube'
+  | 'step'
+  | 'callout'
+  | 'trapezoid'
+  | 'internal-storage'
+  | 'star';
 
 /**
  * Border + fill geometry for the SVG-backed geometric shapes.
@@ -197,6 +213,113 @@ export function ZCanvasShapeGeometry({
         </g>
       );
     }
+
+    case 'rounded-rectangle':
+      return (
+        <path
+          d={getRoundedRectPath(node.width, node.height, 12, inset)}
+          {...shared}
+        />
+      );
+
+    case 'actor': {
+      const { head, bodyPath } = getActorPaths(node.width, node.height, inset);
+      return (
+        <g>
+          <circle
+            cx={head.cx}
+            cy={head.cy}
+            r={head.r}
+            {...shared}
+          />
+          <path
+            d={bodyPath}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </g>
+      );
+    }
+
+    case 'cube': {
+      const { outerPath, innerPaths } = getCubePaths(node.width, node.height, inset);
+      return (
+        <g>
+          <path d={outerPath} {...shared} />
+          <path
+            d={innerPaths}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+            strokeLinejoin="round"
+          />
+        </g>
+      );
+    }
+
+    case 'step':
+      return (
+        <path
+          d={getStepPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'callout':
+      return (
+        <path
+          d={getCalloutPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'trapezoid':
+      return (
+        <path
+          d={getTrapezoidPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
+
+    case 'internal-storage': {
+      const { outerPath, headerLine, sideLine } = getInternalStoragePaths(
+        node.width,
+        node.height,
+        inset
+      );
+      return (
+        <g>
+          <path d={outerPath} {...shared} />
+          <path
+            d={headerLine}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+          />
+          <path
+            d={sideLine}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dash}
+          />
+        </g>
+      );
+    }
+
+    case 'star':
+      return (
+        <path
+          d={getStarPath(node.width, node.height, inset)}
+          {...shared}
+        />
+      );
 
     case 'diamond':
     default:

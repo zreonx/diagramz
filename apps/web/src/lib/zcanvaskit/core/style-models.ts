@@ -225,6 +225,14 @@ export type ZCanvasFillKind =
   | 'parallelogram'
   | 'hexagon'
   | 'subroutine'
+  | 'rounded-rectangle'
+  | 'actor'
+  | 'cube'
+  | 'step'
+  | 'callout'
+  | 'trapezoid'
+  | 'internal-storage'
+  | 'star'
   | 'text'
   | 'svg';
 
@@ -307,6 +315,14 @@ export const NODE_DEFAULT_APPEARANCE: Record<
   parallelogram: { family: 'blue', fillAlpha: 0.5 },
   hexagon: { family: 'violet', fillAlpha: 0.5 },
   subroutine: { family: 'teal', fillAlpha: 0.5 },
+  'rounded-rectangle': { family: 'blue', fillAlpha: 0.5 },
+  actor: { family: 'blue', fillAlpha: 0.5 },
+  cube: { family: 'violet', fillAlpha: 0.5 },
+  step: { family: 'green', fillAlpha: 0.5 },
+  callout: { family: 'amber', fillAlpha: 0.5 },
+  trapezoid: { family: 'violet', fillAlpha: 0.5 },
+  'internal-storage': { family: 'teal', fillAlpha: 0.5 },
+  star: { family: 'amber', fillAlpha: 0.5 },
   text: { family: 'neutral', fillAlpha: 1 },
   svg: { family: 'neutral', fillAlpha: 0 },
 };

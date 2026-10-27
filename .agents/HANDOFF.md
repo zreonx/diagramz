@@ -20,6 +20,11 @@
 
 ## 2. Recently Completed Work
 
+1. **Draw.io Standard Shapes Suite & Expanded Cloud / AWS Stencils**:
+   - Added full Draw.io standard shapes suite across General Shapes (Sticky Note, Rectangle, Rounded Rectangle, Ellipse/Circle, Decision Diamond, Triangle, Database Drum, Cloud, UML Actor stick figure, 3D Cube, Speech Callout, 5-Point Star) and Flowchart Shapes (Process Document, Data I/O, Preparation Hexagon, Subroutine, Step/Chevron, Trapezoid, Internal Storage).
+   - Added 25 new official cloud architecture icons (14 AWS, 3 Kubernetes, 4 GCP, 4 Azure) bringing the cloud & tech catalog to 125 icons.
+   - Restructured ComponentLibraryPanel with dedicated **Shapes** and **Cloud / AWS** tabs, rich SVG icon previews, and title labeling on canvas placement.
+
 1. **Zero-Latency Component Motion & Smooth Dragging**:
    - Fixed sluggish dragging caused by an accidental CSS `transition-all` class that animated component `left` and `top` with a 150ms delay.
    - Enforced `transition: 'none'` and GPU layer promotion (`willChange: 'left, top'`) for instantaneous 120 FPS movement.
