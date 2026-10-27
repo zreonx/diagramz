@@ -20,7 +20,11 @@
 
 ## 2. Recently Completed Work
 
-1. **Custom User Assets, Icons & Images Engine**:
+1. **Inspector Style Panel Alignment with AI Assistant / Drawers**:
+   - Fixed redundant `rightOffset` in [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) that pushed the inspector panel into the center of the canvas whenever the AI Assistant or Mermaid Editor drawer opened.
+   - The drawer already reduces the canvas container width by 384px via flex layout, so removing the manual `rightOffset=384` keeps the inspector neatly docked at `right-4` (16px from the drawer edge).
+
+2. **Custom User Assets, Icons & Images Engine**:
    - Added native node type `'image'` in [schema.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts) with aspect-ratio preservation (`holdsAspect`), SVG export in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts), and inline label double-click editing.
    - Built `custom-assets.ts` with localStorage persistence, automatic downscaling via offscreen canvas, and SVG vector parsing.
    - Built **My Assets** tab in [ComponentLibraryPanel.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx) with dropzone, card grid, deletion, and canvas placement.

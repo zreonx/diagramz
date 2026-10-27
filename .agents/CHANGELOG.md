@@ -23,6 +23,11 @@ All notable architectural changes, features, bug fixes, and deployment milestone
   - Added full SVG export support with `<clipPath>` and `<image>` tags in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts).
 
 ### Fixed
+- **Inspector Style Panel Position When AI Assistant or Drawers Open** ([DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx)):
+  - Fixed an issue where opening the AI Assistant (or Mermaid Editor) drawer pushed the Style Inspector panel into the center/middle of the canvas.
+  - **The Root Cause**: The AI Assistant drawer is an in-flow flex sibling (`w-96`, 384px) in [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx). Opening it naturally contracts the canvas container's flex width by 384px. Passing a redundant `rightOffset=384` into `ZCanvas` caused `ZCanvasStylePanel` to offset an additional 384px inward from the already-shrunk canvas border (`right: 400px`), landing the inspector directly in the horizontal center of the user's viewport.
+  - **The Solution**: Removed `rightOffset` from [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) so the inspector maintains its natural, clean 16px padding (`right-4`) docked immediately adjacent to the AI Assistant drawer.
+
 - **Line & Line Text Selection and Dragging over Background Shapes & Containers** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
   - Fixed an issue where connection lines and line text (labels) could not be selected, edited, or dragged when drawn over background shapes (e.g. rectangles, rounded-rectangles, clouds) or inside containers.
   - **The Root Cause**: HTML nodes layer had `pointer-events-auto` on shape `<div>`s sitting in front of the SVG connector layer in the DOM, intercepting all clicks intended for lines. Furthermore, clicks on the interior of containers fell through to `handleMouseDown` where `boundaryAtPoint` immediately captured and dragged the container before any line hit test could run.
