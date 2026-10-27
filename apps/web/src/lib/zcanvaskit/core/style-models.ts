@@ -234,7 +234,8 @@ export type ZCanvasFillKind =
   | 'internal-storage'
   | 'star'
   | 'text'
-  | 'svg';
+  | 'svg'
+  | 'image';
 
 /** A semantic diagram colour family. */
 export type ZCanvasColorFamily =
@@ -325,6 +326,7 @@ export const NODE_DEFAULT_APPEARANCE: Record<
   star: { family: 'amber', fillAlpha: 0.5 },
   text: { family: 'neutral', fillAlpha: 1 },
   svg: { family: 'neutral', fillAlpha: 0 },
+  image: { family: 'neutral', fillAlpha: 0 },
 };
 
 /** The semantic tokens for a node kind in the current theme. */

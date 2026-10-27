@@ -71,6 +71,8 @@ export const ZCanvasNodeTypeSchema = z.enum([
   'star',
   /** Rich vector SVG stencil (e.g. Draw.io tech component or vector library item). */
   'svg',
+  /** Custom user image or asset (PNG, JPG, SVG, WebP, GIF data URL or external URL). */
+  'image',
 ]);
 export type ZCanvasNodeType = z.infer<typeof ZCanvasNodeTypeSchema>;
 
@@ -198,7 +200,7 @@ export function hasEditableLabel(node: Pick<ZCanvasNode, 'type' | 'title'>): boo
  * thing that is drawn.
  */
 export function holdsAspect(type: ZCanvasNodeType | undefined): boolean {
-  return type === 'svg';
+  return type === 'svg' || type === 'image';
 }
 
 export const ZCanvasEdgeRoutingSchema = z.enum(['bezier', 'step', 'straight']);

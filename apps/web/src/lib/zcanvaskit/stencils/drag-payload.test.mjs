@@ -460,3 +460,17 @@ test('a shape payload carries an optional size and nothing else', () => {
 
   assert.deepEqual(readDragItem(dt), { kind: 'tool', tool: 'circle' });
 });
+
+test('an image payload survives a write and a read', () => {
+  const dt = transfer();
+  const item = {
+    kind: 'image',
+    src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    title: 'Custom Brand Icon',
+    width: 140,
+    height: 140,
+  };
+  writeDragItem(dt, item);
+
+  assert.deepEqual(readDragItem(dt), item);
+});

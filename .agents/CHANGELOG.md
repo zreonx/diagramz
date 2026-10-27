@@ -4,6 +4,37 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-10-27] — Custom User Assets, Icons & Images, and Line & Label Selection over Background Shapes & Containers
+
+### Added
+- **Custom User Icons, Images & Assets Engine** ([schema.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts), [custom-assets.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/assets/custom-assets.ts), [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [drag-payload.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/drag-payload.ts), [placement.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/stencils/placement.ts), [svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts)):
+  - Added native node type `'image'` to the document schema, style models, aspect-ratio retention (`holdsAspect`), and vector SVG exporter.
+  - Implemented `custom-assets.ts` utility module providing:
+    - Robust local storage persistence (`diagramz_custom_assets`) with automatic quota-exceeded handling and LRU trimming.
+    - Automatic image downscaling and compression via offscreen `<canvas>` for large photos to conserve browser storage while maintaining crisp high-DPI rendering.
+    - Aspect-ratio calculation (`calculateFitDimensions`) clamping initial canvas size to 160×160 while preserving natural width/height ratio.
+    - SVG vector parsing to preserve sharp infinite scalability.
+  - Added dedicated **My Assets** tab (`custom`) in [ComponentLibraryPanel.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx) featuring:
+    - Drag-and-drop file upload dropzone supporting SVG, PNG, JPG, WebP, GIF.
+    - Interactive asset cards with checkerboard previews, asset names, and delete actions.
+    - Drag-to-canvas and click-to-insert capabilities.
+  - Added direct **Desktop / OS File Drag-and-Drop** onto the canvas in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx): dropping image or SVG files directly onto the canvas places them at the exact cursor drop point and automatically persists them to My Assets.
+  - Added **OS Clipboard Image Pasting** (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>) in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx): pasting screenshots or copied web images inserts them at the viewport center or cursor.
+  - Added full SVG export support with `<clipPath>` and `<image>` tags in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts).
+
+### Fixed
+- **Line & Line Text Selection and Dragging over Background Shapes & Containers** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Fixed an issue where connection lines and line text (labels) could not be selected, edited, or dragged when drawn over background shapes (e.g. rectangles, rounded-rectangles, clouds) or inside containers.
+  - **The Root Cause**: HTML nodes layer had `pointer-events-auto` on shape `<div>`s sitting in front of the SVG connector layer in the DOM, intercepting all clicks intended for lines. Furthermore, clicks on the interior of containers fell through to `handleMouseDown` where `boundaryAtPoint` immediately captured and dragged the container before any line hit test could run.
+  - **The Solution**:
+    - Implemented high-performance geometric hit-testers: `findEdgeLabelAt(pt)` and `findEdgeAt(pt)` utilizing point-to-segment distance calculations and cubic Bézier curve point sampling.
+    - In `handleNodeMouseDown`: when clicking on a background shape (containers, frames, geometric shapes, or non-endpoint nodes), prioritize any edge label or connector line situated under the cursor.
+    - In `handleMouseDown`: prioritize edge labels and connection lines inside containers before `boundaryAtPoint` can capture the click.
+    - In `onDoubleClick`: prioritize edge label text editing and connection editing when double-clicking over background shapes or container interiors.
+    - Fixed `canvasRef` reference in `handleImportFiles`.
+
+---
+
 ## [2026-10-27] — Draw.io Standard Shapes Suite & Expanded Official Cloud / AWS Stencils
 
 ### Added

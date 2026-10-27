@@ -173,6 +173,32 @@ function stencilData(
  * A `null` return is not an error: it is the drop handler's signal to ignore a
  * drag that belongs to some other application.
  */
+function placeImage(
+  item: Extract<ZCanvasDragItem, { kind: 'image' }>,
+  context: ZCanvasPlacementContext,
+  createId: ZCanvasIdFactory
+): ZCanvasPlacement {
+  const width = item.width ?? 160;
+  const height = item.height ?? 160;
+  const id = createId('img');
+  const node: ZCanvasNode = {
+    id,
+    type: 'image',
+    title: item.title ?? '',
+    ...centred(context.x, context.y, width, height),
+    width,
+    height,
+    data: { src: item.src },
+  };
+
+  return {
+    nodes: [node],
+    edges: [],
+    selectedIds: [id],
+    prepend: false,
+  };
+}
+
 export function placeDragItem(
   item: ZCanvasDragItem,
   context: ZCanvasPlacementContext
@@ -189,6 +215,8 @@ export function placeDragItem(
       return placePattern(item.pattern, context, createId);
     case 'node':
       return placeSingleNode(item.node, context, createId);
+    case 'image':
+      return placeImage(item, context, createId);
   }
 }
 
@@ -482,6 +510,7 @@ function patternNode(node: ZCanvasPatternNode): Omit<ZCanvasNode, 'id' | 'x' | '
     icon: node.icon,
     color: node.color,
     ...(node.fields ? { fields: node.fields } : {}),
+    ...(node.data ? { data: node.data } : {}),
   };
 }
 

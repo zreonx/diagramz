@@ -928,6 +928,21 @@ export function exportDocumentToSvg(
           </g>
         `;
       }
+      if (n.type === 'image') {
+        const src = (n.data?.src || n.data?.url || '') as string;
+        const cornerRadius = n.cornerRadius ?? 8;
+        return `
+          <g transform="translate(${n.x}, ${n.y})">
+            <defs>
+              <clipPath id="clip-${escapeAttr(n.id)}">
+                <rect x="0" y="0" width="${formatNumber(n.width)}" height="${formatNumber(n.height)}" rx="${formatNumber(cornerRadius)}" />
+              </clipPath>
+            </defs>
+            <image href="${escapeAttr(src)}" x="0" y="0" width="${formatNumber(n.width)}" height="${formatNumber(n.height)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#clip-${escapeAttr(n.id)})" />
+            ${n.title ? `<text x="${formatNumber(n.width / 2)}" y="${formatNumber(n.height + 16)}" fill="${nodeDefaultTokens('card', isDark).text}" font-size="11" font-weight="500" font-family="system-ui, sans-serif" text-anchor="middle">${escapeXml(n.title)}</text>` : ''}
+          </g>
+        `;
+      }
       if (n.type === 'svg') {
         const svgGraphic = renderSvgNode(n, isDark);
         return `

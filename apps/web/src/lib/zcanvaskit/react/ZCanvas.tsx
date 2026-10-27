@@ -151,7 +151,8 @@ import { ZCanvasSheetTabs } from './ZCanvasSheetTabs';
 import { ZCanvasPresentationDock } from './ZCanvasPresentationDock';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
 import { exportDocumentToPng, exportDocumentToPngBlob } from '../export/png';
-import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand } from 'lucide-react';
+import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, Image as ImageIcon } from 'lucide-react';
+import { processImageFile, saveCustomAsset } from '../assets/custom-assets';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -1498,6 +1499,61 @@ export function ZCanvas({
     movable,
   ]);
 
+  /**
+   * Imports one or more image/SVG files onto the canvas at a given target point
+   * (or viewport center), persisting them to custom assets.
+   */
+  const handleImportFiles = useCallback(
+    async (files: File[], targetPoint?: ZCanvasPoint) => {
+      const imageFiles = files.filter(
+        (f) => f.type.startsWith('image/') || f.name.toLowerCase().endsWith('.svg')
+      );
+      if (imageFiles.length === 0) return;
+
+      const center = targetPoint ?? {
+        x: ((canvasRef.current?.clientWidth ?? 800) / 2 - viewport.panX) / viewport.zoom,
+        y: ((canvasRef.current?.clientHeight ?? 600) / 2 - viewport.panY) / viewport.zoom,
+      };
+
+      const newNodesList: ZCanvasNode[] = [];
+      const newSelectedIds: string[] = [];
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        try {
+          const asset = await processImageFile(file);
+          saveCustomAsset(asset);
+
+          const id = `img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+          const offset = i * 24;
+          const node: ZCanvasNode = {
+            id,
+            type: asset.type === 'svg' && asset.svgMarkup ? 'svg' : 'image',
+            title: asset.name,
+            x: Math.round(center.x - asset.width / 2 + offset),
+            y: Math.round(center.y - asset.height / 2 + offset),
+            width: asset.width,
+            height: asset.height,
+            data: asset.type === 'svg' && asset.svgMarkup ? { svgMarkup: asset.svgMarkup, src: asset.src } : { src: asset.src },
+          };
+          newNodesList.push(node);
+          newSelectedIds.push(id);
+        } catch (err) {
+          console.error('Failed to import file:', file.name, err);
+          toast.error(`Failed to load image ${file.name}`);
+        }
+      }
+
+      if (newNodesList.length > 0) {
+        commitState([...nodes, ...newNodesList], edges, strokes);
+        setSelectedNodeIds(newSelectedIds);
+        setActiveTool('select');
+        toast.success(`Imported ${newNodesList.length} image${newNodesList.length > 1 ? 's' : ''}`);
+      }
+    },
+    [viewport, nodes, edges, strokes, commitState]
+  );
+
   // Clipboard: Paste elements with offset
   const handlePaste = useCallback(() => {
     const doc: ZCanvasDocument = { version: 1, nodes, edges, strokes, viewport };
@@ -2639,6 +2695,155 @@ export function ZCanvas({
     setIsPanning(false);
   };
 
+  // ─── Edge Geometries & Hit-Testing Cache ───
+  const nodeMap = useMemo(() => new Map<string, ZCanvasNode>(nodes.map((n) => [n.id, n])), [nodes]);
+
+  // Multi-connection port offsets (distributes multiple connectors attaching to the same side of a shape, like Draw.io)
+  const multiPortOffsets = useMemo(
+    () => computeMultiConnectionOffsets(edges, nodeMap),
+    [edges, nodeMap]
+  );
+
+  // Edge geometries cache (memoized to avoid re-routing all bezier/orthogonal paths on every cursor move)
+  const edgeGeometries = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computeEdgeGeometry>>();
+    for (const edge of edges) {
+      const offsets = multiPortOffsets.get(edge.id);
+      map.set(edge.id, computeEdgeGeometry(edge, nodeMap, edgeStyle, offsets));
+    }
+    return map;
+  }, [edges, nodeMap, edgeStyle, multiPortOffsets]);
+
+  // Non-colliding connector label positions (resolves bidirectional multi-edge and geometric collisions)
+  const resolvedEdgeLabels = useMemo(() => {
+    return resolveEdgeLabelPositions(edges, nodeMap, edgeStyle, edgeGeometries);
+  }, [edges, nodeMap, edgeStyle, edgeGeometries]);
+
+  // Distance from point to segment helper
+  const distToSegment = (p: ZCanvasPoint, a: ZCanvasPoint, b: ZCanvasPoint): number => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  };
+
+  /**
+   * Hit tests whether a canvas point lands on any edge label badge.
+   * Returns the edge and geometry points if hit, or null.
+   */
+  const findEdgeLabelAt = useCallback(
+    (pt: ZCanvasPoint): { edge: ZCanvasEdge; midPoint: ZCanvasPoint; p1: ZCanvasPoint; p2: ZCanvasPoint } | null => {
+      // Walk edges in reverse so top-most rendered edges win
+      for (let i = edges.length - 1; i >= 0; i--) {
+        const edge = edges[i];
+        if (!edge.label) continue;
+        const geo = edgeGeometries.get(edge.id) ?? computeEdgeGeometry(edge, nodeMap, edgeStyle);
+        if (!geo) continue;
+
+        const labelPos = resolvedEdgeLabels.get(edge.id) ?? {
+          x: geo.midPoint.x + (edge.labelOffset?.x ?? 0),
+          y: geo.midPoint.y + (edge.labelOffset?.y ?? 0),
+        };
+
+        const lines = edge.label.split('\n');
+        const maxLineLen = Math.max(...lines.map((l) => l.length), 0);
+        const badgeWidth = Math.max(36, maxLineLen * 7 + 20);
+        const badgeHeight = Math.max(24, lines.length * 16 + 8);
+        const halfW = badgeWidth / 2 + 8;
+        const halfH = badgeHeight / 2 + 8;
+
+        if (
+          pt.x >= labelPos.x - halfW &&
+          pt.x <= labelPos.x + halfW &&
+          pt.y >= labelPos.y - halfH &&
+          pt.y <= labelPos.y + halfH
+        ) {
+          return { edge, midPoint: geo.midPoint, p1: geo.p1, p2: geo.p2 };
+        }
+      }
+      return null;
+    },
+    [edges, edgeGeometries, nodeMap, edgeStyle, resolvedEdgeLabels]
+  );
+
+  /**
+   * Hit tests whether a canvas point lands on any connection line / arrow path.
+   * Returns the edge if hit within comfortable reach slack (14px), or null.
+   */
+  const findEdgeAt = useCallback(
+    (pt: ZCanvasPoint, maxDistance = 14): ZCanvasEdge | null => {
+      for (let i = edges.length - 1; i >= 0; i--) {
+        const edge = edges[i];
+        const geo = edgeGeometries.get(edge.id) ?? computeEdgeGeometry(edge, nodeMap, edgeStyle);
+        if (!geo) continue;
+
+        const reach = Math.max(maxDistance, (edge.strokeWidth || 2) + 10);
+
+        // 1. Waypoints or orthogonal vertices
+        if (geo.vertices && geo.vertices.length >= 2) {
+          let hit = false;
+          for (let v = 1; v < geo.vertices.length; v++) {
+            if (distToSegment(pt, geo.vertices[v - 1], geo.vertices[v]) <= reach) {
+              hit = true;
+              break;
+            }
+          }
+          if (hit) return edge;
+        }
+
+        // 2. Direct straight or draft line
+        if (distToSegment(pt, geo.p1, geo.p2) <= reach) {
+          if ((edge.style ?? edgeStyle) === 'straight') return edge;
+        }
+
+        // 3. Smooth Bezier curve: sample 12 points along cubic bezier curve
+        if ((edge.style ?? edgeStyle) === 'bezier' && (!edge.waypoints || edge.waypoints.length === 0)) {
+          const { p1, p2, sourcePos, targetPos } = geo;
+          const dx = Math.abs(p2.x - p1.x);
+          const dy = Math.abs(p2.y - p1.y);
+          const curvature = 0.5;
+          const cp1: ZCanvasPoint = { ...p1 };
+          const cp2: ZCanvasPoint = { ...p2 };
+          if (sourcePos === 'right') cp1.x += Math.max(dx * curvature, 30);
+          else if (sourcePos === 'left') cp1.x -= Math.max(dx * curvature, 30);
+          else if (sourcePos === 'bottom') cp1.y += Math.max(dy * curvature, 30);
+          else if (sourcePos === 'top') cp1.y -= Math.max(dy * curvature, 30);
+
+          if (targetPos === 'left') cp2.x -= Math.max(dx * curvature, 30);
+          else if (targetPos === 'right') cp2.x += Math.max(dx * curvature, 30);
+          else if (targetPos === 'top') cp2.y -= Math.max(dy * curvature, 30);
+          else if (targetPos === 'bottom') cp2.y += Math.max(dy * curvature, 30);
+
+          let prevSample: ZCanvasPoint = p1;
+          let hitBezier = false;
+          const SAMPLES = 12;
+          for (let s = 1; s <= SAMPLES; s++) {
+            const t = s / SAMPLES;
+            const u = 1 - t;
+            const tt = t * t;
+            const uu = u * u;
+            const uuu = uu * u;
+            const ttt = tt * t;
+            const sample: ZCanvasPoint = {
+              x: uuu * p1.x + 3 * uu * t * cp1.x + 3 * u * tt * cp2.x + ttt * p2.x,
+              y: uuu * p1.y + 3 * uu * t * cp1.y + 3 * u * tt * cp2.y + ttt * p2.y,
+            };
+            if (distToSegment(pt, prevSample, sample) <= reach) {
+              hitBezier = true;
+              break;
+            }
+            prevSample = sample;
+          }
+          if (hitBezier) return edge;
+        }
+      }
+      return null;
+    },
+    [edges, edgeGeometries, nodeMap, edgeStyle]
+  );
+
   // Pointer Down on Canvas
   const handleMouseDown = (e: React.MouseEvent) => {
     lastMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
@@ -2746,6 +2951,20 @@ export function ZCanvas({
 
     if (isBackground && activeTool === 'select' && !readOnly) {
       const pt = getCanvasPoint(e.clientX, e.clientY);
+
+      // Prioritize edge label (line text) inside containers or background
+      const hitLabel = findEdgeLabelAt(pt);
+      if (hitLabel) {
+        handleEdgeLabelMouseDown(e, hitLabel.edge, hitLabel.midPoint, hitLabel.p1, hitLabel.p2);
+        return;
+      }
+
+      // Prioritize connection lines inside containers or background
+      const hitEdge = findEdgeAt(pt);
+      if (hitEdge) {
+        handleEdgeMouseDown(e, hitEdge);
+        return;
+      }
 
       // Ink is picked in canvas space rather than by what the pointer landed
       // on. The strokes are painted with `pointer-events: none`, so a press over
@@ -4023,6 +4242,7 @@ export function ZCanvas({
     setResizingInk(true);
   };
 
+
   /** Collective Group / Multi-Selection Resize Handle Mouse Down */
   const handleGroupResizeMouseDown = (
     e: React.MouseEvent,
@@ -4203,6 +4423,28 @@ export function ZCanvas({
     // through to the canvas, so drawing can start on top of an existing
     // component and the hand tool pans across one instead of dragging it.
     if (activeTool !== 'select') return;
+
+    // Check if the click actually lands on an edge label or connection line
+    // positioned in front of this background shape / container
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    const hitLabel = findEdgeLabelAt(pt);
+    if (hitLabel) {
+      e.stopPropagation();
+      handleEdgeLabelMouseDown(e, hitLabel.edge, hitLabel.midPoint, hitLabel.p1, hitLabel.p2);
+      return;
+    }
+
+    const hitEdge = findEdgeAt(pt);
+    if (hitEdge) {
+      const isEndpoint = hitEdge.source === node.id || hitEdge.target === node.id;
+      const isBackground = isBoundaryNode(node) || isGeometricShape(node.type);
+      if (isBackground || !isEndpoint) {
+        e.stopPropagation();
+        handleEdgeMouseDown(e, hitEdge);
+        return;
+      }
+    }
+
     e.stopPropagation();
 
     // If we had entered a group previously and the user now clicks a node
@@ -4669,28 +4911,7 @@ export function ZCanvas({
 
 
   // Node Map for edge calculations (memoized to eliminate reallocation per render)
-  const nodeMap = useMemo(() => new Map<string, ZCanvasNode>(nodes.map((n) => [n.id, n])), [nodes]);
 
-  // Multi-connection port offsets (distributes multiple connectors attaching to the same side of a shape, like Draw.io)
-  const multiPortOffsets = useMemo(
-    () => computeMultiConnectionOffsets(edges, nodeMap),
-    [edges, nodeMap]
-  );
-
-  // Edge geometries cache (memoized to avoid re-routing all bezier/orthogonal paths on every cursor move)
-  const edgeGeometries = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof computeEdgeGeometry>>();
-    for (const edge of edges) {
-      const offsets = multiPortOffsets.get(edge.id);
-      map.set(edge.id, computeEdgeGeometry(edge, nodeMap, edgeStyle, offsets));
-    }
-    return map;
-  }, [edges, nodeMap, edgeStyle, multiPortOffsets]);
-
-  // Non-colliding connector label positions (resolves bidirectional multi-edge and geometric collisions)
-  const resolvedEdgeLabels = useMemo(() => {
-    return resolveEdgeLabelPositions(edges, nodeMap, edgeStyle, edgeGeometries);
-  }, [edges, nodeMap, edgeStyle, edgeGeometries]);
 
   /**
    * The frames this selection draws: one per group it touches.
@@ -5282,6 +5503,38 @@ export function ZCanvas({
     // of something the user is looking at, on a gesture they will repeat.
   };
 
+  // Global clipboard paste listener for pasted images/screenshots
+  useEffect(() => {
+    const onWindowPaste = async (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+      if (readOnly) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        await handleImportFiles(imageFiles);
+      }
+    };
+
+    window.addEventListener('paste', onWindowPaste);
+    return () => window.removeEventListener('paste', onWindowPaste);
+  }, [readOnly, handleImportFiles]);
+
   // Component that a line/arrow being drawn would snap onto
   const lineSnapNodeId = drawingLine
     ? findNodeAt({ x: drawingLine.x2, y: drawingLine.y2 }, { allowBoundary: false })?.id ?? null
@@ -5446,6 +5699,18 @@ export function ZCanvas({
           (e.target as HTMLElement).id === 'zcanvas-grid';
         if (!isBackground) return;
         const pt = getCanvasPoint(e.clientX, e.clientY);
+        const hitLabel = findEdgeLabelAt(pt);
+        if (hitLabel) {
+          e.stopPropagation();
+          startConnectionEdit(hitLabel.edge);
+          return;
+        }
+        const hitEdge = findEdgeAt(pt);
+        if (hitEdge) {
+          e.stopPropagation();
+          startConnectionEdit(hitEdge);
+          return;
+        }
         if (findNodeAt(pt) || findStrokeAt(strokes, pt)) return;
         const newNode: ZCanvasNode = {
           id: `text-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,

@@ -156,6 +156,7 @@ test('a drawn element keeps its shape when it is resized', () => {
   // different shape only widens the empty strip around the drawing: dragging
   // one side would grow padding rather than the picture.
   assert.equal(holdsAspect('svg'), true);
+  assert.equal(holdsAspect('image'), true);
 
   // Everything else is drawn by the node itself, at whatever box it is given.
   for (const type of [

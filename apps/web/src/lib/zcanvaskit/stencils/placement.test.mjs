@@ -431,3 +431,27 @@ test('a placement names every node it created, uniquely', () => {
   assert.equal(new Set(ids).size, 2, 'two nodes sharing a pattern id still differ');
   assert.equal(placement.edges[0].source, placement.edges[0].target);
 });
+
+test('an image payload lands an image node with its source and centred box', () => {
+  const placement = placeDragItem(
+    {
+      kind: 'image',
+      src: 'data:image/svg+xml,<svg></svg>',
+      title: 'App Logo',
+      width: 120,
+      height: 80,
+    },
+    at(500, 400)
+  );
+
+  assert.equal(placement.nodes.length, 1);
+  const node = placement.nodes[0];
+  assert.equal(node.type, 'image');
+  assert.equal(node.title, 'App Logo');
+  assert.equal(node.width, 120);
+  assert.equal(node.height, 80);
+  assert.equal(node.x, 500 - 60);
+  assert.equal(node.y, 400 - 40);
+  assert.equal(node.data?.src, 'data:image/svg+xml,<svg></svg>');
+  assert.deepEqual(placement.selectedIds, [node.id]);
+});

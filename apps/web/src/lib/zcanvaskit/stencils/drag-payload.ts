@@ -111,6 +111,7 @@ export interface ZCanvasPatternNode {
   badge?: string;
   icon?: string;
   color?: string;
+  data?: Record<string, any>;
   fields?: Array<{
     name: string;
     type: string;
@@ -187,6 +188,14 @@ export interface ZCanvasPatternDragItem {
   pattern: ZCanvasPatternPayload;
 }
 
+export interface ZCanvasImageDragItem {
+  kind: 'image';
+  src: string;
+  title?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface ZCanvasNodeDragItem {
   kind: 'node';
   node: ZCanvasPatternNode;
@@ -196,7 +205,8 @@ export type ZCanvasDragItem =
   | ZCanvasStencilDragItem
   | ZCanvasToolDragItem
   | ZCanvasPatternDragItem
-  | ZCanvasNodeDragItem;
+  | ZCanvasNodeDragItem
+  | ZCanvasImageDragItem;
 
 /**
  * The slice of `DataTransfer` this module uses.
@@ -401,6 +411,9 @@ function nodeItem(
   const icon = asString(raw.icon);
   if (icon) node.icon = icon;
   const color = asString(raw.color);
+  if (isRecord(raw.data)) {
+    node.data = raw.data as Record<string, any>;
+  }
   if (color) node.color = color;
   if (Array.isArray(raw.fields)) {
     node.fields = raw.fields
@@ -442,6 +455,19 @@ function normalizeItem(value: unknown): ZCanvasDragItem | null {
 
   if (value.kind === 'pattern') {
     return adaptLegacyPattern(value.pattern);
+  }
+
+  if (value.kind === 'image') {
+    const src = asString(value.src);
+    if (!src) return null;
+    const imgItem: ZCanvasImageDragItem = { kind: 'image', src };
+    const title = asString(value.title);
+    if (title) imgItem.title = title;
+    const width = asNumber(value.width);
+    if (width !== undefined) imgItem.width = width;
+    const height = asNumber(value.height);
+    if (height !== undefined) imgItem.height = height;
+    return imgItem;
   }
 
   if (value.kind === 'node' && isRecord(value.node)) {

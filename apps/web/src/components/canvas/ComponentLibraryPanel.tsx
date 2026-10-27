@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   ChevronDown,
@@ -9,7 +9,19 @@ import {
   X,
   Sparkles,
   ArrowRight,
+  Upload,
+  Trash2,
+  Image as ImageIcon,
+  Plus,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  loadCustomAssets,
+  saveCustomAsset,
+  deleteCustomAsset,
+  processImageFile,
+  type CustomAssetItem,
+} from '@/lib/zcanvaskit/assets/custom-assets';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -537,7 +549,95 @@ export function ComponentLibraryPanel({
 }: ComponentLibraryPanelProps) {
   const { isDark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'shapes' | 'cloud' | 'essential' | 'drawio' | 'patterns'>('shapes');
+  const [activeTab, setActiveTab] = useState<'shapes' | 'cloud' | 'essential' | 'drawio' | 'patterns' | 'custom'>('shapes');
+  const [customAssets, setCustomAssets] = useState<CustomAssetItem[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setCustomAssets(loadCustomAssets());
+  }, []);
+
+  const handleFileUpload = async (files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    if (fileList.length === 0) return;
+    let added = 0;
+    for (const file of fileList) {
+      if (file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg')) {
+        try {
+          const asset = await processImageFile(file);
+          const updated = saveCustomAsset(asset);
+          setCustomAssets(updated);
+          added++;
+        } catch (err) {
+          console.error('Failed to process image:', file.name, err);
+          toast.error(`Failed to process ${file.name}`);
+        }
+      }
+    }
+    if (added > 0) {
+      toast.success(`Added ${added} asset${added > 1 ? 's' : ''}`);
+    }
+  };
+
+  const handleDeleteAsset = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = deleteCustomAsset(id);
+    setCustomAssets(updated);
+    toast.success('Asset removed');
+  };
+
+  const handleDragCustomAsset = (e: React.DragEvent, asset: CustomAssetItem) => {
+    if (asset.type === 'svg' && asset.svgMarkup) {
+      writeDragItem(e.dataTransfer, {
+        kind: 'node',
+        node: {
+          id: asset.id,
+          type: 'svg',
+          title: asset.name,
+          x: 0,
+          y: 0,
+          width: asset.width,
+          height: asset.height,
+          data: { svgMarkup: asset.svgMarkup, src: asset.src },
+        },
+      });
+    } else {
+      writeDragItem(e.dataTransfer, {
+        kind: 'image',
+        src: asset.src,
+        title: asset.name,
+        width: asset.width,
+        height: asset.height,
+      });
+    }
+  };
+
+  const handleInsertCustomAsset = (asset: CustomAssetItem) => {
+    if (!onInsertItem) return;
+    if (asset.type === 'svg' && asset.svgMarkup) {
+      onInsertItem({
+        kind: 'node',
+        node: {
+          id: asset.id,
+          type: 'svg',
+          title: asset.name,
+          x: 0,
+          y: 0,
+          width: asset.width,
+          height: asset.height,
+          data: { svgMarkup: asset.svgMarkup, src: asset.src },
+        },
+      });
+    } else {
+      onInsertItem({
+        kind: 'image',
+        src: asset.src,
+        title: asset.name,
+        width: asset.width,
+        height: asset.height,
+      });
+    }
+  };
   const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'k8s' | 'gcp' | 'azure'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -822,6 +922,19 @@ export function ComponentLibraryPanel({
             title="Tech Brands, Databases & Framework Logos"
           >
             Logos
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('custom')}
+            className={cn(
+              'flex-1 py-1 px-1 rounded-md font-medium text-[10px] transition-all text-center truncate',
+              activeTab === 'custom'
+                ? 'bg-background text-primary shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="Custom Icons, Logos & Uploaded Assets"
+          >
+            Assets
           </button>
           <button
             type="button"
@@ -1459,6 +1572,138 @@ export function ComponentLibraryPanel({
         )}
 
         {/* ─── TAB 3: DEFAULT ARCHITECTURE DIAGRAMS (PRE-BUILT FLOWS & INDIVIDUAL COMPONENTS) ─── */}
+        {/* CUSTOM ASSETS TAB */}
+        {activeTab === 'custom' && (
+          <div className="p-3 space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.svg"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) {
+                  handleFileUpload(e.target.files);
+                  e.target.value = '';
+                }
+              }}
+            />
+
+            {/* Upload Zone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files) {
+                  handleFileUpload(e.dataTransfer.files);
+                }
+              }}
+              className="border-2 border-dashed border-border/80 hover:border-primary/70 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-muted/20 hover:bg-muted/40 transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-2 group-hover:scale-105 transition-transform">
+                <Upload className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-semibold text-foreground">Upload Custom Icon / Image</span>
+              <span className="text-[10px] text-muted-foreground mt-0.5">
+                Drop SVG, PNG, JPG, WebP here or click to browse
+              </span>
+            </div>
+
+            {/* Assets List */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  My Uploads ({customAssets.filter((a) => !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase())).length})
+                </span>
+                {customAssets.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-6 text-[10px] px-2 text-primary hover:text-primary/80 gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add More
+                  </Button>
+                )}
+              </div>
+
+              {customAssets.length === 0 ? (
+                <div className="p-6 rounded-xl border border-border/60 bg-muted/10 text-center flex flex-col items-center justify-center">
+                  <ImageIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                  <span className="text-xs font-medium text-foreground">No custom assets yet</span>
+                  <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px]">
+                    Upload your logos, cloud icons, or custom illustrations to use them across your diagrams.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {customAssets
+                    .filter((a) => !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((asset) => (
+                      <div
+                        key={asset.id}
+                        draggable
+                        onDragStart={(e) => handleDragCustomAsset(e, asset)}
+                        onClick={() => handleInsertCustomAsset(asset)}
+                        className="group relative flex flex-col p-2 rounded-lg border border-border/70 hover:border-primary/50 bg-background/60 hover:bg-muted/30 transition-all cursor-pointer shadow-2xs overflow-hidden"
+                      >
+                        <div className="w-full h-20 rounded-md bg-muted/40 border border-border/40 flex items-center justify-center overflow-hidden p-2 relative">
+                          {asset.type === 'svg' && asset.svgMarkup ? (
+                            <div
+                              className="w-full h-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-full"
+                              dangerouslySetInnerHTML={{ __html: asset.svgMarkup }}
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={asset.src}
+                              alt={asset.name}
+                              className="w-full h-full object-contain pointer-events-none select-none drop-shadow-xs"
+                              draggable={false}
+                            />
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={(e) => handleDeleteAsset(e, asset.id)}
+                            className="absolute top-1 right-1 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity rounded shadow-xs"
+                            title="Delete Asset"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </Button>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-foreground truncate max-w-[100px]" title={asset.name}>
+                            {asset.name}
+                          </span>
+                          <span className="text-[9px] font-mono text-muted-foreground/70 uppercase">
+                            {asset.type}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {/* Quick tip */}
+              <div className="mt-4 p-2.5 rounded-lg border border-border/50 bg-muted/20 text-[10px] text-muted-foreground flex flex-col gap-1">
+                <span className="font-semibold text-foreground/80 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary" />
+                  Quick Pro-Tips
+                </span>
+                <p>• Drop image files directly anywhere onto the canvas.</p>
+                <p>• Copy images or screenshots to clipboard and press <kbd className="font-mono bg-muted px-1 rounded border border-border">Ctrl+V</kbd> to paste.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'patterns' && (
           <div className="space-y-4">
             {/* Section A: Individual Flow Components (Categorized, un-grouped, un-connected) */}

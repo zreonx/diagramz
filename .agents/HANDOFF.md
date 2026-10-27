@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-10-25
 > **Branch**: `main`
-> **Test Suite Status**: 589 passing (`0` failing)
+> **Test Suite Status**: 591 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -19,6 +19,18 @@
 ---
 
 ## 2. Recently Completed Work
+
+1. **Custom User Assets, Icons & Images Engine**:
+   - Added native node type `'image'` in [schema.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/schema.ts) with aspect-ratio preservation (`holdsAspect`), SVG export in [export/svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts), and inline label double-click editing.
+   - Built `custom-assets.ts` with localStorage persistence, automatic downscaling via offscreen canvas, and SVG vector parsing.
+   - Built **My Assets** tab in [ComponentLibraryPanel.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/ComponentLibraryPanel.tsx) with dropzone, card grid, deletion, and canvas placement.
+   - Added direct OS file drag-and-drop and clipboard paste (<kbd>Ctrl+V</kbd>) in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx).
+
+2. **Line & Line Text Selection and Dragging Over Background Shapes & Containers**:
+   - Implemented `findEdgeLabelAt` and `findEdgeAt` hit-testing with geometric segment distance and cubic Bézier sampling.
+   - Routed pointer events in `handleNodeMouseDown` so background shapes and non-endpoint nodes yield selection and dragging to foreground lines and labels.
+   - Routed pointer events in `handleMouseDown` so clicks inside containers select and drag lines and labels instead of grabbing the container.
+   - Connected double-click editing for line labels over background shapes and containers.
 
 1. **Draw.io Standard Shapes Suite & Expanded Cloud / AWS Stencils**:
    - Added full Draw.io standard shapes suite across General Shapes (Sticky Note, Rectangle, Rounded Rectangle, Ellipse/Circle, Decision Diamond, Triangle, Database Drum, Cloud, UML Actor stick figure, 3D Cube, Speech Callout, 5-Point Star) and Flowchart Shapes (Process Document, Data I/O, Preparation Hexagon, Subroutine, Step/Chevron, Trapezoid, Internal Storage).
