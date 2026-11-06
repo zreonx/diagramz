@@ -618,8 +618,12 @@ test('ERD table nodes and Crow\'s Foot relationship markers export cleanly to SV
   assert.match(svg, /id="zcanvas-head-er-zero-many"/);
   assert.match(svg, /marker-start="url\(#zcanvas-head-er-one\)"/);
   assert.match(svg, /marker-end="url\(#zcanvas-head-er-zero-many\)"/);
-  assert.match(svg, /🔑 id/);
-  assert.match(svg, /🔗 org_id/);
+  assert.match(svg, />PK<\/text>/);
+  assert.match(svg, />FK<\/text>/);
+  assert.match(svg, />id<\/text>/);
+  assert.match(svg, />org_id<\/text>/);
+  assert.doesNotMatch(svg, /🔑/);
+  assert.doesNotMatch(svg, /🔗/);
 });
 
 

@@ -566,12 +566,22 @@ export function exportDocumentToSvg(
     .map((n) => {
       if (n.type === 'container') {
         const sub = n.subtitle || n.description;
+        let badgeMarkup = '';
+        if (n.badge) {
+          const badgeText = escapeXml(n.badge);
+          const badgeW = Math.max(34, n.badge.length * 6.5 + 14);
+          const badgeX = n.width - badgeW - 16;
+          badgeMarkup = `
+            <rect x="${badgeX}" y="12" width="${badgeW}" height="18" rx="9" fill="${isDark ? 'rgba(99, 91, 255, 0.15)' : 'rgba(99, 91, 255, 0.1)'}" stroke="${isDark ? 'rgba(165, 160, 255, 0.35)' : 'rgba(99, 91, 255, 0.25)'}" stroke-width="1" />
+            <text x="${badgeX + badgeW / 2}" y="24.5" fill="${isDark ? '#A5A0FF' : '#635BFF'}" font-size="10" font-weight="500" font-family="monospace" text-anchor="middle">${badgeText}</text>
+          `;
+        }
         return `
           <g transform="translate(${n.x}, ${n.y})">
             <rect width="${n.width}" height="${n.height}" rx="16" ${fillAttr(n, 'container', isDark)} stroke="${strokeAttr(n, 'container', isDark)}" stroke-width="${n.strokeWidth || 2}"${dashAttr(n.strokeStyle, n.strokeWidth)} />
             <text x="16" y="${sub ? 24 : 26}" fill="${mutedText}" font-size="12" font-weight="600" font-family="system-ui, sans-serif">${escapeXml(n.title)}</text>
             ${sub ? `<text x="16" y="38" fill="${faintText}" font-size="10" font-family="system-ui, sans-serif">${escapeXml(sub)}</text>` : ''}
-            ${n.badge ? `<text x="${n.width - 16}" y="26" fill="${strokeAttr(n, 'container', isDark)}" font-size="10" font-family="monospace" text-anchor="end">${escapeXml(n.badge)}</text>` : ''}
+            ${badgeMarkup}
           </g>
         `;
       }
@@ -588,19 +598,53 @@ export function exportDocumentToSvg(
       }
       if (n.type === 'table') {
         const border = strokeAttr(n, 'table', isDark);
+        const accentTeal = isDark ? '#2dd4bf' : '#0d9488';
         const fieldsSvg = (n.fields || [])
-          .map(
-            (f, i) =>
-              `<text x="12" y="${46 + i * 18}" fill="${mutedText}" font-size="11" font-family="monospace">${f.pk ? '🔑 ' : ''}${f.fk ? '🔗 ' : ''}${escapeXml(f.name)}</text>
-               <text x="${n.width - 12}" y="${46 + i * 18}" fill="${faintText}" font-size="10" font-family="monospace" text-anchor="end">${escapeXml(f.type)}</text>`
-          )
+          .map((f, i) => {
+            const rowY = 44 + i * 24;
+            let currentX = 12;
+            let badgesMarkup = '';
+
+            if (f.pk) {
+              const bg = isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)';
+              const stroke = isDark ? 'rgba(245, 158, 11, 0.5)' : 'rgba(217, 119, 6, 0.4)';
+              const textCol = isDark ? '#fbbf24' : '#d97706';
+              badgesMarkup += `<rect x="${currentX}" y="${rowY - 7}" width="18" height="13" rx="3" fill="${bg}" stroke="${stroke}" stroke-width="0.75" />
+                <text x="${currentX + 9}" y="${rowY + 2.5}" fill="${textCol}" font-size="8" font-weight="700" font-family="monospace, sans-serif" text-anchor="middle">PK</text>`;
+              currentX += 22;
+            }
+
+            if (f.fk) {
+              const bg = isDark ? 'rgba(14, 165, 233, 0.2)' : 'rgba(14, 165, 233, 0.15)';
+              const stroke = isDark ? 'rgba(56, 189, 248, 0.5)' : 'rgba(2, 132, 199, 0.4)';
+              const textCol = isDark ? '#38bdf8' : '#0284c7';
+              badgesMarkup += `<rect x="${currentX}" y="${rowY - 7}" width="18" height="13" rx="3" fill="${bg}" stroke="${stroke}" stroke-width="0.75" />
+                <text x="${currentX + 9}" y="${rowY + 2.5}" fill="${textCol}" font-size="8" font-weight="700" font-family="monospace, sans-serif" text-anchor="middle">FK</text>`;
+              currentX += 22;
+            }
+
+            const nameColor = f.pk ? (isDark ? '#f1f5f9' : '#0f172a') : mutedText;
+            const nameWeight = f.pk ? '600' : '400';
+
+            return `
+              ${badgesMarkup}
+              <text x="${currentX}" y="${rowY + 3.5}" fill="${nameColor}" font-size="11" font-weight="${nameWeight}" font-family="monospace">${escapeXml(f.name)}</text>
+              <text x="${n.width - 12}" y="${rowY + 3.5}" fill="${faintText}" font-size="10" font-family="monospace" text-anchor="end">${escapeXml(f.type)}</text>
+            `;
+          })
           .join('\n');
+
         return `
           <g transform="translate(${n.x}, ${n.y})">
-            <rect width="${n.width}" height="${n.height}" rx="10" ${fillAttr(n, 'table', isDark)} stroke="${border}" stroke-width="1.5" />
-            <rect width="${n.width}" height="28" rx="10" fill="${border}" fill-opacity="0.12" />
-            <text x="12" y="19" fill="${nodeDefaultTokens('table', isDark).text}" font-size="12" font-weight="600" font-family="monospace">${escapeXml(n.title)}</text>
-            <text x="${n.width - 12}" y="19" fill="${border}" font-size="10" font-family="system-ui, sans-serif" text-anchor="end">TABLE</text>
+            <rect width="${n.width}" height="${n.height}" rx="10" ${fillAttr(n, 'table', isDark)} stroke="${border}" stroke-width="${n.strokeWidth || 1.5}" />
+            <path d="M 0 10 Q 0 0 10 0 L ${n.width - 10} 0 Q ${n.width} 0 ${n.width} 10 L ${n.width} 28 L 0 28 Z" fill="${border}" fill-opacity="0.12" stroke="${border}" stroke-width="0.5" stroke-opacity="0.25" />
+            <g transform="translate(10, 8)" stroke="${accentTeal}" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="5.5" cy="2.5" rx="4.5" ry="1.75" />
+              <path d="M1 2.5v5.5c0 1 2 1.75 4.5 1.75s4.5-.75 4.5-1.75V2.5" />
+              <path d="M1 5.25c0 1 2 1.75 4.5 1.75s4.5-.75 4.5-1.75" />
+            </g>
+            <text x="26" y="18.5" fill="${nodeDefaultTokens('table', isDark).text}" font-size="12" font-weight="600" font-family="monospace">${escapeXml(n.title)}</text>
+            <text x="${n.width - 12}" y="18.5" fill="${accentTeal}" font-size="10" font-family="system-ui, sans-serif" font-weight="500" text-anchor="end">TABLE</text>
             ${fieldsSvg}
           </g>
         `;

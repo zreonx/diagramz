@@ -4,7 +4,15 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
-## [2026-11-06] — Hide Table "+ Add Column" by Default (Hover Reveal & Presentation Mode Purity)
+## [2026-11-06] — Faithful SVG/PNG/PDF Export Badges & Hide Table "+ Add Column" by Default
+
+### Fixed
+- **Table Entity PK / FK Badges and Container Badges in SVG/PNG/PDF Exports** ([svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts)):
+  - Fixed an issue where exporting tables replaced the authentic "PK" and "FK" badges with raw emoji icons (`🔑` and `🔗`) and compressed row heights to 18px.
+  - Replaced emojis with true vector pill badges matching the canvas:
+    - **PK Badge**: Amber rounded pill (`#f59e0b` fill/stroke, `#fbbf24`/`#d97706` text) reading **PK**.
+    - **FK Badge**: Sky blue rounded pill (`#0284c7` fill/stroke, `#38bdf8`/`#0284c7` text) reading **FK**.
+    - **Header & Spacing**: Synchronized row height with the canvas at 24px (`44 + i * 24`), added database cylinder vector icon in the header next to table title, and styled container badges as matching rounded pills instead of plain text.
 
 ### Changed
 - **Table Node Hover-Only Quick Actions & Presentation Mode Cleanup** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):

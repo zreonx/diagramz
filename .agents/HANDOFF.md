@@ -20,7 +20,12 @@
 
 ## 2. Recently Completed Work
 
-1. **Table Stencil "+ Add Column" Hover-Only Reveal & Presentation Mode Cleanup**:
+1. **Pixel-Faithful PK/FK Badges & Table Layout in SVG/PNG/PDF Exports**:
+   - Replaced emoji shortcuts (`🔑` and `🔗`) with authentic vector pill badges reading **PK** (amber) and **FK** (sky blue) matching the on-canvas appearance.
+   - Synchronized row heights (24px) and added header database icon so exported tables are identical to the live canvas.
+   - Upgraded container badges in SVG exports from plain un-styled text to styled rounded pills.
+
+2. **Table Stencil "+ Add Column" Hover-Only Reveal & Presentation Mode Cleanup**:
    - Made "+ Add Column" button on table nodes hidden by default on diagrams (`opacity-0 pointer-events-none`) and only reveal when hovering over the table.
    - Suppressed editor controls (Add Column button, delete column buttons, interactive PK/FK toggles, row connection ports) during Presentation Mode (F5) so tables render as clean, polished diagrams.
    - SVG/PNG/PDF exports continue to generate clean vector outputs without editor buttons.
