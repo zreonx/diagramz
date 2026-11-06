@@ -6972,7 +6972,7 @@ export function ZCanvas({
               {/* ERD TABLE NODE */}
               {node.type === 'table' && (
                 <div
-                  className="w-full h-full rounded-xl bg-card shadow-lg overflow-hidden flex flex-col"
+                  className="w-full h-full rounded-xl bg-card shadow-lg overflow-hidden flex flex-col group/table"
                   style={{
                     borderColor: node.color || resolveNodeStroke('table', isDark),
                     borderWidth: node.strokeWidth || 1,
@@ -7015,6 +7015,7 @@ export function ZCanvas({
                         <span
                           className="truncate cursor-text"
                           onDoubleClick={(e) => {
+                            if (isPresentationMode) return;
                             e.stopPropagation();
                             startEditing(node.id, 'title', node.title || '');
                           }}
@@ -7034,7 +7035,7 @@ export function ZCanvas({
                           className="group relative flex items-center justify-between text-foreground/90 hover:bg-muted/40 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
                         >
                           {/* Row-Level Left Connection Port (Drag from / drop onto specific column) */}
-                          {!readOnly && activeTool === 'select' && (
+                          {!readOnly && !isPresentationMode && activeTool === 'select' && (
                             <div
                               data-testid={`erd-row-anchor-left-${i}`}
                               title={`Connect column "${f.name}" (Left)`}
@@ -7051,7 +7052,7 @@ export function ZCanvas({
 
                           <div className="flex items-center gap-1 min-w-0 flex-1 mr-1.5">
                             {/* Interactive PK / FK Badges */}
-                            {!readOnly ? (
+                            {!readOnly && !isPresentationMode ? (
                               <div className="flex items-center gap-0.5 shrink-0">
                                 {(f.pk || isSelected) && (
                                   <button
@@ -7127,6 +7128,7 @@ export function ZCanvas({
                                   f.pk && 'font-semibold text-foreground'
                                 )}
                                 onDoubleClick={(e) => {
+                                  if (isPresentationMode) return;
                                   e.stopPropagation();
                                   startEditing(node.id, 'field_name', f.name, i);
                                 }}
@@ -7154,6 +7156,7 @@ export function ZCanvas({
                               <span
                                 className="text-muted-foreground text-[10px] hover:text-foreground cursor-text"
                                 onDoubleClick={(e) => {
+                                  if (isPresentationMode) return;
                                   e.stopPropagation();
                                   startEditing(node.id, 'field_type', f.type, i);
                                 }}
@@ -7162,7 +7165,7 @@ export function ZCanvas({
                               </span>
                             )}
 
-                            {!readOnly && (
+                            {!readOnly && !isPresentationMode && (
                               <button
                                 type="button"
                                 aria-label={`Remove column ${f.name}`}
@@ -7185,7 +7188,7 @@ export function ZCanvas({
                           </div>
 
                           {/* Row-Level Right Connection Port (Drag from / drop onto specific column) */}
-                          {!readOnly && activeTool === 'select' && (
+                          {!readOnly && !isPresentationMode && activeTool === 'select' && (
                             <div
                               data-testid={`erd-row-anchor-right-${i}`}
                               title={`Connect column "${f.name}" (Right)`}
@@ -7205,10 +7208,10 @@ export function ZCanvas({
                   </div>
 
                   {/* Add Column Quick Button at bottom of table */}
-                  {!readOnly && (
+                  {!readOnly && !isPresentationMode && (
                     <button
                       type="button"
-                      className="w-full py-1 text-[10px] text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 border-t border-dashed border-teal-500/30 flex items-center justify-center gap-1 font-mono transition-colors"
+                      className="w-full py-1 text-[10px] text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 border-t border-dashed border-teal-500/30 flex items-center justify-center gap-1 font-mono transition-opacity duration-150 opacity-0 pointer-events-none group-hover/table:opacity-100 group-hover/table:pointer-events-auto group-hover/node:opacity-100 group-hover/node:pointer-events-auto print:hidden"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddField(node.id);

@@ -4,6 +4,16 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-06] — Hide Table "+ Add Column" by Default (Hover Reveal & Presentation Mode Purity)
+
+### Changed
+- **Table Node Hover-Only Quick Actions & Presentation Mode Cleanup** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Updated Database Table stencil nodes on the canvas so the **"+ Add Column"** button and dashed separator are hidden by default (`opacity-0 pointer-events-none`) on diagrams and smoothly reveal only when hovering over the table (`group-hover/table:opacity-100 group-hover/table:pointer-events-auto`).
+  - Added strict `!isPresentationMode` guards ensuring that "+ Add Column", column removal `X` buttons, row-level connection ports, and PK/FK interactive toggles are completely omitted or replaced with static presentation badges when Presentation Mode (F5) is active.
+  - Verified SVG vector, high-DPI PNG, and PDF exports remain clean and free from editor controls.
+
+---
+
 ## [2026-10-27] — Custom User Assets, Icons & Images, and Line & Label Selection over Background Shapes & Containers
 
 ### Added

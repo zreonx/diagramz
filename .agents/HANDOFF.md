@@ -1,6 +1,6 @@
 # Diagramz Session Handoff (`HANDOFF.md`)
 
-> **Last Updated**: 2026-10-27
+> **Last Updated**: 2026-11-06
 > **Branch**: `main`
 > **Test Suite Status**: 591 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
@@ -20,7 +20,12 @@
 
 ## 2. Recently Completed Work
 
-1. **Inspector Style Panel Alignment with AI Assistant / Drawers**:
+1. **Table Stencil "+ Add Column" Hover-Only Reveal & Presentation Mode Cleanup**:
+   - Made "+ Add Column" button on table nodes hidden by default on diagrams (`opacity-0 pointer-events-none`) and only reveal when hovering over the table.
+   - Suppressed editor controls (Add Column button, delete column buttons, interactive PK/FK toggles, row connection ports) during Presentation Mode (F5) so tables render as clean, polished diagrams.
+   - SVG/PNG/PDF exports continue to generate clean vector outputs without editor buttons.
+
+2. **Inspector Style Panel Alignment with AI Assistant / Drawers**:
    - Fixed redundant `rightOffset` in [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx) that pushed the inspector panel into the center of the canvas whenever the AI Assistant or Mermaid Editor drawer opened.
    - The drawer already reduces the canvas container width by 384px via flex layout, so removing the manual `rightOffset=384` keeps the inspector neatly docked at `right-4` (16px from the drawer edge).
 
