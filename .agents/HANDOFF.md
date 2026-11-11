@@ -1,8 +1,8 @@
 # Diagramz Session Handoff (`HANDOFF.md`)
 
-> **Last Updated**: 2026-11-06
+> **Last Updated**: 2026-11-12
 > **Branch**: `main`
-> **Test Suite Status**: 591 passing (`0` failing)
+> **Test Suite Status**: 595 passing (`0` failing)
 > **Build Status**: `@diagramz/shared`, `@diagramz/api`, and `@diagramz/web` passing cleanly
 
 ---
@@ -20,7 +20,18 @@
 
 ## 2. Recently Completed Work
 
-1. **Pixel-Faithful PK/FK Badges & Table Layout in SVG/PNG/PDF Exports**:
+1. **Ultra-Smooth Radiant Laser Pointer & Full Presentation Customization**:
+   - Created [laser-theme.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.ts) with 6 radiant color presets (Ruby, Emerald, Cyan, Gold, Violet, Coral), custom hex color support, 3 beam widths (`thin`, `normal`, `thick`), and 3 trail fade durations (`short`, `normal`, `long`).
+   - Completely overhauled [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) with hardware-accelerated sub-frame pointer harvesting (`e.getCoalescedEvents()`), continuous midpoint quadratic Bézier splines (eliminating beading/bumps), non-linear width tapering, luminous outer aura, hot plasma core, white-hot photonic spine, and cursor spring dampening.
+   - Integrated dynamic color and width selectors into [ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx), [ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx), [ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), and [ZCanvasSettingsDialog.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSettingsDialog.tsx).
+
+2. **Light Mode Hand Pan Canvas & Border Visibility**:
+   - Added explicit `border` classes to Container, Frame, Table, Card, and Rectangle elements in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) ensuring CSS border box rendering across all themes.
+   - Enhanced light mode infinite canvas grid contrast (dots `#B8B8AE`, mesh `#D0D0C6`, cross `#A8A89C` with increased opacity) so the canvas orientation is clearly discernible while moving throughout the canvas with Hand Pan.
+   - Hardened `CanvasHeader` bottom border (`border-b border-border`) in [CanvasHeader.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx) and view splitter (`bg-border`) in [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx).
+   - Upgraded minimap viewport frame to `border-2 border-primary bg-primary/15` in [ZCanvasMinimap.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasMinimap.tsx) for sharp, immediate tracking while panning in light mode.
+
+3. **Pixel-Faithful PK/FK Badges & Table Layout in SVG/PNG/PDF Exports**:
    - Replaced emoji shortcuts (`🔑` and `🔗`) with authentic vector pill badges reading **PK** (amber) and **FK** (sky blue) matching the on-canvas appearance.
    - Synchronized row heights (24px) and added header database icon so exported tables are identical to the live canvas.
    - Upgraded container badges in SVG exports from plain un-styled text to styled rounded pills.

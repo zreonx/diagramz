@@ -4,6 +4,41 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Ultra-Smooth Laser Pointer Engine, Full Laser Customization, & Light Mode Hand Pan Canvas Borders
+
+### Added
+- **Laser Pointer Theme & Palette Architecture** ([laser-theme.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.ts)):
+  - Built comprehensive laser styling subsystem with 6 curated radiant presets: **Ruby Red** (`#ff1744`), **Emerald Green** (`#10b981`), **Electric Cyan** (`#00e5ff`), **Solar Gold** (`#ffb300`), **Neon Violet** (`#d946ef`), and **Hot Coral** (`#ff6b6b`).
+  - Added full custom hex color support via `parseHexRgb` and `resolveLaserPalette`, dynamically resolving core, glow, and alpha channels.
+  - Added beam thickness configurations (`thin`, `normal`, `thick`) and trail fade duration lifespans (`short`, `normal`, `long`).
+  - Fully tested in [laser-theme.test.mjs](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.test.mjs).
+
+- **Hardware-Accelerated Ultra-Smooth Laser Overlay** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)):
+  - **Sub-frame Pointer Harvesting**: Leveraged `PointerEvent.getCoalescedEvents()` to harvest high-frequency digitizer and mouse micro-samples (120Hz–1000Hz) between render frames, eliminating straight-segment elbows.
+  - **Midpoint Bézier Ribbon Geometry**: Replaced overlapping round-cap segments with continuous quadratic Bézier splines (`quadraticCurveTo` through midpoints) and natural non-linear comet width tapering, completely eliminating dark "sausage link" and "beading" stacking artifacts.
+  - **Three Luminous Radiation Layers**: Rendered wide soft ambient glow aura, saturated hot plasma core, and blazing white-hot photonic spine.
+  - **Diode Cursor Spring Dampening**: Applied low-pass motion filtering for buttery-smooth diode dot gliding without jitter.
+
+- **Presentation Dock Quick-Palette & Controls** ([ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx)):
+  - Added 1-click interactive color swatch picker right inside the presentation dock when laser is active.
+  - Added beam size selector pills (`S`, `M`, `L`) for quick thickness changes during presentations.
+  - Made the Laser toggle button dynamically glow in the selected laser color.
+
+- **Laser Style Panel & Settings Dialog Integration** ([ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [ZCanvasSettingsDialog.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSettingsDialog.tsx), [ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx)):
+  - Extended `ZCanvasStyleTarget` with `{ kind: 'laser' }`, rendering color swatches, custom hex picker, beam width, and trail lifespan options whenever the laser tool is selected.
+  - Added dedicated **Laser Pointer** tab in the Canvas Settings dialog with live glowing diode preview card.
+  - Added dedicated Laser Tool button in the canvas toolbar with active color indicator and registered shortcut <kbd>L</kbd> in [shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts).
+
+### Fixed
+- **Light Mode Canvas Borders & Hand Pan Motion Visibility** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [CanvasHeader.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/CanvasHeader.tsx), [DiagramCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/components/canvas/DiagramCanvas.tsx), [ZCanvasMinimap.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasMinimap.tsx)):
+  - Fixed an issue where switching from dark to light mode made borders disappear or wash out when moving throughout the canvas with Hand Pan.
+  - **Component Borders**: Added explicit `border` classes to Container, Frame, Table, Card, and Rectangle nodes to ensure CSS border box rendering across all themes.
+  - **Infinite Grid Contrast**: Enhanced light mode dot, mesh, and cross patterns (`#B8B8AE`, `#D0D0C6`, `#A8A89C` with increased opacity) so the canvas orientation is clearly discernible while panning in light mode.
+  - **Header & Splitter Dividers**: Hardened `CanvasHeader` bottom border (`border-b border-border`) and `DiagramCanvas` view splitter (`bg-border`) so canvas boundary lines stay crisp and visible after theme switching.
+  - **Minimap Tracking Frame**: Upgraded minimap viewport frame to `border-2 border-primary bg-primary/15` for sharp, immediate tracking while panning in light mode.
+
+---
+
 ## [2026-11-06] — Faithful SVG/PNG/PDF Export Badges & Hide Table "+ Add Column" by Default
 
 ### Fixed

@@ -45,8 +45,8 @@ export function ZCanvasMinimap({
   const viewY = (-viewport.panY / viewport.zoom - minY) * scale;
 
   return (
-    <div className="absolute bottom-4 right-4 z-20 w-44 h-28 bg-background/90 backdrop-blur-md border border-border/80 shadow-xl rounded-xl p-1.5 overflow-hidden pointer-events-none select-none">
-      <div className="relative w-full h-full bg-muted/30 rounded-lg overflow-hidden border border-border/30">
+    <div className="absolute bottom-4 right-4 z-20 w-44 h-28 bg-background/95 backdrop-blur-md border border-border shadow-xl rounded-xl p-1.5 overflow-hidden pointer-events-none select-none">
+      <div className="relative w-full h-full bg-muted/40 rounded-lg overflow-hidden border border-border/60">
         <svg className="w-full h-full" viewBox={`0 0 ${width} ${height}`}>
           {nodes.map((node) => (
             <rect
@@ -57,14 +57,14 @@ export function ZCanvasMinimap({
               height={node.height}
               rx={6}
               fill={node.color || '#3b82f6'}
-              opacity={0.6}
+              opacity={0.65}
             />
           ))}
         </svg>
 
-        {/* Viewport frame */}
+        {/* Viewport frame (actively tracking canvas pan/zoom) */}
         <div
-          className="absolute border border-primary bg-primary/10 rounded pointer-events-none transition-all duration-75"
+          className="absolute border-2 border-primary bg-primary/15 rounded pointer-events-none transition-all duration-75 shadow-xs"
           style={{
             left: `${Math.max(0, viewX)}px`,
             top: `${Math.max(0, viewY)}px`,

@@ -31,6 +31,14 @@ import {
   ZCanvasStylePreset,
   ZCanvasSloppiness,
 } from '../core/settings';
+import type { LaserWidthMode, LaserDurationMode } from '../laser/laser-theme';
+import {
+  DEFAULT_LASER_COLOR,
+  LASER_COLOR_PRESETS,
+  LASER_WIDTH_CONFIGS,
+  LASER_DURATION_CONFIGS,
+  resolveLaserPalette,
+} from '../laser/laser-theme';
 
 export interface ZCanvasSettingsDialogProps {
   open: boolean;
@@ -53,7 +61,7 @@ export function ZCanvasSettingsDialog({
   settings,
   onUpdateSettings,
 }: ZCanvasSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<'grid' | 'routing'>('grid');
+  const [activeTab, setActiveTab] = useState<'grid' | 'routing' | 'laser'>('grid');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -80,12 +88,12 @@ export function ZCanvasSettingsDialog({
           </div>
 
           {/* Minimalist Segmented Tab Navigation */}
-          <div className="mt-4 p-1 bg-surface-secondary/60 border border-border/60 rounded-xl grid grid-cols-2 gap-1">
+          <div className="mt-4 p-1 bg-surface-secondary/60 border border-border/60 rounded-xl grid grid-cols-3 gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('grid')}
               className={cn(
-                'py-1.5 px-3 text-xs font-medium rounded-lg transition-all text-center',
+                'py-1.5 px-2 text-xs font-medium rounded-lg transition-all text-center cursor-pointer',
                 activeTab === 'grid'
                   ? 'bg-card text-foreground font-semibold shadow-xs border border-border/40'
                   : 'text-muted-foreground hover:text-foreground'
@@ -97,13 +105,25 @@ export function ZCanvasSettingsDialog({
               type="button"
               onClick={() => setActiveTab('routing')}
               className={cn(
-                'py-1.5 px-3 text-xs font-medium rounded-lg transition-all text-center',
+                'py-1.5 px-2 text-xs font-medium rounded-lg transition-all text-center cursor-pointer',
                 activeTab === 'routing'
                   ? 'bg-card text-foreground font-semibold shadow-xs border border-border/40'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
               Style &amp; Fonts
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('laser')}
+              className={cn(
+                'py-1.5 px-2 text-xs font-medium rounded-lg transition-all text-center cursor-pointer',
+                activeTab === 'laser'
+                  ? 'bg-card text-foreground font-semibold shadow-xs border border-border/40'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Laser Pointer
             </button>
           </div>
         </div>
@@ -655,6 +675,155 @@ export function ZCanvasSettingsDialog({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'laser' && (
+            <div className="space-y-6 animate-in fade-in-50 duration-150">
+              {/* Laser Diode Color */}
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-xs font-semibold tracking-wide text-foreground">
+                    Radiant Laser Color
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Neon beam color and radiant aura during presentations and walkthroughs.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {LASER_COLOR_PRESETS.map((preset) => {
+                    const isSelected =
+                      (settings.laserColor || DEFAULT_LASER_COLOR).toLowerCase() ===
+                      preset.color.toLowerCase();
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => onUpdateSettings({ laserColor: preset.color })}
+                        className={cn(
+                          'p-2.5 rounded-xl border flex items-center gap-2.5 transition-all text-left cursor-pointer',
+                          isSelected
+                            ? 'border-primary/80 bg-primary/8 font-semibold text-primary ring-1 ring-primary/40'
+                            : 'border-border/60 bg-card/60 hover:bg-muted/40 text-foreground'
+                        )}
+                      >
+                        <span
+                          className="w-4 h-4 rounded-full shrink-0 shadow-xs"
+                          style={{
+                            backgroundColor: preset.color,
+                            boxShadow: `0 0 8px ${preset.glow}`,
+                          }}
+                        />
+                        <span className="text-xs truncate">{preset.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Beam Width */}
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-xs font-semibold tracking-wide text-foreground">
+                    Beam Width
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Laser line thickness when drawing or gesturing across the canvas.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['thin', 'normal', 'thick'] as LaserWidthMode[]).map((w) => {
+                    const cfg = LASER_WIDTH_CONFIGS[w];
+                    const isSelected = (settings.laserWidth || 'normal') === w;
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => onUpdateSettings({ laserWidth: w })}
+                        className={cn(
+                          'p-2.5 rounded-xl border text-center transition-all cursor-pointer',
+                          isSelected
+                            ? 'border-primary/80 bg-primary/8 font-semibold text-primary ring-1 ring-primary/40'
+                            : 'border-border/60 bg-card/60 hover:bg-muted/40 text-foreground'
+                        )}
+                      >
+                        <div className="text-xs font-medium">{cfg.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {cfg.activeWidth}px beam
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Trail Fade Duration */}
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-xs font-semibold tracking-wide text-foreground">
+                    Trail Fade Lifespan
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    How long drawn laser trails persist before smoothly dissolving.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['short', 'normal', 'long'] as LaserDurationMode[]).map((d) => {
+                    const cfg = LASER_DURATION_CONFIGS[d];
+                    const isSelected = (settings.laserTrailDuration || 'normal') === d;
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => onUpdateSettings({ laserTrailDuration: d })}
+                        className={cn(
+                          'p-2.5 rounded-xl border text-center transition-all cursor-pointer',
+                          isSelected
+                            ? 'border-primary/80 bg-primary/8 font-semibold text-primary ring-1 ring-primary/40'
+                            : 'border-border/60 bg-card/60 hover:bg-muted/40 text-foreground'
+                        )}
+                      >
+                        <div className="text-xs font-medium">{cfg.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {cfg.activeFadeMs}ms
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Laser Diode Preview Card */}
+              {(() => {
+                const curColor = settings.laserColor || DEFAULT_LASER_COLOR;
+                const palette = resolveLaserPalette(curColor);
+                return (
+                  <div className="p-3.5 rounded-2xl bg-surface-secondary/60 border border-border/70 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-5 h-5 rounded-full animate-pulse shrink-0"
+                        style={{
+                          backgroundColor: palette.core,
+                          boxShadow: `0 0 14px ${palette.glow}`,
+                        }}
+                      />
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">
+                          {LASER_COLOR_PRESETS.find(
+                            (p) => p.color.toLowerCase() === curColor.toLowerCase()
+                          )?.name || 'Custom Neon'}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground font-mono">
+                          {curColor} • {settings.laserWidth || 'normal'} • {settings.laserTrailDuration || 'normal'}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md bg-card border border-border/60 text-muted-foreground">
+                      Ready
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { DEFAULT_PEN_STYLE, PEN_MIN_OPACITY } from './style-models';
+import { DEFAULT_LASER_COLOR } from '../laser/laser-theme';
+import type { LaserWidthMode, LaserDurationMode } from '../laser/laser-theme';
 
 export const ZCanvasGridStyleSchema = z.enum(['dots', 'mesh', 'cross', 'none']);
 export type ZCanvasGridStyle = z.infer<typeof ZCanvasGridStyleSchema>;
@@ -60,6 +62,13 @@ export const ZCanvasSettingsSchema = z.object({
     .min(PEN_MIN_OPACITY)
     .max(1)
     .default(DEFAULT_PEN_STYLE.opacity),
+  /**
+   * The presentation laser pointer appearance and duration preferences.
+   * Stored per user and persisted across diagrams.
+   */
+  laserColor: z.string().default(DEFAULT_LASER_COLOR),
+  laserWidth: z.enum(['thin', 'normal', 'thick']).default('normal'),
+  laserTrailDuration: z.enum(['short', 'normal', 'long']).default('normal'),
 });
 
 export type ZCanvasSettings = z.infer<typeof ZCanvasSettingsSchema>;
@@ -84,6 +93,9 @@ export const DEFAULT_CANVAS_SETTINGS: ZCanvasSettings = {
   penSloppiness: DEFAULT_PEN_STYLE.sloppiness,
   penStrokeStyle: DEFAULT_PEN_STYLE.strokeStyle,
   penOpacity: DEFAULT_PEN_STYLE.opacity,
+  laserColor: DEFAULT_LASER_COLOR,
+  laserWidth: 'normal',
+  laserTrailDuration: 'normal',
 };
 
 const STORAGE_KEY = 'zcanvas_user_settings_v1';

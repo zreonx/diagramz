@@ -329,7 +329,7 @@ export function CanvasHeader({
   };
 
   return (
-    <header className="h-13 border-b border-border/50 bg-background/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-20 shrink-0">
+    <header className="h-13 border-b border-border bg-background/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-20 shrink-0">
       {/* Left: Breadcrumbs & Back */}
       <div className="flex items-center gap-2">
         <Link

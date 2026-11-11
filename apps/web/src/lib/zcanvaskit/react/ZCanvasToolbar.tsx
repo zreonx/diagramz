@@ -23,6 +23,7 @@ import {
   Frame,
   ChevronDown,
   Check,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +53,7 @@ export interface ZCanvasToolbarProps {
   onOpenSettings?: () => void;
   edgeRouting?: ZCanvasEdgeRouting;
   onToggleEdgeRouting?: (routing: ZCanvasEdgeRouting) => void;
+  laserColor?: string;
 }
 
 export function ZCanvasToolbar({
@@ -68,6 +70,7 @@ export function ZCanvasToolbar({
   onOpenSettings,
   edgeRouting = 'bezier',
   onToggleEdgeRouting,
+  laserColor,
 }: ZCanvasToolbarProps) {
   const toolbarRef = React.useRef<HTMLDivElement>(null);
   const [position, setPosition] = React.useState<{ x?: number; y?: number }>({});
@@ -339,7 +342,7 @@ export function ZCanvasToolbar({
               : 'text-foreground/90 hover:text-foreground hover:bg-muted'
           )}
           onClick={() => onSelectTool('line')}
-          title="Line Tool (L) - Click and drag to draw a straight line"
+          title="Line Tool - Click and drag to draw a straight line"
         >
           <Minus className="w-4 h-4" />
         </Button>
@@ -387,6 +390,27 @@ export function ZCanvasToolbar({
           title="Eraser Tool (E) - Click or drag to erase strokes & shapes"
         >
           <Eraser className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant={activeTool === 'laser' ? 'default' : 'ghost'}
+          size="sm"
+          className={cn(
+            'h-9 w-9 p-0 rounded-xl transition-all cursor-pointer relative',
+            activeTool === 'laser'
+              ? 'bg-rose-600 text-white shadow-sm'
+              : 'text-foreground/90 hover:text-foreground hover:bg-muted'
+          )}
+          onClick={() => onSelectTool('laser')}
+          title="Laser Pointer Tool (L) - Radiant neon presenter pointer"
+        >
+          <Sparkles className="w-4 h-4" />
+          {laserColor && (
+            <span
+              className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: laserColor, boxShadow: `0 0 4px ${laserColor}` }}
+            />
+          )}
         </Button>
       </div>
 

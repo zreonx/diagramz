@@ -55,6 +55,13 @@ export const ZCANVAS_SHORTCUTS: ZCanvasShortcut[] = [
     label: 'Line Tool',
     description: 'Activate line tool (drag to draw line)',
     category: 'Tools',
+    keys: ['Shift', 'L'],
+  },
+  {
+    id: 'tool-laser',
+    label: 'Neon Laser Pointer',
+    description: 'Toggle glowing presenter laser pointer (smooth sub-frame trail & diode)',
+    category: 'Tools',
     keys: ['L'],
   },
   {

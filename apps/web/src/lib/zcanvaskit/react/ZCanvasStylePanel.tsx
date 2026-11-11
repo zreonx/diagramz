@@ -27,6 +27,14 @@ import {
   PanelRightClose,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { LaserWidthMode, LaserDurationMode } from '../laser/laser-theme';
+import {
+  DEFAULT_LASER_COLOR,
+  LASER_COLOR_PRESETS,
+  LASER_WIDTH_CONFIGS,
+  LASER_DURATION_CONFIGS,
+  resolveLaserPalette,
+} from '../laser/laser-theme';
 import { ZCanvasDrawingStroke, ZCanvasEdge, ZCanvasEdgeRouting, ZCanvasNode, ZCanvasNodeType } from '../core/schema';
 import type { ZCanvasSettings } from '../core/settings';
 import {
@@ -115,6 +123,10 @@ export type ZCanvasStyleTarget =
    * will draw, so these edits land on the pen, never on existing ink.
    */
   | { kind: 'pen'; pen: ZCanvasPenStyle }
+  /**
+   * The neon laser pointer presentation tool settings (color, width, trail duration).
+   */
+  | { kind: 'laser'; laser: { color: string; width: LaserWidthMode; trailDuration: LaserDurationMode } }
   | { kind: 'canvas' };
 
 export interface ZCanvasStylePanelProps {
@@ -132,6 +144,8 @@ export interface ZCanvasStylePanelProps {
   onCommitRouting: (style: ZCanvasEdgeRouting, scope: ZCanvasRoutingScope) => void;
   /** Edits the pen's tool settings. Nothing here touches the document. */
   onChangePen: (patch: ZCanvasPenStylePatch) => void;
+  /** Edits the laser pointer presentation settings (color, width, trail duration). */
+  onChangeLaser?: (patch: Partial<{ color: string; width: LaserWidthMode; trailDuration: LaserDurationMode }>) => void;
   /** Live restyle of the ink in hand, while a control is being dragged. */
   onPreviewStroke: (patch: ZCanvasPenStylePatch) => void;
   /** Final value for the ink in hand — one undo step for the whole gesture. */
@@ -597,6 +611,7 @@ export function ZCanvasStylePanel({
   onCommitEdge,
   onCommitRouting,
   onChangePen,
+  onChangeLaser,
   onPreviewStroke,
   onCommitStroke,
   onReset,
@@ -631,6 +646,8 @@ export function ZCanvasStylePanel({
     ? 'Connector'
     : target.kind === 'stroke'
     ? 'Ink'
+    : target.kind === 'laser'
+    ? 'Laser Pointer'
     : 'Freehand Pen';
 
   // Routing scope is panel state, not document state: it says whether the next
@@ -664,7 +681,15 @@ export function ZCanvasStylePanel({
     <div
       role="group"
       data-testid="style-panel"
-      aria-label={isCanvasTarget ? 'Canvas and page properties' : target?.kind === 'pen' ? 'Freehand pen options' : `${title} style`}
+      aria-label={
+        isCanvasTarget
+          ? 'Canvas and page properties'
+          : target?.kind === 'laser'
+          ? 'Laser pointer settings'
+          : target?.kind === 'pen'
+          ? 'Freehand pen options'
+          : `${title} style`
+      }
       style={rightOffset ? { right: `${rightOffset + 16}px` } : undefined}
       className="absolute top-20 right-4 z-30 w-64 max-h-[calc(100%-6rem)] overflow-y-auto no-scrollbar rounded-2xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-3 text-xs animate-in fade-in-50 slide-in-from-right-2 duration-150 transition-[right] duration-200"
       onMouseDown={(e) => e.stopPropagation()}
@@ -691,8 +716,8 @@ export function ZCanvasStylePanel({
           {!isCanvasTarget && (
             <button
               type="button"
-              title={target?.kind === 'pen' ? 'Done — back to the select tool' : 'Deselect'}
-              aria-label={target?.kind === 'pen' ? 'Done drawing' : 'Deselect'}
+              title={target?.kind === 'pen' || target?.kind === 'laser' ? 'Done — back to the select tool' : 'Deselect'}
+              aria-label={target?.kind === 'pen' || target?.kind === 'laser' ? 'Done drawing' : 'Deselect'}
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               onClick={onDeselect}
             >
@@ -753,6 +778,8 @@ export function ZCanvasStylePanel({
           onCommit={onCommitStroke}
           scope="element"
         />
+      ) : target.kind === 'laser' ? (
+        <LaserSections laser={target.laser} onChange={onChangeLaser} />
       ) : (
         <PenSections pen={target.pen} onPreview={onChangePen} scope="tool" />
       )}
@@ -949,6 +976,145 @@ function InkPreview({
         opacity={pen.opacity}
       />
     </svg>
+  );
+}
+
+/**
+ * Configuration controls for the radiant presentation laser pointer.
+ */
+function LaserSections({
+  laser,
+  onChange,
+}: {
+  laser: {
+    color: string;
+    width: LaserWidthMode;
+    trailDuration: LaserDurationMode;
+  };
+  onChange?: (patch: Partial<{ color: string; width: LaserWidthMode; trailDuration: LaserDurationMode }>) => void;
+}) {
+  const activeColor = laser.color || DEFAULT_LASER_COLOR;
+  const palette = resolveLaserPalette(activeColor);
+
+  return (
+    <>
+      <Row label="Laser Color" hint="Radiant presentation neon diode color and aura">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {LASER_COLOR_PRESETS.map((preset) => {
+            const isActive = activeColor.toLowerCase() === preset.color.toLowerCase();
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                aria-label={`Laser ${preset.name}`}
+                aria-pressed={isActive}
+                title={`${preset.name} (${preset.color})`}
+                className={cn(
+                  'w-5 h-5 rounded-md border transition-transform hover:scale-110 cursor-pointer',
+                  isActive
+                    ? 'ring-2 ring-primary ring-offset-1 ring-offset-card border-transparent scale-105'
+                    : 'border-border/70'
+                )}
+                style={{
+                  backgroundColor: preset.color,
+                  boxShadow: isActive ? `0 0 8px ${preset.glow}` : undefined,
+                }}
+                onClick={() => onChange?.({ color: preset.color })}
+              />
+            );
+          })}
+          {/* Custom Hex Color Picker */}
+          <label
+            title="Custom Hex Color"
+            className="w-5 h-5 rounded-md border border-dashed border-border/80 flex items-center justify-center cursor-pointer hover:border-foreground/60 transition-colors relative"
+          >
+            <input
+              type="color"
+              value={activeColor}
+              onChange={(e) => onChange?.({ color: e.target.value })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: activeColor }}
+            />
+          </label>
+        </div>
+      </Row>
+
+      <Row label="Beam Width" hint="Presentation laser stroke thickness">
+        <div className="flex items-center gap-1">
+          {(['thin', 'normal', 'thick'] as LaserWidthMode[]).map((w) => {
+            const cfg = LASER_WIDTH_CONFIGS[w];
+            const isSelected = laser.width === w;
+            return (
+              <button
+                key={w}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onChange?.({ width: w })}
+                className={cn(
+                  'h-6 flex-1 rounded-md border text-[11px] font-medium flex items-center justify-center transition-colors cursor-pointer',
+                  isSelected
+                    ? 'bg-primary/10 border-primary text-primary font-semibold'
+                    : 'border-border/70 text-foreground/80 hover:bg-muted'
+                )}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </Row>
+
+      <Row label="Trail Fade Duration" hint="Lifespan before fading out on canvas">
+        <div className="flex items-center gap-1">
+          {(['short', 'normal', 'long'] as LaserDurationMode[]).map((d) => {
+            const cfg = LASER_DURATION_CONFIGS[d];
+            const isSelected = laser.trailDuration === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onChange?.({ trailDuration: d })}
+                className={cn(
+                  'h-6 flex-1 rounded-md border text-[11px] font-medium flex items-center justify-center transition-colors cursor-pointer',
+                  isSelected
+                    ? 'bg-primary/10 border-primary text-primary font-semibold'
+                    : 'border-border/70 text-foreground/80 hover:bg-muted'
+                )}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </Row>
+
+      {/* Live Radiant Preview */}
+      <div className="mt-3 p-2.5 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3.5 h-3.5 rounded-full animate-pulse"
+            style={{
+              backgroundColor: palette.core,
+              boxShadow: `0 0 10px ${palette.glow}`,
+            }}
+          />
+          <span className="text-[11px] font-medium text-foreground">
+            {LASER_COLOR_PRESETS.find((p) => p.color.toLowerCase() === activeColor.toLowerCase())?.name || 'Custom Hex'}
+          </span>
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground uppercase">
+          {activeColor}
+        </span>
+      </div>
+
+      <p className="px-0.5 pt-2 text-[10px] leading-snug text-muted-foreground">
+        Sub-frame smoothed radiant pointer with natural ember physics for presentations and live walkthroughs.
+      </p>
+    </>
   );
 }
 

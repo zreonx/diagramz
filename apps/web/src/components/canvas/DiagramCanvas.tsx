@@ -607,7 +607,7 @@ export function DiagramCanvas({
           <div
             onMouseDown={handleSplitterMouseDown}
             className={cn(
-              'w-2 hover:w-2.5 bg-border/60 hover:bg-primary/50 transition-all cursor-col-resize flex items-center justify-center group select-none z-30 shrink-0 touch-none',
+              'w-2 hover:w-2.5 bg-border hover:bg-primary/50 transition-all cursor-col-resize flex items-center justify-center group select-none z-30 shrink-0 touch-none',
               isDraggingSplitter && 'bg-primary w-2.5 shadow-sm'
             )}
             title="Drag to resize Document and Canvas view"

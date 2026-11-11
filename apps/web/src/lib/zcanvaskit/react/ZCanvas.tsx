@@ -61,6 +61,7 @@ import { ZCanvasShortcutsDialog } from './ZCanvasShortcutsDialog';
 import { ZCanvasSettingsDialog } from './ZCanvasSettingsDialog';
 import { ZCanvasContextMenu } from './ZCanvasContextMenu';
 import { ZCanvasLaserOverlay } from './ZCanvasLaserOverlay';
+import { DEFAULT_LASER_COLOR } from '../laser/laser-theme';
 import {
   copySelection,
   pasteClipboard,
@@ -5595,6 +5596,18 @@ export function ZCanvas({
       };
     }
 
+    // Laser pointer presentation tool styling (color, width, trail duration).
+    if (activeTool === 'laser') {
+      return {
+        kind: 'laser',
+        laser: {
+          color: settings.laserColor || DEFAULT_LASER_COLOR,
+          width: settings.laserWidth || 'normal',
+          trailDuration: settings.laserTrailDuration || 'normal',
+        },
+      };
+    }
+
     // The pressed node wins, so a container that brought its group into the
     // selection still opens the panel.
     if (selectedNodeIds.length >= 1) {
@@ -5760,6 +5773,7 @@ export function ZCanvas({
           onExportPng={handleExportPng}
           onOpenShortcuts={() => setShowShortcuts(true)}
           onOpenSettings={() => setShowSettings(true)}
+          laserColor={settings.laserColor}
           edgeRouting={edgeStyle}
           onToggleEdgeRouting={(routing) => {
             setEdgeStyle(routing);
@@ -5862,8 +5876,8 @@ export function ZCanvas({
                 cx={settings.gridSize / 2}
                 cy={settings.gridSize / 2}
                 r={1.25}
-                fill={isDark ? '#3A3B43' : '#D8D8D0'}
-                opacity={0.8}
+                fill={isDark ? '#3A3B43' : '#B8B8AE'}
+                opacity={0.85}
               />
             </pattern>
           )}
@@ -5878,9 +5892,9 @@ export function ZCanvas({
               <path
                 d={`M ${settings.gridSize} 0 L 0 0 0 ${settings.gridSize}`}
                 fill="none"
-                stroke={isDark ? '#383940' : '#E3E3DC'}
-                strokeWidth={0.8}
-                opacity={0.5}
+                stroke={isDark ? '#383940' : '#D0D0C6'}
+                strokeWidth={0.9}
+                opacity={0.7}
               />
             </pattern>
           )}
@@ -5895,9 +5909,9 @@ export function ZCanvas({
               <path
                 d={`M ${settings.gridSize / 2 - 3} ${settings.gridSize / 2} L ${settings.gridSize / 2 + 3} ${settings.gridSize / 2} M ${settings.gridSize / 2} ${settings.gridSize / 2 - 3} L ${settings.gridSize / 2} ${settings.gridSize / 2 + 3}`}
                 fill="none"
-                stroke={isDark ? '#4A4B54' : '#C9C9C0'}
+                stroke={isDark ? '#4A4B54' : '#A8A89C'}
                 strokeWidth={1}
-                opacity={0.7}
+                opacity={0.8}
               />
             </pattern>
           )}
@@ -6731,7 +6745,7 @@ export function ZCanvas({
               {/* CONTAINER NODE */}
               {node.type === 'container' && (
                 <div
-                  className="relative w-full h-full rounded-2xl p-4 flex flex-col justify-between pointer-events-none"
+                  className="relative w-full h-full rounded-2xl p-4 flex flex-col justify-between pointer-events-none border"
                   style={{
                     borderColor: node.color || resolveNodeStroke('container', isDark),
                     borderWidth: node.strokeWidth || 2,
@@ -6895,7 +6909,7 @@ export function ZCanvas({
               {/* FRAME / ARTBOARD NODE */}
               {node.type === 'frame' && (
                 <div
-                  className="relative w-full h-full rounded-xl pointer-events-none"
+                  className="relative w-full h-full rounded-xl pointer-events-none border"
                   style={{
                     borderColor: node.color || resolveNodeStroke('frame', isDark),
                     borderWidth: node.strokeWidth || 1.5,
@@ -6972,7 +6986,7 @@ export function ZCanvas({
               {/* ERD TABLE NODE */}
               {node.type === 'table' && (
                 <div
-                  className="w-full h-full rounded-xl bg-card shadow-lg overflow-hidden flex flex-col group/table"
+                  className="w-full h-full rounded-xl bg-card shadow-lg overflow-hidden flex flex-col group/table border"
                   style={{
                     borderColor: node.color || resolveNodeStroke('table', isDark),
                     borderWidth: node.strokeWidth || 1,
@@ -7492,7 +7506,7 @@ export function ZCanvas({
                   ) : (
                     // Matches the service card container: rounded-xl, card fill, soft shadow.
                     <div
-                      className="absolute inset-0 w-full h-full rounded-xl bg-card shadow-md pointer-events-none"
+                      className="absolute inset-0 w-full h-full rounded-xl bg-card border shadow-md pointer-events-none"
                       style={{
                         borderColor: node.color || resolveNodeStroke('rectangle', isDark),
                         borderWidth: node.strokeWidth || 2,
@@ -8943,6 +8957,13 @@ export function ZCanvas({
           }}
           onCommitRouting={commitEdgeRouting}
           onChangePen={updatePenStyle}
+          onChangeLaser={(patch) => {
+            handleUpdateSettings({
+              ...(patch.color ? { laserColor: patch.color } : {}),
+              ...(patch.width ? { laserWidth: patch.width } : {}),
+              ...(patch.trailDuration ? { laserTrailDuration: patch.trailDuration } : {}),
+            });
+          }}
           onPreviewStroke={(patch) => {
             if (styleTarget?.kind === 'stroke') previewStrokeStyle(styleTarget.stroke.id, patch);
           }}
@@ -8955,10 +8976,16 @@ export function ZCanvas({
             else if (styleTarget?.kind === 'stroke') resetStrokeStyle(styleTarget.stroke.id);
             else if (styleTarget?.kind === 'pen') {
               updatePenStyle(DEFAULT_PEN_STYLE);
+            } else if (styleTarget?.kind === 'laser') {
+              handleUpdateSettings({
+                laserColor: DEFAULT_LASER_COLOR,
+                laserWidth: 'normal',
+                laserTrailDuration: 'normal',
+              });
             }
           }}
           onDeselect={() => {
-            if (styleTarget?.kind === 'pen') {
+            if (styleTarget?.kind === 'pen' || styleTarget?.kind === 'laser') {
               selectTool('select');
             } else {
               setEnteredGroupId(null);
@@ -9265,6 +9292,10 @@ export function ZCanvas({
           onSelectPage={handleSelectPage}
           isLaserActive={activeTool === 'laser'}
           onToggleLaser={() => setActiveTool((prev) => (prev === 'laser' ? 'select' : 'laser'))}
+          laserColor={settings.laserColor}
+          onSelectLaserColor={(c) => handleUpdateSettings({ laserColor: c })}
+          laserWidth={settings.laserWidth}
+          onSelectLaserWidth={(w) => handleUpdateSettings({ laserWidth: w })}
           onExitPresentation={() => {
             setIsPresentationMode(false);
             if (activeTool === 'laser') setActiveTool('select');
@@ -9274,7 +9305,12 @@ export function ZCanvas({
 
       {/* High-Performance Hardware-Accelerated Neon Laser Pointer Overlay */}
       {activeTool === 'laser' && (
-        <ZCanvasLaserOverlay containerRef={canvasRef} />
+        <ZCanvasLaserOverlay
+          containerRef={canvasRef}
+          color={settings.laserColor}
+          width={settings.laserWidth}
+          trailDuration={settings.laserTrailDuration}
+        />
       )}
     </div>
   );
