@@ -20,7 +20,14 @@
 
 ## 2. Recently Completed Work
 
-1. **Laser Pointer Performance Overhaul (120 FPS Zero-Lag Engine)**:
+1. **Laser Pointer Exclusively Restricted to Presentation Mode**:
+   - Removed the Laser pointer button from the canvas floating toolbar ([ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx)) so the normal editor interface remains focused on core creation tools.
+   - Preserved full laser pointer activation, color swatches, and beam size selectors in the Presentation Mode dock ([ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx)).
+   - Restored keyboard shortcut <kbd>L</kbd> in normal editing mode to activate the Line/Connector tool in [shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts) and [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), while <kbd>L</kbd> toggles the Laser pointer when presenting.
+   - Enforced `{isPresentationMode && activeTool === 'laser'}` on `ZCanvasLaserOverlay` and auto-reset `activeTool` to `'select'` upon exiting presentation mode.
+   - Updated the bottom canvas HUD cheatsheet from `<kbd>L</kbd> Laser` back to `<kbd>L</kbd> Line`.
+
+2. **Laser Pointer Performance Overhaul (120 FPS Zero-Lag Engine)**:
    - Eliminated hundreds of per-segment `ctx.shadowBlur` software convolution blurs in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx), replacing them with hardware-accelerated layered alpha strokes for identical glowing radiance at ~0.05ms render time.
    - Removed repeated `getBoundingClientRect()` layout flushes from `pointermove` and `render()` by caching container bounds.
    - Removed artificial spring dampening so the laser diode tracks cursor position with true 1:1, 0ms input latency.

@@ -4,6 +4,22 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Restrict Laser Pointer Exclusively to Presentation Mode & Restore Line Tool Shortcuts
+
+### Changed & Refined
+- **Toolbar & Interface Clarity** ([ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx)):
+  - Removed the Laser pointer tool button from the floating editing toolbar to keep diagramming tools uncluttered and dedicated to editing operations.
+  - Laser pointer controls and color/thickness palettes remain cleanly housed exclusively inside the Presentation Mode dock ([ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx)).
+- **Keyboard Shortcuts & HUD** ([shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts), [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Restored <kbd>L</kbd> shortcut to **Line Tool** in normal diagram editing mode.
+  - Mapped <kbd>L</kbd> shortcut to **Laser Pointer (Presentation Mode)** under navigation shortcuts when presenting.
+  - Updated the bottom canvas context HUD cheatsheet from `<kbd>L</kbd> Laser` back to `<kbd>L</kbd> Line`.
+- **Presentation State Guard** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx)):
+  - Restricted the `ZCanvasLaserOverlay` to only mount when `{isPresentationMode && activeTool === 'laser'}`.
+  - Added an automatic state guard effect resetting `activeTool` to `'select'` whenever exiting presentation mode.
+
+---
+
 ## [2026-11-12] — Laser Pointer Performance Overhaul (120 FPS Zero-Lag Engine)
 
 ### Fixed & Optimized

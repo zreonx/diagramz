@@ -615,6 +615,13 @@ export function ZCanvas({
       setSelectedStrokeIds([]);
     }
   }, [readOnly]);
+
+  // Ensure the laser tool is only active while in presentation mode
+  useEffect(() => {
+    if (!isPresentationMode && activeTool === 'laser') {
+      setActiveTool('select');
+    }
+  }, [isPresentationMode, activeTool]);
   /**
    * The node the user actually pressed, which is not always the only selected
    * one: pressing a grouped shape selects the rest of its group so the members
@@ -5816,7 +5823,6 @@ export function ZCanvas({
           onExportPng={handleExportPng}
           onOpenShortcuts={() => setShowShortcuts(true)}
           onOpenSettings={() => setShowSettings(true)}
-          laserColor={settings.laserColor}
           edgeRouting={edgeStyle}
           onToggleEdgeRouting={(routing) => {
             setEdgeStyle(routing);
@@ -9389,7 +9395,7 @@ export function ZCanvas({
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">L</kbd> Laser
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">L</kbd> Line
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
@@ -9414,13 +9420,13 @@ export function ZCanvas({
           onSelectLaserWidth={(w) => handleUpdateSettings({ laserWidth: w })}
           onExitPresentation={() => {
             setIsPresentationMode(false);
-            if (activeTool === 'laser') setActiveTool('select');
+            setActiveTool('select');
           }}
         />
       )}
 
-      {/* High-Performance Hardware-Accelerated Neon Laser Pointer Overlay */}
-      {activeTool === 'laser' && (
+      {/* High-Performance Hardware-Accelerated Neon Laser Pointer Overlay (Presentation Mode Only) */}
+      {isPresentationMode && activeTool === 'laser' && (
         <ZCanvasLaserOverlay
           containerRef={canvasRef}
           color={settings.laserColor}
