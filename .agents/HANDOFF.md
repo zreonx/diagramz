@@ -20,7 +20,15 @@
 
 ## 2. Recently Completed Work
 
-1. **Laser Pointer Exclusively Restricted to Presentation Mode**:
+1. **Ultra-Smooth Anti-Aliased Laser Brush Engine (Zero-Lag & Chaikin Spline)**:
+   - Eliminated pixelated stair-stepping and butt-cap notches in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) by replacing disconnected single-segment butt strokes with continuous progressive Bézier sections with native GPU `lineCap = 'round'` and `lineJoin = 'round'`, seamlessly matching endpoints between adjacent sections.
+   - Added Chaikin corner-cutting algorithm for silky-smooth organic curves across harvested pointer events, turning angular hand motions into flowing brush ribbons.
+   - Connected live pointer coordinates `(cursor.x, cursor.y)` directly to the active head of the trail, eliminating the 2-frame lag gap between the laser diode and the brush stroke.
+   - Enabled direct pointer capture (`pointer-events-auto cursor-none touch-none select-none` with `canvas.setPointerCapture(e.pointerId)`), preventing clicks from hitting underlying diagram elements or selecting text.
+   - Added middle-click pan callbacks (`onPanStart`, `onPanMove`, `onPanEnd`) in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) for navigation while presenting.
+   - Upgraded brush widths (`8px / 14px / 22px`) and durations (`700ms / 1300ms / 2400ms`) in [laser-theme.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.ts) for rich, comfortable brush drawing.
+
+2. **Laser Pointer Exclusively Restricted to Presentation Mode**:
    - Removed the Laser pointer button from the canvas floating toolbar ([ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx)) so the normal editor interface remains focused on core creation tools.
    - Preserved full laser pointer activation, color swatches, and beam size selectors in the Presentation Mode dock ([ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx)).
    - Restored keyboard shortcut <kbd>L</kbd> in normal editing mode to activate the Line/Connector tool in [shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts) and [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), while <kbd>L</kbd> toggles the Laser pointer when presenting.

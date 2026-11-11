@@ -9432,6 +9432,20 @@ export function ZCanvas({
           color={settings.laserColor}
           width={settings.laserWidth}
           trailDuration={settings.laserTrailDuration}
+          onPanStart={(clientX, clientY) => {
+            setIsPanning(true);
+            panStartRef.current = { x: clientX - viewport.panX, y: clientY - viewport.panY };
+          }}
+          onPanMove={(clientX, clientY) => {
+            setViewport((v) => ({
+              ...v,
+              panX: clientX - panStartRef.current.x,
+              panY: clientY - panStartRef.current.y,
+            }));
+          }}
+          onPanEnd={() => {
+            setIsPanning(false);
+          }}
         />
       )}
     </div>

@@ -4,6 +4,21 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Ultra-Smooth Anti-Aliased Laser Brush Engine (Zero-Lag & Chaikin Spline)
+
+### Fixed & Enhanced
+- **Anti-Aliased Organic Brush Smoothing** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)):
+  - **Eliminated Pixelation & Butt-Cap Notches**: Replaced disjointed per-segment butt caps with continuous progressive Bézier sections with native GPU `lineCap = 'round'` and `lineJoin = 'round'`. Each section shares exact end vertices with the subsequent section, eliminating all stair-stepping, notch cuts, and dark overlapping beads.
+  - **Chaikin Spline Corner-Cutting Algorithm**: Integrated $O(N)$ Chaikin subdivision smoothing across harvested pointer events, turning rapid mouse motion and angular digitizer turns into silky-smooth organic curves.
+  - **Zero-Lag Real-Time Cursor Anchor**: Seamlessly anchored the current live pointer coordinate `(cursor.x, cursor.y)` to the active head of the trail, eliminating the visible 2-frame lag gap between the pointer diode and the trail.
+  - **Direct Pointer Capture & Seamless Interactivity**: Upgraded the overlay canvas to `pointer-events-auto cursor-none touch-none select-none` with `canvas.setPointerCapture(e.pointerId)` on pointer down. Prevents click-through interference on underlying diagram nodes, shapes, or text, making drawing effortless and natural.
+  - **Middle-Click Pan Navigation**: Integrated `onPanStart`, `onPanMove`, and `onPanEnd` callbacks in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) for seamless middle-click dragging while presenting.
+- **Enhanced Brush Tapering & Durations** ([laser-theme.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.ts)):
+  - Upgraded active brush widths (`thin: 8px`, `normal: 14px`, `thick: 22px`) and hover widths (`4px`, `7px`, `11px`) for authentic, bold light-brush presence.
+  - Enhanced fade durations (`short: 700ms`, `normal: 1300ms`, `long: 2400ms`) giving comfortable, natural time to circle diagram components or write notes before the neon brush stroke gracefully dissolves.
+
+---
+
 ## [2026-11-12] — Restrict Laser Pointer Exclusively to Presentation Mode & Restore Line Tool Shortcuts
 
 ### Changed & Refined

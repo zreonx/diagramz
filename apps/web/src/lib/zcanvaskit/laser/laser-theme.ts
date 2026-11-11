@@ -35,9 +35,9 @@ export interface LaserWidthConfig {
 }
 
 export const LASER_WIDTH_CONFIGS: Record<LaserWidthMode, LaserWidthConfig> = {
-  thin: { id: 'thin', label: 'Fine', activeWidth: 5, hoverWidth: 2.5 },
-  normal: { id: 'normal', label: 'Normal', activeWidth: 8.5, hoverWidth: 4 },
-  thick: { id: 'thick', label: 'Bold', activeWidth: 13, hoverWidth: 6 },
+  thin: { id: 'thin', label: 'Fine', activeWidth: 8, hoverWidth: 4 },
+  normal: { id: 'normal', label: 'Normal', activeWidth: 14, hoverWidth: 7 },
+  thick: { id: 'thick', label: 'Bold', activeWidth: 22, hoverWidth: 11 },
 };
 
 export interface LaserDurationConfig {
@@ -48,9 +48,9 @@ export interface LaserDurationConfig {
 }
 
 export const LASER_DURATION_CONFIGS: Record<LaserDurationMode, LaserDurationConfig> = {
-  short: { id: 'short', label: 'Fast Fade', activeFadeMs: 450, hoverFadeMs: 160 },
-  normal: { id: 'normal', label: 'Balanced', activeFadeMs: 850, hoverFadeMs: 260 },
-  long: { id: 'long', label: 'Long Trail', activeFadeMs: 1600, hoverFadeMs: 480 },
+  short: { id: 'short', label: 'Fast Fade', activeFadeMs: 700, hoverFadeMs: 350 },
+  normal: { id: 'normal', label: 'Balanced', activeFadeMs: 1300, hoverFadeMs: 650 },
+  long: { id: 'long', label: 'Long Trail', activeFadeMs: 2400, hoverFadeMs: 1200 },
 };
 
 export interface LaserPalette {
