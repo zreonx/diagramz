@@ -17,16 +17,6 @@ interface LaserPoint {
   isDown: boolean;
 }
 
-interface Sparkle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  color: string;
-}
-
 export interface ZCanvasLaserOverlayProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   color?: string;
@@ -44,16 +34,15 @@ export function ZCanvasLaserOverlay({
 }: ZCanvasLaserOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pointsRef = useRef<LaserPoint[]>([]);
-  const sparklesRef = useRef<Sparkle[]>([]);
 
-  // Raw pointer target and smoothed diode position
-  const targetCursorRef = useRef<{ x: number; y: number; isInside: boolean; isDown: boolean }>({
+  // Instant hardware-tracked cursor position
+  const cursorRef = useRef<{ x: number; y: number; isInside: boolean; isDown: boolean }>({
     x: -100,
     y: -100,
     isInside: false,
     isDown: false,
   });
-  const smoothedCursorRef = useRef<{ x: number; y: number }>({ x: -100, y: -100 });
+
   const rafIdRef = useRef<number | null>(null);
 
   // Dynamic configuration based on user selection
@@ -66,100 +55,77 @@ export function ZCanvasLaserOverlay({
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     let isRunning = true;
 
-    // Handle high-DPI sizing and Retina crispness
+    // Cache container rect to prevent layout reflow during pointermove & animation frames
+    let cachedRect = container.getBoundingClientRect();
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     const updateSize = () => {
       if (!canvas || !container) return;
-      const rect = container.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.floor(rect.width);
-      const h = Math.floor(rect.height);
+      cachedRect = container.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(cachedRect.width);
+      const h = Math.floor(cachedRect.height);
 
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         canvas.style.width = `${w}px`;
         canvas.style.height = `${h}px`;
-        ctx.scale(dpr, dpr);
       }
     };
 
     updateSize();
+
     const resizeObserver = new ResizeObserver(updateSize);
     resizeObserver.observe(container);
+    window.addEventListener('resize', updateSize, { passive: true });
+    window.addEventListener('scroll', updateSize, { passive: true });
+
+    // Minimum distance squared (3px threshold) to avoid flooding the buffer with 1000s of micro-points
+    const MIN_DIST_SQ = 9;
 
     const recordPoint = (x: number, y: number, now: number, isDown: boolean) => {
       const pts = pointsRef.current;
       const last = pts[pts.length - 1];
-      const dist = last ? Math.hypot(x - last.x, y - last.y) : 999;
-
-      // Filter sub-pixel jitter while capturing fine high-frequency strokes
-      if (!last || dist >= 1.5 || now - last.time > 12) {
+      if (!last) {
         pts.push({ x, y, time: now, isDown });
-
-        // Spawn delicate micro-sparkles while actively drawing
-        if (isDown && Math.random() > 0.42) {
-          const sparkColor =
-            Math.random() > 0.4
-              ? '#ffffff'
-              : Math.random() > 0.5
-              ? palette.glow
-              : palette.core;
-
-          sparklesRef.current.push({
-            x: x + (Math.random() - 0.5) * 3,
-            y: y + (Math.random() - 0.5) * 3,
-            vx: (Math.random() - 0.5) * 0.9,
-            vy: (Math.random() - 0.5) * 0.9 - 0.25,
-            size: 1 + Math.random() * 1.8,
-            alpha: 0.95,
-            color: sparkColor,
-          });
-        }
+        return;
+      }
+      const dx = x - last.x;
+      const dy = y - last.y;
+      if (dx * dx + dy * dy >= MIN_DIST_SQ || now - last.time > 16) {
+        pts.push({ x, y, time: now, isDown });
       }
     };
 
-    // Sub-frame pointer event harvesting (PointerEvent.getCoalescedEvents())
     const onPointerMove = (e: PointerEvent) => {
-      const rect = container.getBoundingClientRect();
-      const isDown = targetCursorRef.current.isDown;
+      const isDown = cursorRef.current.isDown;
       const now = performance.now();
+      const x = e.clientX - cachedRect.left;
+      const y = e.clientY - cachedRect.top;
 
-      // Harvest intermediate hardware samples between render frames if available
+      cursorRef.current.x = x;
+      cursorRef.current.y = y;
+      cursorRef.current.isInside = true;
+
+      // Harvest coalesced events if available for high-DPI curve smoothness
       if (typeof e.getCoalescedEvents === 'function') {
         const coalesced = e.getCoalescedEvents();
         if (coalesced && coalesced.length > 0) {
           for (let i = 0; i < coalesced.length; i++) {
             const ev = coalesced[i];
-            const cx = ev.clientX - rect.left;
-            const cy = ev.clientY - rect.top;
-            recordPoint(cx, cy, now, isDown);
+            recordPoint(ev.clientX - cachedRect.left, ev.clientY - cachedRect.top, now, isDown);
           }
         } else {
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
           recordPoint(x, y, now, isDown);
         }
       } else {
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
         recordPoint(x, y, now, isDown);
-      }
-
-      const latestX = e.clientX - rect.left;
-      const latestY = e.clientY - rect.top;
-      targetCursorRef.current.x = latestX;
-      targetCursorRef.current.y = latestY;
-      targetCursorRef.current.isInside = true;
-
-      // If smoothed cursor has not been initialized, snap directly
-      if (smoothedCursorRef.current.x < 0) {
-        smoothedCursorRef.current.x = latestX;
-        smoothedCursorRef.current.y = latestY;
       }
 
       if (!rafIdRef.current) {
@@ -168,34 +134,17 @@ export function ZCanvasLaserOverlay({
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return; // Only primary left-click
-      targetCursorRef.current.isDown = true;
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      if (e.button !== 0) return;
+      cursorRef.current.isDown = true;
       const now = performance.now();
+      const x = e.clientX - cachedRect.left;
+      const y = e.clientY - cachedRect.top;
 
-      targetCursorRef.current.x = x;
-      targetCursorRef.current.y = y;
-      smoothedCursorRef.current.x = x;
-      smoothedCursorRef.current.y = y;
+      cursorRef.current.x = x;
+      cursorRef.current.y = y;
+      cursorRef.current.isInside = true;
 
       recordPoint(x, y, now, true);
-
-      // Energy burst sparkles on click
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI * 2 * i) / 6 + Math.random() * 0.4;
-        const speed = 0.9 + Math.random() * 1.3;
-        sparklesRef.current.push({
-          x,
-          y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 1.5 + Math.random() * 1.6,
-          alpha: 1,
-          color: i % 2 === 0 ? '#ffffff' : palette.glow,
-        });
-      }
 
       if (!rafIdRef.current) {
         rafIdRef.current = requestAnimationFrame(render);
@@ -203,21 +152,21 @@ export function ZCanvasLaserOverlay({
     };
 
     const onPointerUp = () => {
-      targetCursorRef.current.isDown = false;
+      cursorRef.current.isDown = false;
     };
 
-    const onPointerEnter = () => {
-      targetCursorRef.current.isInside = true;
+    const onPointerEnter = (e: PointerEvent) => {
+      cursorRef.current.isInside = true;
+      cursorRef.current.x = e.clientX - cachedRect.left;
+      cursorRef.current.y = e.clientY - cachedRect.top;
       if (!rafIdRef.current) {
         rafIdRef.current = requestAnimationFrame(render);
       }
     };
 
     const onPointerLeave = () => {
-      targetCursorRef.current.isInside = false;
-      targetCursorRef.current.isDown = false;
-      smoothedCursorRef.current.x = -100;
-      smoothedCursorRef.current.y = -100;
+      cursorRef.current.isInside = false;
+      cursorRef.current.isDown = false;
     };
 
     container.addEventListener('pointermove', onPointerMove, { passive: true });
@@ -226,17 +175,16 @@ export function ZCanvasLaserOverlay({
     container.addEventListener('pointerenter', onPointerEnter, { passive: true });
     container.addEventListener('pointerleave', onPointerLeave, { passive: true });
 
-    // Render loop
     const activeFadeMs = durationConfig.activeFadeMs;
     const hoverFadeMs = durationConfig.hoverFadeMs;
 
+    // High-performance 120 FPS render loop
     const render = () => {
       if (!isRunning) return;
 
       const now = performance.now();
-      const rect = container.getBoundingClientRect();
-      const widthPx = rect.width;
-      const heightPx = rect.height;
+      const canvasW = canvas.width;
+      const canvasH = canvas.height;
 
       // Filter expired trail points
       const points = pointsRef.current;
@@ -247,181 +195,154 @@ export function ZCanvasLaserOverlay({
         points.shift();
       }
 
-      // Update ambient micro-sparkles
-      const sparkles = sparklesRef.current;
-      for (let i = sparkles.length - 1; i >= 0; i--) {
-        const s = sparkles[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.alpha -= 0.032;
-        s.size *= 0.96;
-        if (s.alpha <= 0 || s.size <= 0.2) {
-          sparkles.splice(i, 1);
-        }
-      }
+      // Fast clear using scaled coordinate space
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cachedRect.width, cachedRect.height);
 
-      // Cursor spring dampening for butter-smooth diode motion
-      const target = targetCursorRef.current;
-      const smoothed = smoothedCursorRef.current;
-      if (target.isInside && smoothed.x >= 0) {
-        const ease = target.isDown ? 0.85 : 0.65;
-        smoothed.x += (target.x - smoothed.x) * ease;
-        smoothed.y += (target.y - smoothed.y) * ease;
-      }
+      const cursor = cursorRef.current;
 
-      ctx.clearRect(0, 0, widthPx, heightPx);
-
-      // 1. Draw Continuous Midpoint Bézier Radiant Ribbon
+      // ─── Draw Radiant Bézier Ribbon Trail ──────────────────────────────────
       if (points.length >= 2) {
-        ctx.save();
         ctx.lineJoin = 'round';
 
-        // Calculate smooth midpoints between consecutive points
-        const midpoints: Array<{ x: number; y: number }> = [];
-        for (let i = 0; i < points.length - 1; i++) {
-          midpoints.push({
-            x: (points[i].x + points[i + 1].x) / 2,
-            y: (points[i].y + points[i + 1].y) / 2,
-          });
+        // Precompute midpoints between consecutive points
+        const count = points.length;
+        const midX: number[] = new Array(count - 1);
+        const midY: number[] = new Array(count - 1);
+        for (let i = 0; i < count - 1; i++) {
+          midX[i] = (points[i].x + points[i + 1].x) * 0.5;
+          midY[i] = (points[i].y + points[i + 1].y) * 0.5;
         }
 
-        // Draw connected ribbon segments without overlapping "bead" artifacts
-        for (let i = 0; i < points.length - 1; i++) {
-          const pCurrent = points[i];
+        // Segment properties cache
+        const alphas: number[] = new Array(count - 1);
+        const widths: number[] = new Array(count - 1);
+        const isDowns: boolean[] = new Array(count - 1);
+
+        for (let i = 0; i < count - 1; i++) {
           const pNext = points[i + 1];
           const maxLife = pNext.isDown ? activeFadeMs : hoverFadeMs;
-          const age = now - pNext.time;
-          const life = Math.max(0, 1 - age / maxLife);
-          if (life <= 0) continue;
+          const life = Math.max(0, 1 - (now - pNext.time) / maxLife);
+          alphas[i] = pNext.isDown ? Math.pow(life, 0.75) : Math.pow(life, 0.75) * 0.45;
+          widths[i] =
+            (pNext.isDown ? widthConfig.activeWidth : widthConfig.hoverWidth) *
+            Math.pow(life, 0.82);
+          isDowns[i] = pNext.isDown;
+        }
 
-          // Natural non-linear optical tapering
-          const lifeEase = Math.pow(life, 0.72);
-          const widthScale = Math.pow(life, 0.82);
-          const baseWidth =
-            (pNext.isDown ? widthConfig.activeWidth : widthConfig.hoverWidth) * widthScale;
-          const alpha = pNext.isDown ? lifeEase : lifeEase * 0.45;
+        // Pass 1: Wide Ambient Glow Ribbon (Optical Aura without costly shadowBlur)
+        for (let i = 0; i < count - 1; i++) {
+          const a = alphas[i];
+          if (a <= 0.01) continue;
 
-          // Midpoint B-spline start and end
-          const startX = i === 0 ? pCurrent.x : midpoints[i - 1].x;
-          const startY = i === 0 ? pCurrent.y : midpoints[i - 1].y;
-          const ctrlX = pCurrent.x;
-          const ctrlY = pCurrent.y;
-          const endX = i === points.length - 2 ? pNext.x : midpoints[i].x;
-          const endY = i === points.length - 2 ? pNext.y : midpoints[i].y;
+          const startX = i === 0 ? points[0].x : midX[i - 1];
+          const startY = i === 0 ? points[0].y : midY[i - 1];
+          const ctrlX = points[i].x;
+          const ctrlY = points[i].y;
+          const endX = i === count - 2 ? points[count - 1].x : midX[i];
+          const endY = i === count - 2 ? points[count - 1].y : midY[i];
 
-          // Cap only the very first and last segment to prevent circular bead stacking
-          const isEndpoint = i === 0 || i === points.length - 2;
-          ctx.lineCap = isEndpoint ? 'round' : 'butt';
-
-          // Pass 1: Wide Radiant Glow Aura (Ambient Neon Ribbon)
+          ctx.lineCap = i === 0 || i === count - 2 ? 'round' : 'butt';
           ctx.beginPath();
           ctx.moveTo(startX, startY);
           ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
-          ctx.strokeStyle = palette.rgba(alpha * 0.32);
-          ctx.lineWidth = Math.max(1, baseWidth * 2.7);
-          ctx.shadowColor = palette.glow;
-          ctx.shadowBlur = pNext.isDown ? 14 : 7;
+          ctx.strokeStyle = palette.rgba(a * 0.22);
+          ctx.lineWidth = Math.max(1.5, widths[i] * 3.4);
           ctx.stroke();
+        }
 
-          // Pass 2: Saturated Hot Plasma Core
+        // Pass 2: Saturated Plasma Beam Core
+        for (let i = 0; i < count - 1; i++) {
+          const a = alphas[i];
+          if (a <= 0.01) continue;
+
+          const startX = i === 0 ? points[0].x : midX[i - 1];
+          const startY = i === 0 ? points[0].y : midY[i - 1];
+          const ctrlX = points[i].x;
+          const ctrlY = points[i].y;
+          const endX = i === count - 2 ? points[count - 1].x : midX[i];
+          const endY = i === count - 2 ? points[count - 1].y : midY[i];
+
+          ctx.lineCap = i === 0 || i === count - 2 ? 'round' : 'butt';
           ctx.beginPath();
           ctx.moveTo(startX, startY);
           ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
-          ctx.strokeStyle = palette.rgba(alpha * 0.95);
-          ctx.lineWidth = Math.max(1.2, baseWidth);
-          ctx.shadowColor = palette.core;
-          ctx.shadowBlur = pNext.isDown ? 6 : 3;
+          ctx.strokeStyle = palette.rgba(a * 0.95);
+          ctx.lineWidth = Math.max(1, widths[i]);
           ctx.stroke();
-
-          // Pass 3: White-Hot Laser Spine
-          if (pNext.isDown && life > 0.2) {
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
-            ctx.lineWidth = Math.max(1.1, baseWidth * 0.28);
-            ctx.shadowColor = '#ffffff';
-            ctx.shadowBlur = 2;
-            ctx.stroke();
-          }
         }
 
-        ctx.restore();
-      }
+        // Pass 3: White-Hot Center Spine
+        for (let i = 0; i < count - 1; i++) {
+          const a = alphas[i];
+          if (!isDowns[i] || a <= 0.15) continue;
 
-      // 2. Draw Radiant Micro-Sparkles
-      if (sparkles.length > 0) {
-        ctx.save();
-        for (let i = 0; i < sparkles.length; i++) {
-          const s = sparkles[i];
+          const startX = i === 0 ? points[0].x : midX[i - 1];
+          const startY = i === 0 ? points[0].y : midY[i - 1];
+          const ctrlX = points[i].x;
+          const ctrlY = points[i].y;
+          const endX = i === count - 2 ? points[count - 1].x : midX[i];
+          const endY = i === count - 2 ? points[count - 1].y : midY[i];
+
+          ctx.lineCap = i === 0 || i === count - 2 ? 'round' : 'butt';
           ctx.beginPath();
-          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-          ctx.fillStyle = s.color;
-          ctx.globalAlpha = Math.max(0, s.alpha);
-          ctx.shadowColor = s.color;
-          ctx.shadowBlur = 4;
-          ctx.fill();
+          ctx.moveTo(startX, startY);
+          ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${a * 0.92})`;
+          ctx.lineWidth = Math.max(1, widths[i] * 0.28);
+          ctx.stroke();
         }
-        ctx.restore();
       }
 
-      // 3. Draw Radiant Diode Dot & Dynamic Aura at Cursor
+      // ─── Draw Instant 0ms Laser Diode Dot ──────────────────────────────────
       if (
-        target.isInside &&
-        smoothed.x >= 0 &&
-        smoothed.y >= 0 &&
-        smoothed.x <= widthPx &&
-        smoothed.y <= heightPx
+        cursor.isInside &&
+        cursor.x >= 0 &&
+        cursor.y >= 0 &&
+        cursor.x <= cachedRect.width &&
+        cursor.y <= cachedRect.height
       ) {
-        ctx.save();
-        const pulse = 0.5 + 0.5 * Math.sin(now * 0.007);
-        const isDown = target.isDown;
-        const curX = smoothed.x;
-        const curY = smoothed.y;
+        const curX = cursor.x;
+        const curY = cursor.y;
+        const isDown = cursor.isDown;
+        const pulse = 0.5 + 0.5 * Math.sin(now * 0.008);
 
-        // Radiant Outer Aura Halo with custom palette colors
-        const haloRadius = isDown ? 19 + pulse * 4 : 13 + pulse * 2.5;
-        const grad = ctx.createRadialGradient(curX, curY, 1, curX, curY, haloRadius);
-        grad.addColorStop(0, palette.rgba(isDown ? 0.6 : 0.38));
-        grad.addColorStop(0.45, palette.rgba(isDown ? 0.25 : 0.14));
+        // Radiant Outer Halo Gradient (Fast GPU radial shader simulation)
+        const haloRadius = isDown ? 18 + pulse * 4 : 12 + pulse * 2;
+        const grad = ctx.createRadialGradient(curX, curY, 0.5, curX, curY, haloRadius);
+        grad.addColorStop(0, palette.rgba(isDown ? 0.65 : 0.42));
+        grad.addColorStop(0.45, palette.rgba(isDown ? 0.25 : 0.12));
         grad.addColorStop(1, palette.rgba(0));
+
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(curX, curY, haloRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pulsing Luminous Shockwave Ring when actively drawing
+        // Active Press Shockwave Ring
         if (isDown) {
           ctx.beginPath();
-          ctx.arc(curX, curY, 9.5 + pulse * 2.2, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.45 + pulse * 0.35})`;
-          ctx.lineWidth = 1.3;
-          ctx.shadowColor = palette.glow;
-          ctx.shadowBlur = 7;
+          ctx.arc(curX, curY, 9 + pulse * 2, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.35})`;
+          ctx.lineWidth = 1.2;
           ctx.stroke();
         }
 
-        // Brilliant Saturated Diode Ring
-        ctx.shadowColor = palette.glow;
-        ctx.shadowBlur = isDown ? 13 : 8;
+        // Saturated Laser Diode Body
         ctx.fillStyle = palette.core;
         ctx.beginPath();
-        ctx.arc(curX, curY, isDown ? 6.2 : 4.6, 0, Math.PI * 2);
+        ctx.arc(curX, curY, isDown ? 6 : 4.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // White-Hot Photonic Diode Center
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = isDown ? 5 : 3;
+        // White-Hot Focal Center
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(curX, curY, isDown ? 2.8 : 2.1, 0, Math.PI * 2);
+        ctx.arc(curX, curY, isDown ? 2.6 : 2, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.restore();
       }
 
-      // Keep loop running while trail points, sparkles, or active cursor are present
-      if (points.length > 0 || sparkles.length > 0 || target.isInside) {
+      // Continue loop if active trail or cursor is inside
+      if (points.length > 0 || cursor.isInside) {
         rafIdRef.current = requestAnimationFrame(render);
       } else {
         rafIdRef.current = null;
@@ -434,6 +355,8 @@ export function ZCanvasLaserOverlay({
       isRunning = false;
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSize);
+      window.removeEventListener('scroll', updateSize);
       container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);

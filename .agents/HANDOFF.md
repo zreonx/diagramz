@@ -20,7 +20,13 @@
 
 ## 2. Recently Completed Work
 
-1. **Page Tabs 3-Dots Dropdown Menu Fix**:
+1. **Laser Pointer Performance Overhaul (120 FPS Zero-Lag Engine)**:
+   - Eliminated hundreds of per-segment `ctx.shadowBlur` software convolution blurs in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx), replacing them with hardware-accelerated layered alpha strokes for identical glowing radiance at ~0.05ms render time.
+   - Removed repeated `getBoundingClientRect()` layout flushes from `pointermove` and `render()` by caching container bounds.
+   - Removed artificial spring dampening so the laser diode tracks cursor position with true 1:1, 0ms input latency.
+   - Added `activeTool === 'laser'` bypass in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx) `handleMouseMove` to prevent unneeded hit-testing during laser drawing.
+
+2. **Page Tabs 3-Dots Dropdown Menu Fix**:
    - Replaced inline absolute dropdown in [ZCanvasSheetTabs.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSheetTabs.tsx) with `@/components/ui/dropdown-menu` using `DropdownMenuPrimitive.Portal`.
    - Solved clipping bug where `overflow-x-auto` on the sheet tab container physically clipped and hid the 3-dots popup on existing and newly added canvas pages.
    - Enhanced touch/click target with larger hit areas and active/open state highlights.

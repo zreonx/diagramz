@@ -3105,6 +3105,10 @@ export function ZCanvas({
     seenPointerEventRef.current = e.nativeEvent ?? null;
     lastMousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
 
+    if (activeTool === 'laser' && !isPanning) {
+      return;
+    }
+
     const canvasPt = getCanvasPoint(e.clientX, e.clientY);
     onCursorMoveRef.current?.(canvasPt);
 
