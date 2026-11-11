@@ -333,3 +333,42 @@ code, kbd, samp, pre {
   animation: eraser-cursor-float 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
+/* ─── Draw.io Active Connector Flow Animations ─── */
+@keyframes zcanvas-flow-forward {
+  from {
+    stroke-dashoffset: 28;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes zcanvas-flow-reverse {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 28;
+  }
+}
+
+@keyframes zcanvas-flow-pulse {
+  0%, 100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 1px currentColor);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+}
+
+.animate-zcanvas-flow-forward {
+  animation: zcanvas-flow-forward 0.85s linear infinite;
+}
+
+.animate-zcanvas-flow-reverse {
+  animation: zcanvas-flow-reverse 0.85s linear infinite;
+}
+
+

@@ -20,7 +20,20 @@
 
 ## 2. Recently Completed Work
 
-1. **Ultra-Smooth Radiant Laser Pointer & Full Presentation Customization**:
+1. **Page Tabs 3-Dots Dropdown Menu Fix**:
+   - Replaced inline absolute dropdown in [ZCanvasSheetTabs.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSheetTabs.tsx) with `@/components/ui/dropdown-menu` using `DropdownMenuPrimitive.Portal`.
+   - Solved clipping bug where `overflow-x-auto` on the sheet tab container physically clipped and hid the 3-dots popup on existing and newly added canvas pages.
+   - Enhanced touch/click target with larger hit areas and active/open state highlights.
+
+2. **Draw.io Active Flow on Lines (Connectors)**:
+   - Implemented GPU-accelerated CSS keyframe animations (`@keyframes zcanvas-flow-forward` and `@keyframes zcanvas-flow-reverse`) with seamless infinite loop at 60/120 FPS in [globals.css](file:///D:/Projects/diagramz/apps/web/src/app/globals.css) and [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx).
+   - Designed dual-layer wire rendering: solid lines with active flow feature a subtle underlying wire guide (`opacity="0.28"`) with rock-solid arrowheads, while the animated high-tech data stream marches seamlessly along the path.
+   - Added 1-click **Enable/Disable Active Flow** (<kbd>Alt+F</kbd>) and **Flow Direction (Forward / Reverse)** items in [ZCanvasContextMenu.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasContextMenu.tsx).
+   - Upgraded [ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx) with a Live Animated Flow preview, flow speed selector (`Slow`, `Normal`, `Fast`), and direction switcher (`➔`, `⬅`).
+   - Added a 1-click active flow status badge/button directly in the bottom canvas context HUD.
+   - Added native animation keyframes and SMIL fallbacks in exported SVGs via [svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts).
+
+3. **Ultra-Smooth Radiant Laser Pointer & Full Presentation Customization**:
    - Created [laser-theme.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/laser/laser-theme.ts) with 6 radiant color presets (Ruby, Emerald, Cyan, Gold, Violet, Coral), custom hex color support, 3 beam widths (`thin`, `normal`, `thick`), and 3 trail fade durations (`short`, `normal`, `long`).
    - Completely overhauled [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) with hardware-accelerated sub-frame pointer harvesting (`e.getCoalescedEvents()`), continuous midpoint quadratic Bézier splines (eliminating beading/bumps), non-linear width tapering, luminous outer aura, hot plasma core, white-hot photonic spine, and cursor spring dampening.
    - Integrated dynamic color and width selectors into [ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx), [ZCanvasToolbar.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasToolbar.tsx), [ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), and [ZCanvasSettingsDialog.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSettingsDialog.tsx).

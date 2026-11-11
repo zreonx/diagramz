@@ -144,6 +144,13 @@ export const ZCANVAS_SHORTCUTS: ZCanvasShortcut[] = [
     category: 'Editing',
     keys: ['Ctrl', 'Shift', 'L'],
   },
+  {
+    id: 'edit-active-flow',
+    label: 'Toggle Active Flow',
+    description: 'Toggle Draw.io-style directional animated stream on selected connector(s)',
+    category: 'Editing',
+    keys: ['Alt', 'F'],
+  },
 
   // Movement & Selection
   {

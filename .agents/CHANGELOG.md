@@ -4,6 +4,25 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Page Sheet Tabs Dropdown Menu Fix & Draw.io Active Connector Flow
+
+### Fixed
+- **Page Tabs 3-Dots Dropdown Menu** ([ZCanvasSheetTabs.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasSheetTabs.tsx)):
+  - Replaced inline absolute-positioned menu with Radix Portal-based `DropdownMenu` (`DropdownMenuPrimitive.Portal`).
+  - Fixed clipping bug where `overflow-x-auto` on the sheet tab bar physically hid the vertical popup menu when clicking the 3 dots on existing or newly added pages.
+  - Increased 3-dots touch target size (`w-5 h-5`) and visibility on active/hovered tabs for seamless rename, duplicate, and delete actions.
+
+### Added
+- **Draw.io Style Active Flow on Connector Lines** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [ZCanvasContextMenu.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasContextMenu.tsx), [globals.css](file:///D:/Projects/diagramz/apps/web/src/app/globals.css), [svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts)):
+  - **Hardware-Accelerated CSS Keyframe Animation**: Added `@keyframes zcanvas-flow-forward` and `@keyframes zcanvas-flow-reverse` with continuous seamless `stroke-dashoffset` translation at 60/120 FPS, eliminating Chromium SMIL `<animate>` insertion freeze bugs.
+  - **Dual-Layer Wire Rendering**: Solid connectors with active flow render a subtle underlying wire guide (`opacity="0.28"`) with rock-solid arrowheads plus the animated high-tech data stream marching along the path.
+  - **Right-Click Context Menu**: Added 1-click **Enable/Disable Active Flow** (<kbd>Alt+F</kbd>) and **Flow Direction (Forward / Reverse)** items directly on connector context menu.
+  - **Style Inspector Panel**: Enhanced "Active Flow (Draw.io)" row with an interactive switch, Live Animated Flow mini-preview, speed selector (`Slow`, `Normal`, `Fast`), and direction switcher (`➔`, `⬅`).
+  - **Bottom Status HUD**: Added 1-click active flow toggle pill with glowing indicator whenever a connector is selected on the canvas.
+  - **Animated SVG Exports**: Exported SVG files carry native CSS `@keyframes` and SMIL fallbacks, allowing exported diagram SVGs to actively flow in any browser.
+
+---
+
 ## [2026-11-12] — Ultra-Smooth Laser Pointer Engine, Full Laser Customization, & Light Mode Hand Pan Canvas Borders
 
 ### Added

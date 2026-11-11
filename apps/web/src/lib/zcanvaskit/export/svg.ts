@@ -551,8 +551,41 @@ export function exportDocumentToSvg(
         `;
       }
 
+      const strokeCol = inkColor(e.color, getEdgeColor('default', isDark));
+      const strokeW = e.strokeWidth || 2;
+      const isSolidFlow = e.animated && (e.strokeStyle === 'solid' || !e.strokeStyle);
+
+      const animDur =
+        e.animationSpeed === 'slow'
+          ? '1.8s'
+          : e.animationSpeed === 'fast'
+          ? '0.45s'
+          : '0.85s';
+
+      const animKeyframe = e.animationDirection === 'reverse' ? 'zcanvas-flow-reverse' : 'zcanvas-flow-forward';
+      const animStyle = e.animated
+        ? ` style="animation: ${animKeyframe} ${animDur} linear infinite;"`
+        : '';
+      const smilAnim = e.animated
+        ? `<animate attributeName="stroke-dashoffset" from="${e.animationDirection === 'reverse' ? '0' : '28'}" to="${e.animationDirection === 'reverse' ? '28' : '0'}" dur="${animDur}" repeatCount="indefinite" />`
+        : '';
+
+      const dash = e.animated
+        ? ' stroke-dasharray="8 6"'
+        : dashAttr(e.strokeStyle, e.strokeWidth);
+
+      const guideSvg = isSolidFlow
+        ? `<path d="${edgePathD}" stroke="${strokeCol}" stroke-width="${strokeW}" fill="none" opacity="0.28" ${capAttr} ${startArrow ? `marker-start="url(#zcanvas-head-${startArrow})"` : ''} ${endArrow ? `marker-end="url(#zcanvas-head-${endArrow})"` : ''} />`
+        : '';
+
+      const markerStartAttr = isSolidFlow ? '' : (startArrow ? `marker-start="url(#zcanvas-head-${startArrow})"` : '');
+      const markerEndAttr = isSolidFlow ? '' : (endArrow ? `marker-end="url(#zcanvas-head-${endArrow})"` : '');
+
       const connectorSvg = `
-        <path d="${edgePathD}" stroke="${inkColor(e.color, getEdgeColor('default', isDark))}" stroke-width="${e.strokeWidth || 2}" fill="none"${dashAttr(e.strokeStyle, e.strokeWidth)} ${capAttr} ${startArrow ? `marker-start="url(#zcanvas-head-${startArrow})"` : ''} ${endArrow ? `marker-end="url(#zcanvas-head-${endArrow})"` : ''} />
+        ${guideSvg}
+        <path d="${edgePathD}" stroke="${strokeCol}" stroke-width="${strokeW}" fill="none"${dash} ${capAttr} ${markerStartAttr} ${markerEndAttr}${animStyle}>
+          ${smilAnim}
+        </path>
         ${labelSvg}
       `;
 
@@ -1059,10 +1092,19 @@ export function exportDocumentToSvg(
     ? ''
     : `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${plate}" />\n  `;
 
+  const hasAnimatedEdges = doc.edges.some((e) => e.animated);
+  const flowStyles = hasAnimatedEdges
+    ? `
+    <style>
+      @keyframes zcanvas-flow-forward { from { stroke-dashoffset: 28; } to { stroke-dashoffset: 0; } }
+      @keyframes zcanvas-flow-reverse { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 28; } }
+    </style>`
+    : '';
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">
   <defs>
-    ${markersSvg}
+    ${markersSvg}${flowStyles}
   </defs>
   ${bgPlate}${strokesSvg}
   ${edgesSvg}

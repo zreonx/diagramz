@@ -152,7 +152,7 @@ import { ZCanvasSheetTabs } from './ZCanvasSheetTabs';
 import { ZCanvasPresentationDock } from './ZCanvasPresentationDock';
 import { exportDocumentToSvg, downloadSvg } from '../export/svg';
 import { exportDocumentToPng, exportDocumentToPngBlob } from '../export/png';
-import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, Image as ImageIcon } from 'lucide-react';
+import { Server, Database, Layers, Key, Lock, Plus, RotateCw, X, Frame, Maximize2, Minus, Hand, Image as ImageIcon, Activity } from 'lucide-react';
 import { processImageFile, saveCustomAsset } from '../assets/custom-assets';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -1726,6 +1726,38 @@ export function ZCanvas({
   );
 
   /**
+   * Toggles Draw.io-style active flow animation along picked connectors.
+   */
+  const handleToggleActiveFlow = useCallback(() => {
+    if (readOnly || selectedEdgeIds.length === 0) return;
+    const toggled = new Set(movable(selectedEdgeIds));
+    if (toggled.size === 0) return;
+    const primary = edges.find((e) => e.id === selectedEdgeId);
+    const nextAnimated = !primary?.animated;
+    commitState(
+      nodes,
+      edges.map((e) => (toggled.has(e.id) ? { ...e, animated: nextAnimated } : e)),
+      strokes
+    );
+  }, [readOnly, selectedEdgeIds, selectedEdgeId, edges, nodes, strokes, commitState]);
+
+  /**
+   * Inverts active flow direction ('forward' <-> 'reverse').
+   */
+  const handleToggleFlowDirection = useCallback(() => {
+    if (readOnly || selectedEdgeIds.length === 0) return;
+    const toggled = new Set(movable(selectedEdgeIds));
+    if (toggled.size === 0) return;
+    const primary = edges.find((e) => e.id === selectedEdgeId);
+    const nextDir = primary?.animationDirection === 'reverse' ? 'forward' : 'reverse';
+    commitState(
+      nodes,
+      edges.map((e) => (toggled.has(e.id) ? { ...e, animationDirection: nextDir } : e)),
+      strokes
+    );
+  }, [readOnly, selectedEdgeIds, selectedEdgeId, edges, nodes, strokes, commitState]);
+
+  /**
    * Nudges everything selected by one step.
    *
    * A selection is not one kind of thing — a sweep can hold shapes, the
@@ -2293,6 +2325,13 @@ export function ZCanvas({
           setEditingConnectionText(ed.label || '');
           return;
         }
+      }
+
+      // Alt+F : Toggle active directional flow on selected connector(s)
+      if (e.altKey && (key === 'f') && selectedEdgeIds.length > 0) {
+        e.preventDefault();
+        handleToggleActiveFlow();
+        return;
       }
 
       // Ctrl+A : Select all — the connectors and the ink included, so one press
@@ -5930,6 +5969,18 @@ export function ZCanvas({
               <g fill="context-stroke">{content}</g>
             </marker>
           ))}
+
+          {/* Draw.io Active Connector Flow Keyframe Animations */}
+          <style>{`
+            @keyframes zcanvas-flow-forward {
+              from { stroke-dashoffset: 28; }
+              to { stroke-dashoffset: 0; }
+            }
+            @keyframes zcanvas-flow-reverse {
+              from { stroke-dashoffset: 0; }
+              to { stroke-dashoffset: 28; }
+            }
+          `}</style>
         </defs>
 
         {/* Viewport-adaptive infinite grid rect (covers visible window + 5000px in all directions) */}
@@ -6294,6 +6345,23 @@ export function ZCanvas({
                 )
               )}
 
+              {/* Subtle underlying wire guide with crisp anchor arrowheads for solid lines with active flow */}
+              {edge.animated && (edge.strokeStyle === 'solid' || !edge.strokeStyle) && (
+                <path
+                  d={pathD}
+                  stroke={isSelected ? selectedEdgeColor : edge.color || defaultEdgeColor}
+                  strokeWidth={edgeStrokeWidth}
+                  fill="none"
+                  strokeLinecap={sharp ? 'butt' : 'round'}
+                  strokeLinejoin={sharp ? 'miter' : 'round'}
+                  markerStart={arrowheadMarkerUrl(startHead)}
+                  markerEnd={arrowheadMarkerUrl(endHead)}
+                  opacity={(edge.opacity ?? 1) * 0.28}
+                  className="pointer-events-none"
+                />
+              )}
+
+              {/* Main Connector Path / Draw.io Active Flow Stream */}
               <path
                 d={pathD}
                 stroke={isSelected ? selectedEdgeColor : edge.color || defaultEdgeColor}
@@ -6306,10 +6374,35 @@ export function ZCanvas({
                 }
                 strokeLinecap={sharp ? 'butt' : 'round'}
                 strokeLinejoin={sharp ? 'miter' : 'round'}
-                markerStart={arrowheadMarkerUrl(startHead)}
-                markerEnd={arrowheadMarkerUrl(endHead)}
+                markerStart={
+                  edge.animated && (edge.strokeStyle === 'solid' || !edge.strokeStyle)
+                    ? undefined
+                    : arrowheadMarkerUrl(startHead)
+                }
+                markerEnd={
+                  edge.animated && (edge.strokeStyle === 'solid' || !edge.strokeStyle)
+                    ? undefined
+                    : arrowheadMarkerUrl(endHead)
+                }
                 opacity={edge.opacity ?? 1}
-                className="transition-colors duration-150"
+                className={cn(
+                  'transition-colors duration-150',
+                  edge.animated &&
+                    (edge.animationDirection === 'reverse'
+                      ? 'animate-zcanvas-flow-reverse'
+                      : 'animate-zcanvas-flow-forward')
+                )}
+                style={{
+                  animationDuration: edge.animated
+                    ? edge.animationSpeed === 'slow'
+                      ? '1.8s'
+                      : edge.animationSpeed === 'fast'
+                      ? '0.45s'
+                      : '0.85s'
+                    : undefined,
+                  animationTimingFunction: 'linear',
+                  animationIterationCount: 'infinite',
+                }}
               >
                 {edge.animated && (
                   <animate
@@ -6321,7 +6414,7 @@ export function ZCanvas({
                         ? '1.8s'
                         : edge.animationSpeed === 'fast'
                         ? '0.45s'
-                        : '0.9s'
+                        : '0.85s'
                     }
                     repeatCount="indefinite"
                   />
@@ -9058,6 +9151,8 @@ export function ZCanvas({
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
+        onToggleActiveFlow={handleToggleActiveFlow}
+        onToggleFlowDirection={handleToggleFlowDirection}
         onToggleEdgeStyle={() => {
           if (selectedEdgeIds.length === 0) return;
           const primary = edges.find((e) => e.id === selectedEdgeId);
@@ -9259,6 +9354,23 @@ export function ZCanvas({
                       {Math.round(n.width)} × {Math.round(n.height)}px
                     </span>
                   </>
+                );
+              })()}
+              {selectedEdgeIds.length > 0 && selectedNodeIds.length === 0 && (() => {
+                const primaryEdge = edges.find((e) => e.id === selectedEdgeId);
+                return (
+                  <div className="flex items-center gap-1.5 ml-1 border-l border-border/50 pl-2">
+                    <button
+                      type="button"
+                      onClick={handleToggleActiveFlow}
+                      className="pointer-events-auto flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-medium bg-muted/70 hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
+                      title="Toggle Draw.io-style active flow animation (Alt+F)"
+                    >
+                      <Activity className={cn('w-3 h-3', primaryEdge?.animated ? 'text-primary animate-pulse' : 'text-muted-foreground')} />
+                      <span>Flow: {primaryEdge?.animated ? 'Active' : 'Off'}</span>
+                      <kbd className="px-1 py-0.2 rounded bg-background text-[8px] font-mono border border-border">Alt+F</kbd>
+                    </button>
+                  </div>
                 );
               })()}
             </div>

@@ -34,6 +34,7 @@ import {
   X,
   Wand2,
   ArrowLeftRight,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZCanvasNode, ZCanvasEdge, ZCanvasDrawingStroke, hasEditableLabel, isGeometricShape } from '../core/schema';
@@ -81,6 +82,8 @@ export interface ZCanvasContextMenuProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onToggleActiveFlow?: () => void;
+  onToggleFlowDirection?: () => void;
   onToggleEdgeStyle?: () => void;
   onReverseEdgeDirection?: () => void;
   onResetEdgeLabel?: () => void;
@@ -128,6 +131,8 @@ export function ZCanvasContextMenu({
   onRedo,
   canUndo,
   canRedo,
+  onToggleActiveFlow,
+  onToggleFlowDirection,
   onToggleEdgeStyle,
   onReverseEdgeDirection,
   onResetEdgeLabel,
@@ -702,6 +707,29 @@ export function ZCanvasContextMenu({
               label="Detach Line (Move Freely)"
               onClick={() => {
                 onDetachEdge();
+                onClose();
+              }}
+            />
+          )}
+
+          {onToggleActiveFlow && (
+            <MenuItem
+              icon={<Activity className={cn('w-3.5 h-3.5', selectedEdge.animated ? 'text-primary' : 'text-muted-foreground')} />}
+              label={selectedEdge.animated ? 'Disable Active Flow' : 'Enable Active Flow (Draw.io)'}
+              shortcut="Alt+F"
+              onClick={() => {
+                onToggleActiveFlow();
+                onClose();
+              }}
+            />
+          )}
+
+          {selectedEdge.animated && onToggleFlowDirection && (
+            <MenuItem
+              icon={<ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />}
+              label={`Flow Direction: ${selectedEdge.animationDirection === 'reverse' ? 'Reverse (⬅)' : 'Forward (➔)'}`}
+              onClick={() => {
+                onToggleFlowDirection();
                 onClose();
               }}
             />
