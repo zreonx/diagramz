@@ -173,6 +173,8 @@ export interface ZCanvasStylePanelProps {
   onBeautifyLayout?: () => void;
   stats?: { nodesCount: number; edgesCount: number; pagesCount?: number };
   rightOffset?: number;
+  onToggleAllActiveFlow?: () => void;
+  allEdgesAnimated?: boolean;
 }
 
 /** Border / stroke swatches, ordered dark → light like a classic palette. */
@@ -413,6 +415,8 @@ function CanvasPropertiesSections({
   onRenameActivePage,
   onBeautifyLayout,
   stats,
+  onToggleAllActiveFlow,
+  allEdgesAnimated,
 }: {
   settings?: ZCanvasSettings;
   onUpdateSettings?: (patch: Partial<ZCanvasSettings>) => void;
@@ -420,6 +424,8 @@ function CanvasPropertiesSections({
   onRenameActivePage?: (newName: string) => void;
   onBeautifyLayout?: () => void;
   stats?: { nodesCount: number; edgesCount: number; pagesCount?: number };
+  onToggleAllActiveFlow?: () => void;
+  allEdgesAnimated?: boolean;
 }) {
   const [isEditingPageName, setIsEditingPageName] = React.useState(false);
   const [tempPageName, setTempPageName] = React.useState(activePageName || 'Page 1');
@@ -600,6 +606,36 @@ function CanvasPropertiesSections({
           </button>
         </div>
       )}
+
+      {/* Global Connector Active Flow (Draw.io style) */}
+      {onToggleAllActiveFlow && (!stats || stats.edgesCount > 0) && (
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={onToggleAllActiveFlow}
+            className={cn(
+              'w-full h-8 flex items-center justify-between px-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border',
+              allEdgesAnimated
+                ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/15'
+                : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70 border-border/60'
+            )}
+            title={allEdgesAnimated ? 'Turn off active flow for all lines (Shift+Alt+F)' : 'Turn on active flow for all lines (Shift+Alt+F)'}
+          >
+            <span className="flex items-center gap-1.5">
+              <Activity className={cn('w-3.5 h-3.5', allEdgesAnimated && 'animate-pulse text-primary')} />
+              <span>Connector Active Flow</span>
+            </span>
+            <span
+              className={cn(
+                'text-[10px] px-1.5 py-0.5 rounded font-mono font-medium',
+                allEdgesAnimated ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              )}
+            >
+              {allEdgesAnimated ? 'ON (All)' : 'Turn On'}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -635,6 +671,8 @@ export function ZCanvasStylePanel({
   onBeautifyLayout,
   stats,
   rightOffset = 0,
+  onToggleAllActiveFlow,
+  allEdgesAnimated,
 }: ZCanvasStylePanelProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const isCanvasTarget = !target || target.kind === 'canvas';
@@ -745,6 +783,8 @@ export function ZCanvasStylePanel({
           onRenameActivePage={onRenameActivePage}
           onBeautifyLayout={onBeautifyLayout}
           stats={stats}
+          onToggleAllActiveFlow={onToggleAllActiveFlow}
+          allEdgesAnimated={allEdgesAnimated}
         />
       ) : target.kind === 'node' ? (
         <NodeSections
@@ -771,6 +811,8 @@ export function ZCanvasStylePanel({
           routingScope={routingScope}
           onRoutingScopeChange={setRoutingScope}
           onCommitRouting={onCommitRouting}
+          onToggleAllActiveFlow={onToggleAllActiveFlow}
+          allEdgesAnimated={allEdgesAnimated}
         />
       ) : target.kind === 'stroke' ? (
         <PenSections
@@ -1610,6 +1652,8 @@ function EdgeSections({
   routingScope,
   onRoutingScopeChange,
   onCommitRouting,
+  onToggleAllActiveFlow,
+  allEdgesAnimated,
 }: {
   edge: ZCanvasEdge;
   onPreview: (patch: ZCanvasEdgeStylePatch) => void;
@@ -1617,6 +1661,8 @@ function EdgeSections({
   routingScope: ZCanvasRoutingScope;
   onRoutingScopeChange: (scope: ZCanvasRoutingScope) => void;
   onCommitRouting: (style: ZCanvasEdgeRouting, scope: ZCanvasRoutingScope) => void;
+  onToggleAllActiveFlow?: () => void;
+  allEdgesAnimated?: boolean;
 }) {
   const strokeWidth = edge.strokeWidth ?? 2;
   const strokeStyle = edge.strokeStyle ?? 'solid';
@@ -1788,6 +1834,26 @@ function EdgeSections({
             </button>
           </div>
 
+          {onToggleAllActiveFlow && (
+            <div className="flex items-center justify-between pt-1 border-t border-border/30">
+              <span className="text-[10px] text-muted-foreground">All connectors</span>
+              <button
+                type="button"
+                onClick={onToggleAllActiveFlow}
+                className={cn(
+                  'px-2 py-0.5 text-[10px] font-medium rounded-md border transition-all flex items-center gap-1',
+                  allEdgesAnimated
+                    ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
+                    : 'bg-muted/60 text-muted-foreground border-border/60 hover:bg-muted hover:text-foreground'
+                )}
+                title={allEdgesAnimated ? 'Turn off flow for all lines (Shift+Alt+F)' : 'Turn on flow for all lines (Shift+Alt+F)'}
+              >
+                <Activity className="w-3 h-3" />
+                <span>{allEdgesAnimated ? 'Turn off all' : 'Turn on for all'}</span>
+              </button>
+            </div>
+          )}
+
           {edge.animated && (
             <div className="flex flex-col gap-2 pt-1.5 border-t border-border/40">
               {/* Live Animated Flow Preview */}
@@ -1797,7 +1863,7 @@ function EdgeSections({
                     d="M 6 8 L 190 8"
                     stroke={edge.color || 'currentColor'}
                     strokeWidth={edge.strokeWidth || 2}
-                    strokeDasharray="8 6"
+                    strokeDasharray="10 6"
                     strokeLinecap="round"
                     className={cn(
                       'text-primary',

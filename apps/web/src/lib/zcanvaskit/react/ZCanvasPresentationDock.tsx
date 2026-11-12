@@ -8,6 +8,7 @@ import {
   Minimize2,
   X,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ZCanvasPage } from '../core/schema';
@@ -27,6 +28,9 @@ export interface ZCanvasPresentationDockProps {
   onSelectLaserColor?: (color: string) => void;
   laserWidth?: LaserWidthMode;
   onSelectLaserWidth?: (width: LaserWidthMode) => void;
+  hasEdges?: boolean;
+  isAllFlowActive?: boolean;
+  onToggleAllFlow?: () => void;
   onExitPresentation: () => void;
 }
 
@@ -40,6 +44,9 @@ export function ZCanvasPresentationDock({
   onSelectLaserColor,
   laserWidth = 'normal',
   onSelectLaserWidth,
+  hasEdges,
+  isAllFlowActive,
+  onToggleAllFlow,
   onExitPresentation,
 }: ZCanvasPresentationDockProps) {
   const currentIndex = pages.findIndex((p) => p.id === activePageId);
@@ -102,6 +109,26 @@ export function ZCanvasPresentationDock({
 
           <div className="w-[1px] h-4 bg-border/60 mx-0.5" />
         </>
+      )}
+
+      {/* Active Connector Flow Toggle (All Diagram Connectors) */}
+      {hasEdges && onToggleAllFlow && (
+        <button
+          type="button"
+          onClick={onToggleAllFlow}
+          className={cn(
+            'flex items-center gap-1.5 h-8 px-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer',
+            isAllFlowActive
+              ? 'bg-primary/20 text-primary border border-primary/40 shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          )}
+          title="Toggle active flow animation for all connectors (Shift+Alt+F)"
+        >
+          <Activity
+            className={cn('w-3.5 h-3.5', isAllFlowActive && 'animate-pulse text-primary')}
+          />
+          <span>Flow</span>
+        </button>
       )}
 
       {/* Laser Pointer Toggle */}

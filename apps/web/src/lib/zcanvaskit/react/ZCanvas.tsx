@@ -1733,10 +1733,29 @@ export function ZCanvas({
   );
 
   /**
-   * Toggles Draw.io-style active flow animation along picked connectors.
+   * Toggles Draw.io-style active flow animation for ALL connectors on the diagram at once.
+   */
+  const handleToggleAllActiveFlow = useCallback(() => {
+    if (readOnly || edges.length === 0) return;
+    const allAnimated = edges.every((e) => e.animated);
+    const nextAnimated = !allAnimated;
+    commitState(
+      nodes,
+      edges.map((e) => ({ ...e, animated: nextAnimated })),
+      strokes
+    );
+  }, [readOnly, edges, nodes, strokes, commitState]);
+
+  /**
+   * Toggles Draw.io-style active flow animation along picked connectors,
+   * or toggles all connectors if none are specifically selected.
    */
   const handleToggleActiveFlow = useCallback(() => {
-    if (readOnly || selectedEdgeIds.length === 0) return;
+    if (readOnly || edges.length === 0) return;
+    if (selectedEdgeIds.length === 0) {
+      handleToggleAllActiveFlow();
+      return;
+    }
     const toggled = new Set(movable(selectedEdgeIds));
     if (toggled.size === 0) return;
     const primary = edges.find((e) => e.id === selectedEdgeId);
@@ -1746,7 +1765,7 @@ export function ZCanvas({
       edges.map((e) => (toggled.has(e.id) ? { ...e, animated: nextAnimated } : e)),
       strokes
     );
-  }, [readOnly, selectedEdgeIds, selectedEdgeId, edges, nodes, strokes, commitState]);
+  }, [readOnly, selectedEdgeIds, selectedEdgeId, edges, nodes, strokes, commitState, handleToggleAllActiveFlow]);
 
   /**
    * Inverts active flow direction ('forward' <-> 'reverse').
@@ -2334,10 +2353,14 @@ export function ZCanvas({
         }
       }
 
-      // Alt+F : Toggle active directional flow on selected connector(s)
-      if (e.altKey && (key === 'f') && selectedEdgeIds.length > 0) {
+      // Alt+F / Shift+Alt+F : Toggle active directional flow on connector(s) or all diagram connectors
+      if (e.altKey && key === 'f') {
         e.preventDefault();
-        handleToggleActiveFlow();
+        if (e.shiftKey) {
+          handleToggleAllActiveFlow();
+        } else {
+          handleToggleActiveFlow();
+        }
         return;
       }
 
@@ -5983,12 +6006,12 @@ export function ZCanvas({
           {/* Draw.io Active Connector Flow Keyframe Animations */}
           <style>{`
             @keyframes zcanvas-flow-forward {
-              from { stroke-dashoffset: 28; }
+              from { stroke-dashoffset: 32; }
               to { stroke-dashoffset: 0; }
             }
             @keyframes zcanvas-flow-reverse {
               from { stroke-dashoffset: 0; }
-              to { stroke-dashoffset: 28; }
+              to { stroke-dashoffset: 32; }
             }
           `}</style>
         </defs>
@@ -6379,7 +6402,7 @@ export function ZCanvas({
                 fill="none"
                 strokeDasharray={
                   edge.animated
-                    ? getStrokeDashArray(edge.strokeStyle, edgeStrokeWidth) || '8 6'
+                    ? '10 6'
                     : getStrokeDashArray(edge.strokeStyle, edgeStrokeWidth)
                 }
                 strokeLinecap={sharp ? 'butt' : 'round'}
@@ -6403,6 +6426,7 @@ export function ZCanvas({
                       : 'animate-zcanvas-flow-forward')
                 )}
                 style={{
+                  willChange: edge.animated ? 'stroke-dashoffset' : undefined,
                   animationDuration: edge.animated
                     ? edge.animationSpeed === 'slow'
                       ? '1.8s'
@@ -6413,23 +6437,7 @@ export function ZCanvas({
                   animationTimingFunction: 'linear',
                   animationIterationCount: 'infinite',
                 }}
-              >
-                {edge.animated && (
-                  <animate
-                    attributeName="stroke-dashoffset"
-                    from={edge.animationDirection === 'reverse' ? '0' : '28'}
-                    to={edge.animationDirection === 'reverse' ? '28' : '0'}
-                    dur={
-                      edge.animationSpeed === 'slow'
-                        ? '1.8s'
-                        : edge.animationSpeed === 'fast'
-                        ? '0.45s'
-                        : '0.85s'
-                    }
-                    repeatCount="indefinite"
-                  />
-                )}
-              </path>
+              />
 
               {/* Connector Label (positioned at resolved non-colliding position or custom offset) */}
               {editingConnectionId === edge.id ? (
@@ -9125,6 +9133,8 @@ export function ZCanvas({
             pagesCount: pages.length,
           }}
           rightOffset={rightOffset}
+          onToggleAllActiveFlow={handleToggleAllActiveFlow}
+          allEdgesAnimated={edges.length > 0 && edges.every((e) => e.animated)}
         />
       )}
 
@@ -9162,6 +9172,8 @@ export function ZCanvas({
         canUndo={canUndo}
         canRedo={canRedo}
         onToggleActiveFlow={handleToggleActiveFlow}
+        onToggleAllActiveFlow={handleToggleAllActiveFlow}
+        allEdgesAnimated={edges.length > 0 && edges.every((e) => e.animated)}
         onToggleFlowDirection={handleToggleFlowDirection}
         onToggleEdgeStyle={() => {
           if (selectedEdgeIds.length === 0) return;
@@ -9380,6 +9392,21 @@ export function ZCanvas({
                       <span>Flow: {primaryEdge?.animated ? 'Active' : 'Off'}</span>
                       <kbd className="px-1 py-0.2 rounded bg-background text-[8px] font-mono border border-border">Alt+F</kbd>
                     </button>
+                    {edges.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleToggleAllActiveFlow}
+                        className={cn(
+                          'pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-medium border transition-all cursor-pointer shadow-2xs',
+                          edges.every((e) => e.animated)
+                            ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
+                            : 'bg-muted/70 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'
+                        )}
+                        title={edges.every((e) => e.animated) ? 'Turn off flow for all lines (Shift+Alt+F)' : 'Turn on flow for all lines (Shift+Alt+F)'}
+                      >
+                        <span>{edges.every((e) => e.animated) ? 'All On' : 'All'}</span>
+                      </button>
+                    )}
                   </div>
                 );
               })()}
@@ -9401,6 +9428,25 @@ export function ZCanvas({
               <span className="flex items-center gap-1">
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono border border-border">F5</kbd> Present
               </span>
+              {edges.length > 0 && (
+                <>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleAllActiveFlow}
+                    className={cn(
+                      'pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer',
+                      edges.some((e) => e.animated)
+                        ? 'bg-primary/15 text-primary border border-primary/30 shadow-2xs'
+                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Toggle active flow on all lines (Shift+Alt+F)"
+                  >
+                    <Activity className={cn('w-3 h-3', edges.some((e) => e.animated) && 'text-primary animate-pulse')} />
+                    <span>Flow (All)</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -9418,6 +9464,9 @@ export function ZCanvas({
           onSelectLaserColor={(c) => handleUpdateSettings({ laserColor: c })}
           laserWidth={settings.laserWidth}
           onSelectLaserWidth={(w) => handleUpdateSettings({ laserWidth: w })}
+          hasEdges={edges.length > 0}
+          isAllFlowActive={edges.length > 0 && edges.some((e) => e.animated)}
+          onToggleAllFlow={handleToggleAllActiveFlow}
           onExitPresentation={() => {
             setIsPresentationMode(false);
             setActiveTool('select');

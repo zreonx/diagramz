@@ -395,12 +395,12 @@ export function ZCanvasLaserOverlay({
         const isCurrentlyDown = cursor.isDown;
         const baseW = isCurrentlyDown ? baseActiveW : baseHoverW;
 
-        // Pass 1: Luminous Ambient Glow Aura (Optical Radiation)
+        // Pass 1: Luminous Ambient Glow Aura (Subtle & Refined Optical Radiation)
         renderContinuousLaserRibbon(
           ctx,
           smoothed,
-          baseW * 2.8,
-          0.22,
+          baseW * 1.6,
+          0.11,
           (a) => palette.rgba(a),
           now,
           activeFadeMs,
@@ -411,8 +411,8 @@ export function ZCanvasLaserOverlay({
         renderContinuousLaserRibbon(
           ctx,
           smoothed,
-          baseW * 1.0,
-          0.96,
+          baseW * 0.95,
+          0.92,
           (a) => palette.rgba(a),
           now,
           activeFadeMs,
@@ -423,8 +423,8 @@ export function ZCanvasLaserOverlay({
         renderContinuousLaserRibbon(
           ctx,
           smoothed,
-          baseW * 0.32,
-          0.95,
+          baseW * 0.24,
+          0.92,
           (a) => `rgba(255, 255, 255, ${a})`,
           now,
           activeFadeMs,
@@ -446,11 +446,11 @@ export function ZCanvasLaserOverlay({
         const isDown = cursor.isDown;
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.008);
 
-        // Radiant Outer Halo Gradient (Fast GPU radial shader simulation)
-        const haloRadius = isDown ? 22 + pulse * 4 : 14 + pulse * 2;
+        // Refined Subtle Outer Halo Gradient (Soft, restrained light)
+        const haloRadius = isDown ? 11 + pulse * 2 : 7.5 + pulse;
         const grad = ctx.createRadialGradient(curX, curY, 0.5, curX, curY, haloRadius);
-        grad.addColorStop(0, palette.rgba(isDown ? 0.75 : 0.48));
-        grad.addColorStop(0.5, palette.rgba(isDown ? 0.28 : 0.15));
+        grad.addColorStop(0, palette.rgba(isDown ? 0.4 : 0.25));
+        grad.addColorStop(0.6, palette.rgba(isDown ? 0.12 : 0.06));
         grad.addColorStop(1, palette.rgba(0));
 
         ctx.fillStyle = grad;
@@ -458,25 +458,25 @@ export function ZCanvasLaserOverlay({
         ctx.arc(curX, curY, haloRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Active Press Shockwave Ring
+        // Active Press Subtle Ring
         if (isDown) {
           ctx.beginPath();
-          ctx.arc(curX, curY, 10 + pulse * 3, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + pulse * 0.35})`;
-          ctx.lineWidth = 1.4;
+          ctx.arc(curX, curY, 7 + pulse * 1.5, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 + pulse * 0.2})`;
+          ctx.lineWidth = 0.9;
           ctx.stroke();
         }
 
         // Saturated Laser Diode Body
         ctx.fillStyle = palette.core;
         ctx.beginPath();
-        ctx.arc(curX, curY, isDown ? 6.5 : 5, 0, Math.PI * 2);
+        ctx.arc(curX, curY, isDown ? 4.8 : 3.8, 0, Math.PI * 2);
         ctx.fill();
 
-        // White-Hot Focal Center
+        // Crisp White-Hot Focal Center
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(curX, curY, isDown ? 2.8 : 2.2, 0, Math.PI * 2);
+        ctx.arc(curX, curY, isDown ? 1.8 : 1.4, 0, Math.PI * 2);
         ctx.fill();
       }
 

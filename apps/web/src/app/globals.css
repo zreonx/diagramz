@@ -333,10 +333,10 @@ code, kbd, samp, pre {
   animation: eraser-cursor-float 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-/* ─── Draw.io Active Connector Flow Animations ─── */
+/* ─── Draw.io Active Connector Flow Animations (Seamless 32px Double-Cycle) ─── */
 @keyframes zcanvas-flow-forward {
   from {
-    stroke-dashoffset: 28;
+    stroke-dashoffset: 32;
   }
   to {
     stroke-dashoffset: 0;
@@ -348,7 +348,7 @@ code, kbd, samp, pre {
     stroke-dashoffset: 0;
   }
   to {
-    stroke-dashoffset: 28;
+    stroke-dashoffset: 32;
   }
 }
 

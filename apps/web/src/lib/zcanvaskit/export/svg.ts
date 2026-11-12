@@ -567,11 +567,11 @@ export function exportDocumentToSvg(
         ? ` style="animation: ${animKeyframe} ${animDur} linear infinite;"`
         : '';
       const smilAnim = e.animated
-        ? `<animate attributeName="stroke-dashoffset" from="${e.animationDirection === 'reverse' ? '0' : '28'}" to="${e.animationDirection === 'reverse' ? '28' : '0'}" dur="${animDur}" repeatCount="indefinite" />`
+        ? `<animate attributeName="stroke-dashoffset" from="${e.animationDirection === 'reverse' ? '0' : '32'}" to="${e.animationDirection === 'reverse' ? '32' : '0'}" dur="${animDur}" repeatCount="indefinite" />`
         : '';
 
       const dash = e.animated
-        ? ' stroke-dasharray="8 6"'
+        ? ' stroke-dasharray="10 6"'
         : dashAttr(e.strokeStyle, e.strokeWidth);
 
       const guideSvg = isSolidFlow
@@ -1096,8 +1096,8 @@ export function exportDocumentToSvg(
   const flowStyles = hasAnimatedEdges
     ? `
     <style>
-      @keyframes zcanvas-flow-forward { from { stroke-dashoffset: 28; } to { stroke-dashoffset: 0; } }
-      @keyframes zcanvas-flow-reverse { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 28; } }
+      @keyframes zcanvas-flow-forward { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
+      @keyframes zcanvas-flow-reverse { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 32; } }
     </style>`
     : '';
 

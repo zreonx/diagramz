@@ -83,6 +83,8 @@ export interface ZCanvasContextMenuProps {
   canUndo: boolean;
   canRedo: boolean;
   onToggleActiveFlow?: () => void;
+  onToggleAllActiveFlow?: () => void;
+  allEdgesAnimated?: boolean;
   onToggleFlowDirection?: () => void;
   onToggleEdgeStyle?: () => void;
   onReverseEdgeDirection?: () => void;
@@ -132,6 +134,8 @@ export function ZCanvasContextMenu({
   canUndo,
   canRedo,
   onToggleActiveFlow,
+  onToggleAllActiveFlow,
+  allEdgesAnimated,
   onToggleFlowDirection,
   onToggleEdgeStyle,
   onReverseEdgeDirection,
@@ -735,6 +739,18 @@ export function ZCanvasContextMenu({
             />
           )}
 
+          {onToggleAllActiveFlow && (
+            <MenuItem
+              icon={<Activity className="w-3.5 h-3.5 text-muted-foreground" />}
+              label={allEdgesAnimated ? 'Turn Off Flow on All Lines' : 'Turn On Flow on All Lines'}
+              shortcut="Shift+Alt+F"
+              onClick={() => {
+                onToggleAllActiveFlow();
+                onClose();
+              }}
+            />
+          )}
+
           <MenuDivider />
 
           {lockItem()}
@@ -865,6 +881,17 @@ export function ZCanvasContextMenu({
               label="Beautify Architecture"
               onClick={() => {
                 onBeautifyLayout();
+                onClose();
+              }}
+            />
+          )}
+          {onToggleAllActiveFlow && (
+            <MenuItem
+              icon={<Activity className={cn('w-3.5 h-3.5', allEdgesAnimated ? 'text-primary' : 'text-muted-foreground')} />}
+              label={allEdgesAnimated ? 'Stop Flow on All Connectors' : 'Start Flow on All Connectors'}
+              shortcut="Shift+Alt+F"
+              onClick={() => {
+                onToggleAllActiveFlow();
                 onClose();
               }}
             />

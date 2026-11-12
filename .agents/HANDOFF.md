@@ -20,7 +20,17 @@
 
 ## 2. Recently Completed Work
 
-1. **Continuous Quad-Ribbon Mesh & Native DPR Alignment (Pixelated Edges Fix)**:
+1. **Refined Laser Light Intensity, Silky-Smooth Flow Animations & Global Connector Flow Toggle**:
+   - **Toned Down Laser Light & Glare**: Reduced beam luminous aura multiplier from `2.8x` to `1.6x` and opacity from `0.22` to `0.11` in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx). Softened diode halo from `22-26px` to `11-13px` radius with `0.40 / 0.25` alpha, tightened diode core to `4.8px / 3.8px`, and replaced heavy shockwave with a crisp `0.9px` pulse ring, eliminating excessive bloom and blinding glare.
+   - **Silky-Smooth Active Connector Flow**: Eliminated SMIL/CSS keyframe animation contention by removing the conflicting SVG SMIL `<animate>` tag in [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx). Standardized flow dash pattern to `10 6` (period 16px) and translation to `32px` (2 complete cycles) across [globals.css](file:///D:/Projects/diagramz/apps/web/src/app/globals.css) and [svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts), achieving 0-jump, stutter-free infinite flow at 60/120 FPS.
+   - **Global Flow Toggle ("Turn On to All at Once")**: Implemented 1-click global controls across:
+     - Bottom Canvas Context HUD (`Flow (All)` button with stream pulse indicator).
+     - Presentation Dock ([ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx)) 1-click **Flow** toggle button.
+     - Context Menu ([ZCanvasContextMenu.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasContextMenu.tsx)) "Turn On / Off Active Flow (All Lines)" on both line and canvas right-click.
+     - Inspector Style Panel ([ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx)) "All connectors: Turn on for all" and Canvas & Page "Connector Active Flow" buttons.
+     - Global keyboard shortcut <kbd>Shift+Alt+F</kbd> (and <kbd>Alt+F</kbd> fallback when unselected) in [shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts).
+
+2. **Continuous Quad-Ribbon Mesh & Native DPR Alignment (Pixelated Edges Fix)**:
    - Eliminated saw-tooth width steps in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) by replacing chunked `lineWidth` sections with vertex-computed quad strips (`renderContinuousLaserRibbon`). In the previous chunked approach, widths jumped in 3.6px–7.3px discrete steps across section boundaries, creating visible saw-tooth teeth and crawling steps along both sides of the beam.
    - Quad $i$ and Quad $i+1$ share the exact normal vertices $(L_{i+1}, R_{i+1})$ with continuous width evaluation at every single point along the curve ($\Delta w < 0.1\text{px}$), accompanied by concentric fillet caps on interior joints for sub-pixel anti-aliasing.
    - Removed the artificial `Math.min(window.devicePixelRatio || 1, 2)` clamp in favor of `Math.max(1, window.devicePixelRatio || 1)`, ensuring 1:1 physical pixel alignment on 4K, Retina, and 125%/150%/250% Windows scaling displays without bilinear canvas bitmap upscaling blur.

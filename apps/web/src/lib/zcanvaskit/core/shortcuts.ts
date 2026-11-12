@@ -144,6 +144,13 @@ export const ZCANVAS_SHORTCUTS: ZCanvasShortcut[] = [
     category: 'Editing',
     keys: ['Alt', 'F'],
   },
+  {
+    id: 'edit-active-flow-all',
+    label: 'Toggle Flow on All Lines',
+    description: 'Turn active flow animation on/off for all diagram connectors at once',
+    category: 'Editing',
+    keys: ['Shift', 'Alt', 'F'],
+  },
 
   // Movement & Selection
   {

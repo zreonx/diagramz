@@ -4,6 +4,26 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Refined Laser Light Intensity, Silky-Smooth Flow Animations & Global Connector Flow Toggle
+
+### Fixed & Enhanced
+- **Refined Laser Light & Glare Reduction** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)):
+  - **Restrained Ambient Aura**: Reduced beam ambient luminous aura from `2.8x` to `1.6x` width multiplier and lowered opacity from `0.22` to `0.11`, eliminating excessive light bloom and glow glare over diagrams.
+  - **Softened Diode Halo**: Reduced cursor halo radius from `22px–26px` to a sleek `11px–13px` with reduced opacity (`0.40` active / `0.25` resting), keeping diagram text and shapes perfectly legible.
+  - **Crisp Laser Diode Core**: Scaled diode core radius to `4.8px / 3.8px` with a crisp `1.8px / 1.4px` white focal center, and replaced heavy shockwave ring with a refined `0.9px` subtle pulse ring.
+- **Silky-Smooth Active Connector Flow (Zero Stutter / Seamless Loop)** ([globals.css](file:///D:/Projects/diagramz/apps/web/src/app/globals.css), [ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [svg.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/export/svg.ts)):
+  - **Eliminated SMIL/CSS Animation Contention**: Removed conflicting SVG SMIL `<animate>` tag inside `<path>` that competed with CSS compositor keyframes, eliminating visible frame drops and jitter.
+  - **Seamless Mathematical Loop Period**: Standardized connector flow dash pattern to `10 6` (period 16px) and keyframe translation to exactly `32px` (2 complete cycles) across canvas CSS keyframes and standalone SVG exports. Guaranteed 0-jump continuity at the loop point.
+  - **GPU Compositor Promotion**: Added `will-change: stroke-dashoffset` for hardware layer promotion.
+- **Global Active Flow Toggle ("Turn On to All at Once")** ([ZCanvas.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvas.tsx), [ZCanvasStylePanel.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasStylePanel.tsx), [ZCanvasPresentationDock.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasPresentationDock.tsx), [ZCanvasContextMenu.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasContextMenu.tsx), [shortcuts.ts](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/core/shortcuts.ts)):
+  - **1-Click Global Flow in Bottom HUD**: Added `Flow (All)` button with pulsing activity stream indicator when canvas is unselected, and `All` toggle button beside single-line flow when an edge is selected.
+  - **Presentation Mode Dock**: Integrated 1-click **Flow** toggle button in the presentation dock to illuminate or pause active flow across the entire diagram during presentations.
+  - **Context Menu Actions**: Added **Turn On Active Flow (All Lines)** and **Turn Off Active Flow (All Lines)** to both connector right-click and canvas background right-click menus.
+  - **Inspector Style Panel**: Added **All connectors: Turn on for all / Turn off all** button in edge inspector, and **Connector Active Flow** toggle in Canvas & Page inspector.
+  - **Keyboard Shortcuts**: Added <kbd>Shift+Alt+F</kbd> shortcut to toggle all lines at once, with <kbd>Alt+F</kbd> intelligently toggling all lines when no connector is specifically selected.
+
+---
+
 ## [2026-11-12] — Continuous Quad-Ribbon Mesh & True Native DPR Alignment (Pixelated Edges Fix)
 
 ### Fixed & Enhanced
