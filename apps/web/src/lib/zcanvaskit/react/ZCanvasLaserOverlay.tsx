@@ -57,37 +57,108 @@ function chaikinSmooth(pts: LaserPoint[]): LaserPoint[] {
 }
 
 /**
- * Draws a continuous curved path between indices startIdx and endIdx
- * using quadratic midpoint Bézier interpolation.
+ * Renders a continuous, variable-width quad-ribbon mesh with sub-pixel vector anti-aliasing.
+ * Eliminates discrete width steps and saw-tooth notches for silky-smooth organic edges.
  */
-function strokeCurveSection(
+function renderContinuousLaserRibbon(
   ctx: CanvasRenderingContext2D,
-  pts: LaserPoint[],
-  startIdx: number,
-  endIdx: number
+  points: LaserPoint[],
+  baseWidth: number,
+  alphaScale: number,
+  paletteColor: (alpha: number) => string,
+  now: number,
+  activeFadeMs: number,
+  hoverFadeMs: number,
+  onlyActive: boolean = false
 ) {
-  const span = endIdx - startIdx + 1;
-  if (span < 2) return;
+  const N = points.length;
+  if (N < 2) return;
 
-  ctx.beginPath();
-  ctx.moveTo(pts[startIdx].x, pts[startIdx].y);
+  // 1. Calculate normals, radii, and alphas continuously for every point
+  const normals: { x: number; y: number }[] = [];
+  const radii: number[] = [];
+  const alphas: number[] = [];
 
-  if (span === 2) {
-    ctx.lineTo(pts[endIdx].x, pts[endIdx].y);
-  } else {
-    for (let i = startIdx; i < endIdx - 1; i++) {
-      const midX = (pts[i].x + pts[i + 1].x) * 0.5;
-      const midY = (pts[i].y + pts[i + 1].y) * 0.5;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
+  for (let i = 0; i < N; i++) {
+    const p = points[i];
+    const prev = points[i - 1] ?? points[i];
+    const next = points[i + 1] ?? points[i];
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy);
+
+    if (len < 1e-5) {
+      normals.push(normals[normals.length - 1] ?? { x: 0, y: -1 });
+    } else {
+      normals.push({ x: -dy / len, y: dx / len });
     }
-    ctx.quadraticCurveTo(
-      pts[endIdx - 1].x,
-      pts[endIdx - 1].y,
-      pts[endIdx].x,
-      pts[endIdx].y
-    );
+
+    const age = now - p.time;
+    const maxLife = p.isDown ? activeFadeMs : hoverFadeMs;
+    const life = Math.max(0, Math.min(1, 1 - age / maxLife));
+    const easeLife = Math.pow(life, 0.72);
+
+    // Continuous non-linear radius tapering down to delicate tip at tail
+    const r = Math.max(0.75, (baseWidth * 0.5) * (0.12 + 0.88 * Math.pow(life, 0.85)));
+    radii.push(r);
+    alphas.push(p.isDown ? easeLife : easeLife * 0.7);
   }
-  ctx.stroke();
+
+  // 2. Compute left and right boundary vertices along the continuous normal field
+  const left: { x: number; y: number }[] = [];
+  const right: { x: number; y: number }[] = [];
+
+  for (let i = 0; i < N; i++) {
+    const p = points[i];
+    const nx = normals[i].x;
+    const ny = normals[i].y;
+    const r = radii[i];
+    left.push({ x: p.x + nx * r, y: p.y + ny * r });
+    right.push({ x: p.x - nx * r, y: p.y - ny * r });
+  }
+
+  // 3. Render quads with continuous shared boundaries and round fillets
+  for (let i = 0; i < N - 1; i++) {
+    const pNext = points[i + 1];
+    if (onlyActive && !pNext.isDown) continue;
+
+    const a = alphas[i + 1] * alphaScale;
+    if (a <= 0.01) continue;
+
+    ctx.fillStyle = paletteColor(a);
+
+    // Quad body
+    ctx.beginPath();
+    ctx.moveTo(left[i].x, left[i].y);
+    ctx.lineTo(left[i + 1].x, left[i + 1].y);
+    ctx.lineTo(right[i + 1].x, right[i + 1].y);
+    ctx.lineTo(right[i].x, right[i].y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Round fillet at joint to guarantee seamless curvature on sharp turns
+    ctx.beginPath();
+    ctx.arc(points[i + 1].x, points[i + 1].y, radii[i + 1], 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Tail cap at start
+  const aTail = alphas[0] * alphaScale;
+  if ((!onlyActive || points[0].isDown) && aTail > 0.01) {
+    ctx.fillStyle = paletteColor(aTail);
+    ctx.beginPath();
+    ctx.arc(points[0].x, points[0].y, radii[0], 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Head cap at end
+  const aHead = alphas[N - 1] * alphaScale;
+  if ((!onlyActive || points[N - 1].isDown) && aHead > 0.01) {
+    ctx.fillStyle = paletteColor(aHead);
+    ctx.beginPath();
+    ctx.arc(points[N - 1].x, points[N - 1].y, radii[N - 1], 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 export function ZCanvasLaserOverlay({
@@ -131,20 +202,20 @@ export function ZCanvasLaserOverlay({
 
     // Cache container rect to prevent layout reflow during pointermove & animation frames
     let cachedRect = container.getBoundingClientRect();
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.max(1, window.devicePixelRatio || 1);
 
     const updateSize = () => {
       if (!canvas || !container) return;
       cachedRect = container.getBoundingClientRect();
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.floor(cachedRect.width);
-      const h = Math.floor(cachedRect.height);
+      const currentDpr = Math.max(1, window.devicePixelRatio || 1);
+      dpr = currentDpr;
 
-      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
+      const pixelW = Math.round(cachedRect.width * currentDpr);
+      const pixelH = Math.round(cachedRect.height * currentDpr);
+
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
       }
     };
 
@@ -314,67 +385,52 @@ export function ZCanvasLaserOverlay({
         }
       }
 
-      // ─── Draw Radiant Laser Brush Stroke ──────────────────────────────────
+      // ─── Draw Radiant Laser Brush Stroke (Continuous Quad Ribbon) ─────────
       if (trail.length >= 2) {
         // Apply Chaikin corner-cutting for silky-smooth organic curves
         const smoothed = trail.length >= 3 ? chaikinSmooth(trail) : trail;
-        const count = smoothed.length;
 
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // Divide into progressive continuous sections for smooth width & alpha tapering
-        const numSections = Math.min(18, Math.max(1, Math.floor(count / 3)));
-
-        // Precompute section properties
-        const sectionProps = [];
-        for (let s = 0; s < numSections; s++) {
-          const startIdx = Math.floor((s * (count - 1)) / numSections);
-          const endIdx = Math.floor(((s + 1) * (count - 1)) / numSections);
-          const pEnd = smoothed[endIdx];
-          const age = now - pEnd.time;
-          const maxLife = pEnd.isDown ? activeFadeMs : hoverFadeMs;
-          const life = Math.max(0, Math.min(1, 1 - age / maxLife));
-          const easeLife = Math.pow(life, 0.72);
-          const baseW = pEnd.isDown ? widthConfig.activeWidth : widthConfig.hoverWidth;
-          const width = Math.max(1.8, baseW * (0.18 + 0.82 * Math.pow(life, 0.8)));
-          const alpha = pEnd.isDown ? easeLife : easeLife * 0.7;
-
-          sectionProps.push({
-            startIdx,
-            endIdx,
-            width,
-            alpha,
-            isDown: pEnd.isDown,
-          });
-        }
+        const baseActiveW = widthConfig.activeWidth;
+        const baseHoverW = widthConfig.hoverWidth;
+        const isCurrentlyDown = cursor.isDown;
+        const baseW = isCurrentlyDown ? baseActiveW : baseHoverW;
 
         // Pass 1: Luminous Ambient Glow Aura (Optical Radiation)
-        for (let s = 0; s < numSections; s++) {
-          const sp = sectionProps[s];
-          if (sp.alpha <= 0.02) continue;
-          ctx.lineWidth = Math.max(3, sp.width * 2.6);
-          ctx.strokeStyle = palette.rgba(sp.alpha * 0.24);
-          strokeCurveSection(ctx, smoothed, sp.startIdx, sp.endIdx);
-        }
+        renderContinuousLaserRibbon(
+          ctx,
+          smoothed,
+          baseW * 2.8,
+          0.22,
+          (a) => palette.rgba(a),
+          now,
+          activeFadeMs,
+          hoverFadeMs
+        );
 
         // Pass 2: Saturated Neon Brush Core
-        for (let s = 0; s < numSections; s++) {
-          const sp = sectionProps[s];
-          if (sp.alpha <= 0.02) continue;
-          ctx.lineWidth = Math.max(1.5, sp.width);
-          ctx.strokeStyle = palette.rgba(sp.alpha * 0.96);
-          strokeCurveSection(ctx, smoothed, sp.startIdx, sp.endIdx);
-        }
+        renderContinuousLaserRibbon(
+          ctx,
+          smoothed,
+          baseW * 1.0,
+          0.96,
+          (a) => palette.rgba(a),
+          now,
+          activeFadeMs,
+          hoverFadeMs
+        );
 
         // Pass 3: White-Hot Photonic Center Spine
-        for (let s = 0; s < numSections; s++) {
-          const sp = sectionProps[s];
-          if (!sp.isDown || sp.alpha <= 0.12) continue;
-          ctx.lineWidth = Math.max(1, sp.width * 0.32);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${sp.alpha * 0.95})`;
-          strokeCurveSection(ctx, smoothed, sp.startIdx, sp.endIdx);
-        }
+        renderContinuousLaserRibbon(
+          ctx,
+          smoothed,
+          baseW * 0.32,
+          0.95,
+          (a) => `rgba(255, 255, 255, ${a})`,
+          now,
+          activeFadeMs,
+          hoverFadeMs,
+          true
+        );
       }
 
       // ─── Draw Radiant Laser Diode Dot ─────────────────────────────────────

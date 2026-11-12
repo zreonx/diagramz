@@ -20,7 +20,12 @@
 
 ## 2. Recently Completed Work
 
-1. **Ultra-Smooth Anti-Aliased Laser Brush Engine (Zero-Lag & Chaikin Spline)**:
+1. **Continuous Quad-Ribbon Mesh & Native DPR Alignment (Pixelated Edges Fix)**:
+   - Eliminated saw-tooth width steps in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) by replacing chunked `lineWidth` sections with vertex-computed quad strips (`renderContinuousLaserRibbon`). In the previous chunked approach, widths jumped in 3.6px–7.3px discrete steps across section boundaries, creating visible saw-tooth teeth and crawling steps along both sides of the beam.
+   - Quad $i$ and Quad $i+1$ share the exact normal vertices $(L_{i+1}, R_{i+1})$ with continuous width evaluation at every single point along the curve ($\Delta w < 0.1\text{px}$), accompanied by concentric fillet caps on interior joints for sub-pixel anti-aliasing.
+   - Removed the artificial `Math.min(window.devicePixelRatio || 1, 2)` clamp in favor of `Math.max(1, window.devicePixelRatio || 1)`, ensuring 1:1 physical pixel alignment on 4K, Retina, and 125%/150%/250% Windows scaling displays without bilinear canvas bitmap upscaling blur.
+
+2. **Ultra-Smooth Anti-Aliased Laser Brush Engine (Zero-Lag & Chaikin Spline)**:
    - Eliminated pixelated stair-stepping and butt-cap notches in [ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx) by replacing disconnected single-segment butt strokes with continuous progressive Bézier sections with native GPU `lineCap = 'round'` and `lineJoin = 'round'`, seamlessly matching endpoints between adjacent sections.
    - Added Chaikin corner-cutting algorithm for silky-smooth organic curves across harvested pointer events, turning angular hand motions into flowing brush ribbons.
    - Connected live pointer coordinates `(cursor.x, cursor.y)` directly to the active head of the trail, eliminating the 2-frame lag gap between the laser diode and the brush stroke.

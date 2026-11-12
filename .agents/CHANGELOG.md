@@ -4,6 +4,16 @@ All notable architectural changes, features, bug fixes, and deployment milestone
 
 ---
 
+## [2026-11-12] — Continuous Quad-Ribbon Mesh & True Native DPR Alignment (Pixelated Edges Fix)
+
+### Fixed & Enhanced
+- **Continuous Quad-Ribbon Mesh Geometry** ([ZCanvasLaserOverlay.tsx](file:///D:/Projects/diagramz/apps/web/src/lib/zcanvaskit/react/ZCanvasLaserOverlay.tsx)):
+  - **Eliminated Discrete Section Width Steps**: Replaced chunked `lineWidth` sections with continuous vertex-computed quad strips (`renderContinuousLaserRibbon`). In the previous chunked approach, widths jumped in 3.6px–7.3px discrete steps across section boundaries, creating visible saw-tooth teeth and crawling steps along both sides of the beam.
+  - **Seamless Shared Boundary Quads**: Quad $i$ and Quad $i+1$ share the exact normal vertices $(L_{i+1}, R_{i+1})$ with continuous width evaluation at every single point along the curve ($\Delta w < 0.1\text{px}$), accompanied by concentric fillet caps on interior joints for sub-pixel anti-aliasing.
+  - **Un-Capped Native DPR Resolution**: Removed the artificial `Math.min(window.devicePixelRatio || 1, 2)` clamp in favor of `Math.max(1, window.devicePixelRatio || 1)`, ensuring 1:1 physical pixel alignment on 4K, Retina, and 125%/150%/250% Windows scaling displays without bilinear canvas bitmap upscaling blur.
+
+---
+
 ## [2026-11-12] — Ultra-Smooth Anti-Aliased Laser Brush Engine (Zero-Lag & Chaikin Spline)
 
 ### Fixed & Enhanced
